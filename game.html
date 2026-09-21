@@ -1,72 +1,11 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>JC The Holy OG · Sin City Redemption</title>
-  <link rel="stylesheet" href="/game-ui.css?v=809cc9d2cb01">
-  <link rel="stylesheet" href="/ability-ui.css?v=89a446afc4f9">
-  <link rel="stylesheet" href="/mobile-controls.css?v=946435f720af">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JC THE HOLY OG</title>
+<meta http-equiv="refresh" content="0; url=./index.html">
+<script>location.replace('./index.html');</script>
 </head>
-<body>
-  <div id="loading"><div class="loadbox"><div class="eyebrow">JC THE HOLY OG</div><h1>SIN CITY<br><b>REDEMPTION</b></h1><div class="loadbar"><i></i></div><p id="bootStatus" role="status" aria-live="polite">Preparing Las Vegas</p><button id="bootRetry" type="button">Retry</button><a class="subtle" href="/webgl1.html">Open WebGL 1 edition</a></div></div>
-  <div id="menu" style="display:none"><div class="panel start-panel">
-    <div class="eyebrow">JC THE HOLY OG</div><h1>SIN CITY<br><b>REDEMPTION</b></h1>
-    <p class="pitch">Restore the lost. Outrun the Devil. Take back the Strip.</p>
-    <div class="mission-brief"><span>THREE CONTRACTS</span><p>Follow the gold marker. Restore souls with Divine Light, then reach each checkpoint. Your pursuer gets faster with every contract.</p></div>
-    <div class="faction-select" aria-label="Choose your side"><button id="start" type="button"><strong>PLAY AS JC</strong><span>Restore souls with Divine Light</span></button><button id="startSatan" type="button" class="satan"><strong>PLAY AS SATAN</strong><span>Claim souls with Soul-Taker rounds</span></button></div>
-    <div class="start-actions"><button id="continueGame" type="button" hidden>Continue JC checkpoint</button><button id="continueSatan" type="button" hidden>Continue Satan checkpoint</button><button id="freeRoam" type="button" class="secondary">JC free roam</button></div>
-    <div class="menu-grid"><span><kbd>WASD</kbd> Move / drive</span><span><kbd>E</kbd> Enter / exit car</span><span><kbd>F</kbd> Toggle superhero flight</span><span><kbd>Right drag</kbd> Look / aim</span><span><kbd>Click</kbd> Divine Light</span><span><kbd>Esc</kbd> Pause / controls</span><span><kbd>Shift / Q</kbd> Fast flight / burst</span><span><kbd>Space / Ctrl</kbd> Fly up / down</span><span><kbd>R</kbd> Topple aimed building</span><span><kbd>V / H</kbd> Ground slam / shield</span></div>
-    <div class="edition-links"><button class="text-button" data-fullscreen>Fullscreen</button><a href="/webgl1.html">WebGL 1 edition</a><span id="realDataBadge">Las Vegas world preview</span></div>
-  </div></div>
-  <div id="hud">
-    <div class="topbar"><div class="brand">JC <b>THE HOLY OG</b></div><div class="meters"><div class="meter health"><i id="healthBar"></i><span>HEALTH</span></div><div class="meter grace"><i id="graceBar"></i><span>GRACE</span></div><div class="meter soul"><i id="missionBar"></i><span>REDEMPTION</span></div></div></div>
-    <div id="contractCard"><span id="contractNumber">CONTRACT 1 / 3</span><h2 id="contractTitle">First light</h2><p id="contractGoal">Restore 4 souls</p><strong id="contractDistance"></strong><small id="pursuitStatus"></small></div>
-    <div id="timeChip">DAY 01 · 12:00</div>
-    <div class="stats"><span id="district">LAS VEGAS</span><div><span id="soulCounterLabel">RESTORED</span> <b id="saved">0</b> / 18</div><div>SCORE <span id="score">000000</span></div><span id="taken" hidden>0</span></div>
-    <canvas id="minimap" width="460" height="308" aria-label="Las Vegas minimap" title="M to change minimap size"></canvas>
-    <div id="streamStatus" hidden></div>
-    <div class="speed"><strong id="mph">000</strong><small>MPH</small><span class="gear" id="gear">P</span></div>
-    <div id="reticle" aria-hidden="true"></div><div id="objectiveMarker"><span>◆</span><small id="markerLabel">RESTORE</small></div>
-    <div id="powerReadout"></div><div id="flightReadout"></div><div id="comboCount"></div><div id="interactionHint"></div><div class="notice" id="notice"></div>
-  </div>
-  <div id="gameTools"><button id="abilitiesButton" class="secondary" aria-controls="abilityTray" aria-expanded="false">Abilities <kbd>Tab</kbd></button><button id="pauseGame" class="secondary">Pause</button><button class="secondary" data-fullscreen>Fullscreen</button></div>
-  <section id="abilityTray" hidden role="dialog" aria-modal="true" aria-labelledby="wheelTitle" aria-describedby="wheelInstructions">
-    <div class="wheel-panel">
-      <div class="wheel-heading"><div><h2 id="wheelTitle">ABILITY WHEEL</h2><p id="wheelGrace">100 GRACE</p></div><button id="closeAbilities" aria-label="Close ability wheel">×</button></div>
-      <div id="abilityTabs" role="tablist" aria-label="Ability category"></div>
-      <div id="abilityRing" role="tabpanel" aria-label="Powers abilities"></div>
-      <div class="wheel-footer"><p id="wheelAbilityDescription"></p><small id="wheelInstructions">Select to equip. Use CAST or X to activate.<br>Hold charged powers, then release. Esc closes.</small></div>
-    </div>
-  </section>
-  <button id="abilityCast" class="ability-cast" type="button" aria-label="Cast equipped ability"></button>
-  <div id="damageOverlay" aria-hidden="true"></div><div id="actionStatus" class="sr-only" role="status" aria-live="polite"></div>
-  <div id="mobile">
-    <div id="mobileFlight" class="mobile-flight" role="group" aria-label="Flight controls">
-      <button id="mobileFlightToggle" data-action="KeyF" aria-label="Take off or land" aria-pressed="false">FLY / LAND</button>
-      <button id="mDash" data-action="KeyQ" aria-label="Godspeed boost">BOOST</button>
-      <button data-key="Space" aria-label="Rise in flight or jump">RISE</button>
-      <button data-key="ControlLeft" aria-label="Descend in flight">DESCEND</button>
-      <button data-key="ShiftLeft" aria-label="Fast flight">FAST</button>
-      <button data-key="KeyB" aria-label="Air or vehicle brake">BRAKE</button>
-    </div>
-    <div id="moveStick" class="touch-stick move-stick" role="group" aria-label="Movement joystick"><span class="stick-knob"></span><span class="stick-label">MOVE</span></div>
-    <div class="mobile-cast-actions">
-      <button id="mobileAbilityCast" class="ability-cast" type="button" aria-label="Cast equipped ability"></button>
-      <button id="mFire">LIGHT</button><button id="mRide">ENTER</button>
-    </div>
-    <div id="lookStick" class="touch-stick look-stick" role="group" aria-label="Right joystick: aim, hold centre for the ability wheel">
-      <span class="stick-knob"></span><span class="stick-label">LOOK / SELECT</span>
-      <button id="mobileAbilities" aria-label="Open ability wheel on right joystick" aria-controls="abilityTray" aria-expanded="false">POWERS</button>
-      <button class="wheel-page wheel-prev" data-wheel-step="-1" aria-label="Previous ability category">‹</button>
-      <button class="wheel-page wheel-next" data-wheel-step="1" aria-label="Next ability category">›</button>
-    </div>
-  </div>
-  <div id="pauseMenu" role="dialog" aria-modal="true" aria-labelledby="pauseTitle"><div class="panel pause-panel"><div class="eyebrow">JC THE HOLY OG</div><h2 id="pauseTitle">PAUSED</h2><div class="start-actions"><button id="resumeGame">Resume</button><button id="retryCheckpoint" class="secondary">Retry checkpoint</button></div><div class="menu-grid"><span>WASD · Move / drive</span><span>Shift · Fast flight / sprint / handbrake</span><span>E · Enter / exit car</span><span>F · Toggle flight</span><span>Space · Jump / rise</span><span>Ctrl · Descend in flight</span><span>Right drag · Look / aim</span><span>Wheel · Camera distance</span><span>Click / hold · Divine Light</span><span>Z · Grace Wave</span><span>Q · Godspeed car boost / flight burst</span><span>R · Topple aimed building / melee</span><span>V · Collapse nearby buildings</span><span>H · Shield for 5 seconds</span><span>T · Day / night</span><span>B · Brake car, board or flight</span></div><details><summary>Abilities, skating &amp; controller</summary><p>Press Tab or tap POWERS on the right joystick to open the translucent ability wheel. Select from Powers, Grace, Movement or Combat to equip an ability, then press X or the CAST button to use it. Hold CAST for lightning, Holy Beam and block; release to fire or stop. The game pauses while the wheel is open. Escape closes it. On mobile, the left stick moves and the right stick aims. Hold the centre of the right stick to open the wheel, drag to choose, and release to equip. The arrow buttons change categories. EXIT the car to fly; FLY takes off, RISE and DESCEND change altitude, FAST accelerates, BOOST bursts forward, and BRAKE slows you down. All original hotkeys still work. K equips the board. Hold W to push, release to coast, S or B brakes, Shift pushes faster, C toggles hover, Space ollies, and J changes the airborne trick pose. L is currently a grind pose only; rail physics are unfinished.</p><p>1 fires Judgment straight down. Hold 2 or 3, then release at 100% for lightning or Holy Beam. 4 lifts an aimed building or vehicle; 5 throws it. 6 casts prayer; moving or taking damage interrupts it. 7 steps along a clear path. 8 slows the pursuer. 9 activates a protective halo. 0 restores a nearby visible lost soul. Mercy Rain in the Grace wheel (comma on keyboard) costs 30 Grace and puts out fires within 110 metres for 12 seconds. JC’s car has a golden halo and a Godspeed boost; hold BRAKE to slow the car.</p><p>N holds block; press just before a frontal hit to parry. G calls Glory Storm: lightning strikes up to three nearby visible targets, or fires forward when none are nearby. I locks or unlocks a visible target; [ and ] cycle. U reloads, Y draws or holsters. O/P evade forward/back.</p><p>Standard gamepad: left stick moves; right stick looks; A jumps, B casts the equipped ability, X boosts, Y enters the car; LB flies, RB shields; triggers charge powers; Start pauses and resumes. Back/Select opens the wheel. While it is open, either stick selects, LB/RB change category, A equips and B cancels. USB N64 adapters vary and may need the adapter’s mapping utility. Hardware compatibility is not yet verified.</p><label><input id="leftHanded" type="checkbox"> Left-handed touch layout</label></details><button id="resetWorld" class="secondary">Reset destroyed buildings and checkpoint</button><div id="landmarkTour"></div><div class="edition-links"><a href="/webgl1.html">WebGL 1 edition</a><button class="text-button" data-fullscreen>Fullscreen</button></div><details><summary>Build status</summary><p><a href="/skill-status.html" target="_blank" rel="noopener">All 30 skill checks and remaining blockers</a></p><p>Playable preview. Roads, sprites and gameplay systems are present. All 17 Strip landmarks have geographic point anchors. Surveyed footprints, terrain sections, interiors and full world validation remain incomplete. Generated facade materials are artistic approximations. Building geometry and placement are not fully surveyed or validated.</p></details><details><summary>World credits</summary><p>Landmark point references: Wikipedia/Wikidata and retained project coordinates. Generated building imagery is an artistic interpretation. © OpenStreetMap contributors (ODbL). USGS 3DEP. Microsoft GlobalML building footprints (CDLA-Permissive-2.0). Clark County GISMO. City model: jack.simmons / Sketchfab, CC BY 4.0. Strip model: Brian Trepanier / Sketchfab, CC BY 4.0.</p></details></div></div>
-  <div id="credits">© OpenStreetMap contributors; USGS 3DEP; Microsoft GlobalML; Clark County GISMO. Models: jack.simmons and Brian Trepanier / Sketchfab, CC BY 4.0. Press C to close.</div>
-  <div id="end"><div class="panel"><div class="eyebrow">SIN CITY VERDICT</div><h2 class="endtitle" id="endTitle"></h2><p class="pitch" id="endCopy"></p><button id="restart">Retry checkpoint</button></div></div>
-  <script type="importmap">{"imports":{"three":"/three.module.min.js"}}</script>
-  <script src="/display-controls.js?v=44" defer></script>
-  <script type="module" src="/device-loader.js?v=809cc9d2cb01"></script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a3e8e2d2dd7a3f28',t:'MTc4OTk5MTc4MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<body><p>Loading JC THE HOLY OG… <a href="./index.html">Continue</a></p></body>
 </html>
