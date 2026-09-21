@@ -1,0 +1,5 @@
+JC THE HOLY OG redeploy trigger
+branch: main
+source_commit: ecb452ed08b56eb4526a5ba3cb8c33333795e9a3
+requested_at: 2026-09-21T10:15:00-07:00
+reason: publish single PLAY THE STRIP launch path and disable duplicate fallbacks
