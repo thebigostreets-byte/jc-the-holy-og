@@ -10,10 +10,10 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07090d;col
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
 <body>
-<div id="boot"><div class="card"><h1>JC <b>THE HOLY OG</b></h1><p id="bootText">Starting low-spec runtime…</p></div></div>
-<div id="menu" style="display:none"><div class="card"><h1>JC <b>SIN CITY</b></h1><p>Fly the Strip, lock targets, and equip divine powers. Controller setup and remapping are inside Controls.</p><div class="actions"><button id="realStart">PLAY THE STRIP</button><button id="start" class="secondary">LOW-SPEC FALLBACK</button></div><p style="font-size:11px">Drag to look · Q / L2 lock · R2 cast · L1 power wheel · F flight</p></div></div>
+<div id="boot"><div class="card"><h1>JC <b>THE HOLY OG</b></h1><p id="bootText">Starting JC runtime…</p></div></div>
+<div id="menu" style="display:none"><div class="card"><h1>JC <b>SIN CITY</b></h1><p>Fly the Strip, lock targets, and equip divine powers. Controller setup and remapping are inside Controls.</p><div class="actions"><button id="start">PLAY THE STRIP</button></div><p style="font-size:11px">Drag to look · Q / L2 lock · R2 cast · L1 power wheel · F flight</p></div></div>
 <div id="fatal" style="display:none"><div class="card"><h1>JC <b>SAFE MODE</b></h1><p id="fatalText"></p><button onclick="location.reload()">RETRY</button></div></div>
-<div id="hud"><div class="tag">JC • LOW SPEC <span id="stream">BOOT CELL</span></div><div class="stats">FPS <b id="fps">--</b><br>CELLS <b id="cells">1</b><br>DETAIL <b id="detail">LOW</b></div><div class="help">WASD MOVE • SHIFT RUN • DRAG MOUSE TO LOOK</div></div>
+<div id="hud"><div class="tag">JC • CURRENT BUILD <span id="stream">BOOT CELL</span></div><div class="stats">FPS <b id="fps">--</b><br>CELLS <b id="cells">1</b><br>DETAIL <b id="detail">LOW</b></div><div class="help">WASD MOVE • SHIFT RUN • DRAG MOUSE TO LOOK</div></div>
 <div class="mobile"><div class="pad"><button class="up" data-key="KeyW">▲</button><button class="left" data-key="KeyA">◀</button><button class="down" data-key="KeyS">▼</button><button class="right" data-key="KeyD">▶</button></div></div>
 <script type="module">
 import * as THREE from 'three';
@@ -40,11 +40,8 @@ try{
  addEventListener('keydown',e=>keys[e.code]=true);addEventListener('keyup',e=>keys[e.code]=false);addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
  renderer.domElement.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;lastY=e.clientY});addEventListener('pointerup',()=>drag=false);addEventListener('pointermove',e=>{if(!drag)return;yaw-=(e.clientX-lastX)*.004;pitch=Math.max(-.8,Math.min(.3,pitch-(e.clientY-lastY)*.003));lastX=e.clientX;lastY=e.clientY});
  document.querySelectorAll('[data-key]').forEach(b=>{const k=b.dataset.key;b.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=true});b.addEventListener('pointerup',()=>keys[k]=false);b.addEventListener('pointercancel',()=>keys[k]=false)});
- $('detail').textContent=LOW?'LOW':'BALANCED';$('bootText').textContent='Playable cell ready';setTimeout(()=>{$('boot').style.display='none';$('menu').style.display='grid'},120);
- $('realStart').onclick=()=>{$('start').click();};
- $('start').onclick=()=>{playing=true;$('menu').style.display='none';$('hud').style.display='block';$('stream').textContent='BASE CITY READY';};
- // Heavy JC world data is intentionally NOT loaded during boot. The combined
- // Replit/current bridge is dynamically imported only after gameplay is stable.
+ $('detail').textContent=LOW?'OPTIMIZED':'BALANCED';$('bootText').textContent='JC runtime ready';setTimeout(()=>{$('boot').style.display='none';$('menu').style.display='grid'},120);
+ $('start').onclick=()=>{playing=true;$('menu').style.display='none';$('hud').style.display='block';$('stream').textContent='CITY READY';};
 }catch(err){console.error(err);$('boot').style.display='none';$('fatal').style.display='grid';$('fatalText').textContent='WebGL started in safe mode but hit: '+(err?.message||err)}
 </script>
 <script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a3e8c6ac5da23f28',t:'MTc4OTk5MDYyNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
