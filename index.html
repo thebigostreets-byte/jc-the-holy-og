@@ -155,14 +155,64 @@ for(let i=0;i<impostorCount;i++){
 }
 
 const player=new THREE.Group();
-const robe=new THREE.Mesh(new THREE.CylinderGeometry(.55,.9,2.2,10),new THREE.MeshLambertMaterial({color:0xf2f0e8}));robe.position.y=1.1;player.add(robe);
-const head=new THREE.Mesh(new THREE.SphereGeometry(.47,12,10),new THREE.MeshLambertMaterial({color:0xc78d69}));head.position.y=2.65;player.add(head);
-const halo=new THREE.Mesh(new THREE.TorusGeometry(.57,.06,8,24),new THREE.MeshBasicMaterial({color:0xffd45a}));halo.rotation.x=Math.PI/2;halo.position.y=3.35;player.add(halo);
+player.name='JC_PLAYER';
 
+// Visible JC fallback. The final /assets/models/jc.glb automatically replaces this when added.
+const whiteMat=new THREE.MeshLambertMaterial({color:0xf7f7f4});
+const skinMat=new THREE.MeshLambertMaterial({color:0xc78d69});
+const hairMat=new THREE.MeshLambertMaterial({color:0x2a1711});
+const shoeMat=new THREE.MeshLambertMaterial({color:0xfdfdfd});
+
+// Keep these first 3 children in this order because master-upgrade.js uses them for faction styling.
+const robe=new THREE.Mesh(new THREE.CylinderGeometry(.72,1.02,2.45,12),whiteMat);robe.position.y=2.05;robe.name='JC_HOODIE_BODY';player.add(robe);
+const head=new THREE.Mesh(new THREE.SphereGeometry(.55,16,12),skinMat);head.position.y=3.78;head.name='JC_HEAD';player.add(head);
+const halo=new THREE.Mesh(new THREE.TorusGeometry(.72,.085,10,32),new THREE.MeshBasicMaterial({color:0xffd45a}));halo.rotation.x=Math.PI/2;halo.position.y=4.58;halo.name='JC_HALO';player.add(halo);
+
+// Hood behind head.
+const hood=new THREE.Mesh(new THREE.TorusGeometry(.64,.18,8,20,Math.PI*1.3),whiteMat);hood.position.set(0,3.72,.18);hood.rotation.x=Math.PI/2;hood.rotation.z=.35;player.add(hood);
+
+// Arms / sleeves.
+for(const x of [-.86,.86]){const arm=new THREE.Mesh(new THREE.CapsuleGeometry(.18,1.35,4,8),whiteMat);arm.position.set(x,2.25,0);arm.rotation.z=x<0?.16:-.16;player.add(arm)}
+
+// Baggy sweatpant legs.
+for(const x of [-.34,.34]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(.29,.38,1.65,10),whiteMat);leg.position.set(x,.78,0);player.add(leg);const shoe=new THREE.Mesh(new THREE.BoxGeometry(.62,.28,1.0),shoeMat);shoe.position.set(x,.12,-.18);player.add(shoe)}
+
+// Long hair, kept inside/under the hood rather than clipping through it.
+for(const x of [-.38,-.19,0,.19,.38]){const strand=new THREE.Mesh(new THREE.CapsuleGeometry(.055,.95,3,5),hairMat);strand.position.set(x,3.32,.30);strand.rotation.x=.12;player.add(strand)}
+
+// Subtle gold chest mark and glow so JC stays readable against the city.
+const chest=new THREE.Mesh(new THREE.PlaneGeometry(.52,.72),new THREE.MeshBasicMaterial({color:0xffdf73,transparent:true,opacity:.72,side:THREE.DoubleSide}));chest.position.set(0,2.62,-.73);chest.rotation.y=Math.PI;player.add(chest);
+const jcGlow=new THREE.PointLight(0xffe6a1,1.35,10,2);jcGlow.position.set(0,3.2,0);player.add(jcGlow);
+
+player.userData.fallbackMeshes=[robe,head,halo,hood,...player.children.filter(o=>o!==robe&&o!==head&&o!==halo&&o!==jcGlow)];
 scene.add(player);player.position.set(0,0,120);
 
 // Future GLB pipeline: assets can be absent today and dropped in later without changing gameplay.
 const gltfLoader=new GLTFLoader();
+let jcCharacterModel=null;
+function setJCFallbackVisible(visible){
+ for(const obj of player.children){ if(obj!==jcCharacterModel) obj.visible=visible; }
+}
+function installJCModel(model){
+ const box=new THREE.Box3().setFromObject(model),size=new THREE.Vector3(),center=new THREE.Vector3();
+ box.getSize(size);box.getCenter(center);
+ const height=Math.max(.001,size.y),targetHeight=4.25,fit=targetHeight/height;
+ model.scale.setScalar(fit);
+ // Recompute after scale so feet sit on the player origin.
+ const fitted=new THREE.Box3().setFromObject(model);
+ model.position.y-=fitted.min.y;
+ model.rotation.y=Math.PI;
+ model.name='JC_GLB_CHARACTER';
+ player.add(model);jcCharacterModel=model;setJCFallbackVisible(false);
+ window.JC_CHARACTER={source:'./assets/models/jc.glb',status:'loaded',height:targetHeight};
+ notice('JC CHARACTER LOADED');
+}
+gltfLoader.load('./assets/models/jc.glb?v=jc-player-v1',(gltf)=>{
+ const model=gltf.scene||gltf.scenes?.[0];
+ if(model)installJCModel(model);
+},undefined,()=>{
+ window.JC_CHARACTER={source:'./assets/models/jc.glb',status:'fallback-active'};
+});
 const assetRegistry=new Map();
 const assetFallbackMaterial=new THREE.MeshLambertMaterial({color:0x5c6573,transparent:true,opacity:.72});
 let nextAssetStream=0;
@@ -289,7 +339,13 @@ function update(dt,now){
  if(now>state.shieldUntil)shield.visible=false;
  if(angel.visible){angel.position.lerp(new THREE.Vector3(player.position.x+2.2,player.position.y+3.2,player.position.z+1.8),.08)}
  collectRadius(2.1);
- const camDist=state.flight?15:11,camHeight=state.flight?7:5.8;const target=new THREE.Vector3(player.position.x-Math.sin(state.yaw)*camDist,player.position.y+camHeight,player.position.z+Math.cos(state.yaw)*camDist);camera.position.lerp(target,.12);camera.lookAt(player.position.x,player.position.y+2.1,player.position.z);
+ player.rotation.y=state.yaw;
+ const closeMode=(state.cameraMode||0)===2,wideMode=(state.cameraMode||0)===1;
+ const camDist=state.flight?(closeMode?9.5:wideMode?18:12):(closeMode?6.6:wideMode?13:8.2);
+ const camHeight=state.flight?(closeMode?5.2:wideMode?8.4:6.2):(closeMode?3.9:wideMode?6.8:4.7);
+ const lookHeight=state.flight?2.8:2.65;
+ const target=new THREE.Vector3(player.position.x-Math.sin(state.yaw)*camDist,player.position.y+camHeight,player.position.z+Math.cos(state.yaw)*camDist);
+ camera.position.lerp(target,.16);camera.lookAt(player.position.x,player.position.y+lookHeight,player.position.z);
  for(let i=fx.length-1;i>=0;i--){const f=fx[i],age=(now-f.born)/f.life;f.m.scale.setScalar(1+age*f.r);f.m.material.opacity=1-age;if(age>=1){scene.remove(f.m);f.m.geometry.dispose();f.m.material.dispose();fx.splice(i,1)}}
  if(now>state.comboUntil)state.combo=0;$('combo').style.opacity=state.combo>=2?1:0;$('combo').textContent='x'+Math.min(8,state.combo)+' FLOW';
  state.grace=clamp(state.grace+dt*1.6,0,100);$('health').style.width=state.health+'%';$('grace').style.width=state.grace+'%';$('score').textContent=String(state.score).padStart(6,'0');$('souls').textContent=state.souls;$('mode').textContent=state.flight?'FLIGHT':'GROUND'
@@ -313,7 +369,7 @@ bindStick('moveStick',(x,y)=>{input.moveX=x;input.moveY=y});bindStick('lookStick
 $('mFly').onclick=toggleFlight;$('mPowers').onclick=openWheel;$('mBurst').onclick=()=>{state.speedBoost=performance.now()+1400;pulse(0xffef9d,10)};$('mCast').onclick=castAbility;
 $('closeWheel').onclick=closeWheel;$('powers').onclick=openWheel;$('wheel').addEventListener('click',e=>{if(e.target===$('wheel'))closeWheel()});
 $('quality').textContent=low?'LEAN':'BALANCED';
-window.JC_GAME={scene,camera,renderer,player,state,abilities,selectAbility,castAbility,version:'master-webgl2-v4-github-facades'};
+window.JC_GAME={scene,camera,renderer,player,state,abilities,selectAbility,castAbility,version:'master-webgl2-v5-visible-jc'};
 window.JC_VISUAL_CHEATS={facadePlanes:cheatGroup.children.length,description:'GitHub-hosted AI facade wallpapers on instanced buildings plus distant impostors, GLB streaming and safe fallbacks'};
 $('bootText').textContent='WebGL2 master runtime ready';setTimeout(()=>{$('boot').style.display='none';$('menu').style.display='grid'},100);
 $('start').onclick=()=>{state.playing=true;$('menu').style.display='none';$('hud').style.display='block';notice('RESTORE SOULS · BUILD YOUR FLOW')}
