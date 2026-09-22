@@ -97,6 +97,16 @@ for(let i=0;i<npcCount;i++){
   n.position.set((Math.random()-.5)*900,.72,(Math.random()-.5)*1200);n.userData.dir=Math.random()*Math.PI*2;n.userData.next=0;npcGroup.add(n);npcs.push(n);
 }
 window.JC_CITY_SIM = {citizens:10000,highDetailNPCs:npcCount,deepAISlots:25,hope:state.cityHope,corruption:state.cityCorruption};
+window.JC_NPC_AI={
+  provider:null,
+  setProvider(fn){this.provider=typeof fn==='function'?fn:null;},
+  async talk(index=0){
+    const npc=npcs[index%npcs.length];if(!npc)return null;
+    const payload={faction:state.faction,hope:state.cityHope,corruption:state.cityCorruption,position:npc.position.toArray()};
+    if(this.provider)return this.provider(payload);
+    return state.faction==='jc'?'The city is watching what you do.':'Sin City is listening.';
+  }
+};
 
 const destructible=[];
 for(let i=0;i<18;i++){
@@ -114,8 +124,23 @@ function spawnDebris(pos,color){
 }
 function nearestBuilding(max=85){let best=null,d=max;for(const m of destructible){if(m.userData.collapsed)continue;const q=player.position.distanceTo(m.position);if(q<d){d=q;best=m}}return best}
 function hitBuilding(amount){const m=nearestBuilding();if(!m)return;m.userData.hp-=amount;if(m.userData.hp<=0){m.userData.collapsed=true;spawnDebris(m.position,m.material.color.getHex());m.scale.y=.08;m.position.y=2;state.score=(state.score||0)+500;const msg=state.faction==='jc'?'BUILDING COLLAPSED · CIVILIAN RISK':'STRUCTURE DESTROYED';const el=$('notice');if(el){el.textContent=msg;el.style.opacity=1;setTimeout(()=>el.style.opacity=0,1700)}}}
+function manipulateBuilding(kind){
+  const m=nearestBuilding(110);if(!m)return;
+  if(kind==='lift'){m.position.y+=8;m.userData.lifted=true;}
+  if(kind==='throw'){m.position.x+=Math.sin(state.yaw||0)*72;m.position.z-=Math.cos(state.yaw||0)*72;m.rotation.z+=.75;m.userData.hp-=45;}
+}
 
 const keyState={};let boostUntil=0,last=performance.now(),npcTick=0,miniTick=0,saveTick=0,lastSoulCount=state.souls||0;
+let upgradePadButtons=[];
+function pollUpgradeGamepad(){
+  const gp=navigator.getGamepads?.()[0];if(!gp)return;
+  const p=i=>!!gp.buttons[i]?.pressed,edge=i=>p(i)&&!upgradePadButtons[i];
+  if(edge(12))toggleBoard();
+  if(edge(13))enterExitCar();
+  if(edge(8))toggleCamera();
+  if(p(1)&&state.inVehicle)state.vehicleSpeed*=.92;
+  upgradePadButtons=gp.buttons.map(b=>b.pressed);
+}
 function enterExitCar(){
   if(state.inVehicle){state.inVehicle=false;state.paused=false;player.visible=true;player.position.copy(car.position).add(new THREE.Vector3(2.4,0,0));return}
   if(player.position.distanceTo(car.position)<9){state.inVehicle=true;state.paused=true;player.visible=false;state.board=false;board.visible=false;}
@@ -137,6 +162,8 @@ addEventListener('keydown',e=>{
     const code=game.abilities[state.selected]?.[3];
     if(code==='beam'||code==='judgment') hitBuilding(55);
     if(code==='lightning') hitBuilding(32);
+    if(code==='telekinesis') manipulateBuilding('lift');
+    if(code==='throw') manipulateBuilding('throw');
     if(code==='slam'||code==='wave'||code==='sonic') hitBuilding(38);
   }
 });
@@ -158,6 +185,32 @@ function updateVehicle(dt,t){
   const h=state.cameraMode===2?4:state.cameraMode===1?8:5.5;
   const target=new THREE.Vector3(car.position.x-Math.sin(car.rotation.y)*d,car.position.y+h,car.position.z+Math.cos(car.rotation.y)*d);
   camera.position.lerp(target,.16);camera.lookAt(car.position.x,car.position.y+1.2,car.position.z);
+}
+let flightFxTick=0;
+function flightShockwave(){
+  const ring=new THREE.Mesh(
+    new THREE.RingGeometry(1.1,1.55,32),
+    new THREE.MeshBasicMaterial({color:state.faction==='satan'?0xff6a3d:0xe7f7ff,transparent:true,opacity:.9,side:THREE.DoubleSide})
+  );
+  ring.position.copy(player.position);ring.position.y+=2;ring.rotation.x=Math.PI/2;scene.add(ring);
+  const born=performance.now();
+  (function animate(){
+    const age=(performance.now()-born)/650;
+    ring.scale.setScalar(1+age*18);ring.material.opacity=Math.max(0,1-age);
+    if(age>=1){scene.remove(ring);ring.geometry.dispose();ring.material.dispose();return;}
+    requestAnimationFrame(animate);
+  })();
+}
+function updateFlight(dt,t){
+  if(!state.flight||state.inVehicle){
+    player.rotation.x=THREE.MathUtils.lerp(player.rotation.x,0,.12);
+    return;
+  }
+  const moving=keyState.KeyW||keyState.KeyA||keyState.KeyS||keyState.KeyD;
+  const boosted=keyState.ShiftLeft||t<boostUntil||t<(state.speedBoost||0);
+  player.rotation.x=THREE.MathUtils.lerp(player.rotation.x,moving?-.30:0,.09);
+  player.rotation.z=THREE.MathUtils.lerp(player.rotation.z,(keyState.KeyA?.16:0)+(keyState.KeyD?-.16:0),.10);
+  if(boosted&&t>flightFxTick){flightShockwave();flightFxTick=t+720;}
 }
 function updateBoard(dt,t){
   if(!state.board||state.inVehicle)return;
@@ -182,7 +235,7 @@ function updateMission(){
 function drawMini(t){
   if(t<miniTick)return;miniTick=t+140;const c=$('jcMini');if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);g.fillStyle='#07101a';g.fillRect(0,0,w,h);g.strokeStyle='#2f3a48';g.lineWidth=3;for(let x=36;x<w;x+=54){g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke()}for(let y=24;y<h;y+=44){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke()}g.fillStyle=state.faction==='jc'?'#ffd45a':'#ff6538';g.beginPath();g.arc(w/2,h/2,7,0,Math.PI*2);g.fill();g.fillStyle='#b4c3d7';for(let i=0;i<Math.min(12,npcs.length);i++){const dx=(npcs[i].position.x-player.position.x)*.08,dz=(npcs[i].position.z-player.position.z)*.08;if(Math.abs(dx)<w/2&&Math.abs(dz)<h/2)g.fillRect(w/2+dx-2,h/2+dz-2,4,4)}}
 function save(t){if(t<saveTick)return;saveTick=t+5000;try{localStorage.setItem('jc-master-upgrade',JSON.stringify({faction:state.faction,score:state.score,souls:state.souls,contract:state.contract,hope:state.cityHope,corruption:state.cityCorruption}))}catch{}}
-function loop(t){requestAnimationFrame(loop);const dt=Math.min(.05,(t-last)/1000);last=t;updateVehicle(dt,t);updateFlight(dt,t);updateBoard(dt,t);updateNPCs(t);updateDebris(dt,t);updateMission();drawMini(t);save(t);if($('jcFlight')){$('jcFlight').textContent=state.inVehicle?'HALO CAR · '+Math.round(Math.abs(state.vehicleSpeed)*2.237)+' MPH':state.board?(state.boardHover?'HOVERBOARD':'BOARD'):(state.flight?'FLIGHT · ALT '+Math.round(player.position.y)+'m':'')}if($('jcLock'))$('jcLock').textContent=state.lockTarget?'TARGET LOCK':'';carBody.material.color.setHex(state.faction==='jc'?0xeee6ce:0x2c0808);carHalo.material.color.setHex(state.faction==='jc'?0xffd45a:0xff3f24)}
+function loop(t){requestAnimationFrame(loop);const dt=Math.min(.05,(t-last)/1000);last=t;pollUpgradeGamepad();updateVehicle(dt,t);updateFlight(dt,t);updateBoard(dt,t);updateNPCs(t);updateDebris(dt,t);updateMission();drawMini(t);save(t);if($('jcFlight')){$('jcFlight').textContent=state.inVehicle?'HALO CAR · '+Math.round(Math.abs(state.vehicleSpeed)*2.237)+' MPH':state.board?(state.boardHover?'HOVERBOARD':'BOARD'):(state.flight?'FLIGHT · ALT '+Math.round(player.position.y)+'m':'')}if($('jcLock'))$('jcLock').textContent=state.lockTarget?'TARGET LOCK':'';carBody.material.color.setHex(state.faction==='jc'?0xeee6ce:0x2c0808);carHalo.material.color.setHex(state.faction==='jc'?0xffd45a:0xff3f24)}
 requestAnimationFrame(loop);
 
 try{const saved=JSON.parse(localStorage.getItem('jc-master-upgrade')||'null');if(saved){state.faction=saved.faction||'jc';state.score=saved.score||state.score;state.souls=saved.souls||state.souls;state.contract=saved.contract||1;state.cityHope=saved.hope??50;state.cityCorruption=saved.corruption??50;applyFaction(state.faction)}}catch{}
@@ -194,5 +247,5 @@ if(mobileActions){
   const cam=document.createElement('button');cam.id='mCameraUpgrade';cam.textContent='CAM';cam.onclick=()=>{if(state.board)state.boardHover=!state.boardHover;else toggleCamera()};mobileActions.appendChild(cam);
 }
 
-window.JC_MASTER_UPGRADE={version:'2026.09.21-master',vehicle:car,board,npcs,destructible,citySim:window.JC_CITY_SIM,applyFaction};
+window.JC_MASTER_UPGRADE={version:'2026.09.21-master-v4',vehicle:car,board,npcs,destructible,citySim:window.JC_CITY_SIM,applyFaction};
 console.info('JC master upgrade attached',window.JC_MASTER_UPGRADE.version);
