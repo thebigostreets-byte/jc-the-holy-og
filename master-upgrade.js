@@ -186,5 +186,12 @@ requestAnimationFrame(loop);
 
 try{const saved=JSON.parse(localStorage.getItem('jc-master-upgrade')||'null');if(saved){state.faction=saved.faction||'jc';state.score=saved.score||state.score;state.souls=saved.souls||state.souls;state.contract=saved.contract||1;state.cityHope=saved.hope??50;state.cityCorruption=saved.corruption??50;applyFaction(state.faction)}}catch{}
 
+const mobileActions=document.querySelector('.mobile-actions');
+if(mobileActions){
+  const ride=document.createElement('button');ride.id='mRideUpgrade';ride.textContent='RIDE';ride.onclick=enterExitCar;mobileActions.appendChild(ride);
+  const skate=document.createElement('button');skate.id='mBoardUpgrade';skate.textContent='BOARD';skate.onclick=toggleBoard;mobileActions.appendChild(skate);
+  const cam=document.createElement('button');cam.id='mCameraUpgrade';cam.textContent='CAM';cam.onclick=()=>{if(state.board)state.boardHover=!state.boardHover;else toggleCamera()};mobileActions.appendChild(cam);
+}
+
 window.JC_MASTER_UPGRADE={version:'2026.09.21-master',vehicle:car,board,npcs,destructible,citySim:window.JC_CITY_SIM,applyFaction};
 console.info('JC master upgrade attached',window.JC_MASTER_UPGRADE.version);
