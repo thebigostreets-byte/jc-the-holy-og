@@ -157,7 +157,7 @@ function loadAsset(rec,now){
  const def=rec.def;if(rec.loading||rec.model||def.status!=='ready'||!def.src||now<(rec.retryAt||0))return;
  rec.loading=true;
  gltfLoader.load(def.src,(gltf)=>{
-   const model=gltf.scene||gltf.scenes?.[0];if(!model)throw new Error('GLB has no scene');
+   const model=gltf.scene||gltf.scenes?.[0];if(!model){rec.loading=false;rec.failed=true;rec.retryAt=performance.now()+30000;if(rec.fallback)rec.fallback.visible=true;console.warn('GLB has no scene:',def.id);return;}
    applyAssetTransform(model,def);model.userData.assetId=def.id;scene.add(model);
    rec.model=model;rec.loading=false;rec.failed=false;if(rec.fallback)rec.fallback.visible=false;
  },undefined,(error)=>{
