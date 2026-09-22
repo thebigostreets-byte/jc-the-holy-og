@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "coordinateSystem": "local-game-meters",
+  "notes": "Set status=ready and src to a committed .glb when available. Missing/planned assets never block boot.",
+  "defaults": {
+    "loadDistance": 420,
+    "unloadDistance": 620,
+    "fallback": "box"
+  },
+  "assets": [
+    {
+      "id": "strip-south",
+      "name": "Strip South Landmark",
+      "status": "planned",
+      "src": null,
+      "position": [
+        -140,
+        0,
+        -650
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "fallback": {
+        "type": "box",
+        "size": [
+          95,
+          120,
+          70
+        ]
+      }
+    },
+    {
+      "id": "strip-center",
+      "name": "Strip Center Landmark",
+      "status": "planned",
+      "src": null,
+      "position": [
+        70,
+        0,
+        -220
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "fallback": {
+        "type": "box",
+        "size": [
+          110,
+          145,
+          85
+        ]
+      }
+    },
+    {
+      "id": "stadium",
+      "name": "Stadium Landmark",
+      "status": "planned",
+      "src": null,
+      "position": [
+        330,
+        0,
+        -930
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "fallback": {
+        "type": "box",
+        "size": [
+          180,
+          55,
+          140
+        ]
+      }
+    }
+  ]
+}
