@@ -1,5 +1,5 @@
 JC THE HOLY OG redeploy trigger
 branch: main
 source_commit: 50b8480a65beb2c061cdab436200c18f64f8c302
-requested_at: 2026-09-21T18:05:00-07:00
-reason: deploy upgraded responsive HUD, mobile spacing, minimap, speedometer, mission card, reticle, flight readout, and JC/Satan visual themes
+requested_at: 2026-09-21T18:12:00-07:00
+reason: repeat push for upgraded responsive HUD, mobile spacing, minimap, speedometer, mission card, reticle, flight readout, and JC/Satan visual themes
