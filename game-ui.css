@@ -3,3 +3,181 @@
 #powerReadout,#flightReadout{position:absolute;left:50%;transform:translateX(-50%);text-align:center;max-width:70%;font-size:14px;background:rgba(5,10,16,.78);padding:5px 10px;border-radius:4px}#powerReadout{bottom:68px;color:var(--gold)}#flightReadout{top:22px;color:#fff}#flightReadout:empty{display:none}#reticle.building-target{border-color:var(--gold);box-shadow:0 0 12px var(--gold)}.menu-grid{font-size:14px}.actions button{font-size:12px!important;min-height:44px}.actions{width:220px;grid-template-columns:repeat(4,1fr)}.actions #mFire{grid-row:span 1}@media(pointer:coarse){#powerReadout{bottom:224px;font-size:12px;max-width:90%}#flightReadout{top:52px;font-size:12px;max-width:85%}#interactionHint{display:none}.actions{width:min(220px,52vw)}.speed{bottom:230px}.stats{bottom:240px}#minimap{bottom:285px}}@media(max-height:540px){#powerReadout{bottom:8px;max-width:38%;font-size:12px}.actions{width:210px}.actions button{min-height:42px}#flightReadout{top:48px}}
 .faction-select{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0 12px}.faction-select button{min-height:76px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;text-align:left;padding:14px 18px;border:1px solid rgba(255,214,91,.52);background:linear-gradient(135deg,rgba(113,83,16,.9),rgba(24,19,8,.96));color:#fff}.faction-select button strong{font:900 1.08rem/1 Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif;letter-spacing:.08em}.faction-select button span{margin-top:7px;font-size:.78rem;line-height:1.25;color:#f3df9d}.faction-select button.satan{border-color:rgba(255,71,28,.68);background:linear-gradient(135deg,rgba(111,16,8,.94),rgba(19,4,5,.98));box-shadow:inset 0 0 32px rgba(255,48,0,.1)}.faction-select button.satan span{color:#ffb09a}body[data-faction="satan"] .brand,body[data-faction="satan"] #contractCard h2,body[data-faction="satan"] #powerReadout{color:#ff6a35}body[data-faction="satan"] #reticle{filter:hue-rotate(145deg) saturate(1.8)}
 @media(max-width:620px){.faction-select{grid-template-columns:1fr}.faction-select button{min-height:62px}}
+
+
+/* JC HUD UPGRADE 2026-09-21 */
+:root{
+  --hud-bg:rgba(5,10,17,.62);
+  --hud-bg-strong:rgba(5,10,17,.84);
+  --hud-border:rgba(255,255,255,.14);
+  --hud-glow:0 10px 30px rgba(0,0,0,.34);
+}
+#hud{font-family:Inter,Arial,Helvetica,sans-serif}
+.topbar{
+  gap:14px;
+  padding:10px 12px;
+  border:1px solid var(--hud-border);
+  border-radius:14px;
+  background:linear-gradient(135deg,rgba(5,10,17,.76),rgba(5,10,17,.28));
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  box-shadow:var(--hud-glow);
+}
+.brand{font-size:28px;letter-spacing:.025em}
+.meters{gap:8px}
+.meter{
+  width:112px;
+  height:8px;
+  overflow:visible;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.09);
+  box-shadow:inset 0 1px 5px rgba(0,0,0,.6);
+}
+.meter i{box-shadow:0 0 12px rgba(255,255,255,.14)}
+.meter.grace i{box-shadow:0 0 12px rgba(131,197,232,.38)}
+.meter.soul i{box-shadow:0 0 14px rgba(232,201,131,.34)}
+#contractCard{
+  width:280px;
+  max-width:min(44vw,320px);
+  border:1px solid var(--hud-border);
+  border-left:3px solid var(--gold);
+  border-radius:0 14px 14px 0;
+  background:linear-gradient(100deg,var(--hud-bg-strong),rgba(5,10,17,.34));
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  box-shadow:var(--hud-glow);
+}
+#contractTitle{font-size:20px;letter-spacing:.01em}
+#contractDistance{font-size:13px}
+#timeChip{
+  top:78px;
+  right:max(24px,env(safe-area-inset-right));
+  padding:7px 10px;
+  border:1px solid var(--hud-border);
+  border-radius:999px;
+  background:var(--hud-bg);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
+.stats{
+  padding:8px 10px;
+  border:1px solid var(--hud-border);
+  border-radius:10px;
+  background:var(--hud-bg);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
+#minimap{
+  border:1px solid rgba(232,201,131,.58);
+  border-radius:14px;
+  box-shadow:0 12px 36px rgba(0,0,0,.42),inset 0 0 30px rgba(232,201,131,.04);
+  backdrop-filter:blur(7px);
+  -webkit-backdrop-filter:blur(7px);
+}
+.speed{
+  min-width:122px;
+  justify-content:flex-end;
+  padding:8px 10px;
+  border-radius:12px;
+  background:linear-gradient(135deg,rgba(5,10,17,.7),rgba(5,10,17,.3));
+  border:1px solid var(--hud-border);
+  box-shadow:var(--hud-glow);
+}
+.speed strong{font-size:42px;letter-spacing:-.04em}
+#reticle{
+  width:8px;height:8px;
+  border:1px solid rgba(255,255,255,.74);
+  box-shadow:0 0 0 4px rgba(0,0,0,.14),0 0 10px rgba(255,255,255,.08);
+}
+#reticle.aiming{width:24px;height:24px;box-shadow:0 0 0 5px rgba(232,201,131,.08),0 0 18px rgba(232,201,131,.22)}
+#powerReadout,#flightReadout{
+  border:1px solid var(--hud-border);
+  border-radius:999px;
+  background:rgba(5,10,17,.7);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  box-shadow:var(--hud-glow);
+  letter-spacing:.045em;
+}
+#flightReadout{top:22px}
+#powerReadout{bottom:72px}
+#gameTools{
+  padding:5px;
+  border:1px solid var(--hud-border);
+  border-radius:12px;
+  background:rgba(5,10,17,.5);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
+#gameTools button{border-radius:8px}
+#objectiveMarker span{filter:drop-shadow(0 0 7px rgba(232,201,131,.5))}
+body[data-faction="satan"]{
+  --gold:#ff7040;
+}
+body[data-faction="satan"] .topbar,
+body[data-faction="satan"] #contractCard,
+body[data-faction="satan"] .speed{
+  box-shadow:0 10px 34px rgba(0,0,0,.38),inset 0 0 22px rgba(255,73,31,.045);
+}
+body[data-faction="satan"] #minimap{border-color:rgba(255,96,55,.58)}
+@media(pointer:coarse),(max-width:900px){
+  .topbar{
+    left:max(10px,env(safe-area-inset-left));
+    top:max(10px,env(safe-area-inset-top));
+    padding:8px 9px;
+    border-radius:11px;
+    gap:9px;
+  }
+  .brand{font-size:22px}
+  .brand b{font-size:6px}
+  .meter{width:52px;height:7px}
+  .meter span{font-size:6px;top:10px}
+  #contractCard{
+    left:max(10px,env(safe-area-inset-left));
+    top:78px;
+    width:210px;
+    max-width:48vw;
+    padding:8px 10px;
+    border-radius:0 11px 11px 0;
+  }
+  #contractTitle{font-size:14px}
+  #contractGoal{font-size:10px}
+  #pursuitStatus{font-size:8px}
+  #minimap{
+    right:max(10px,env(safe-area-inset-right));
+    top:84px;
+    width:108px;
+    height:74px;
+    border-radius:10px;
+  }
+  .speed{
+    right:max(10px,env(safe-area-inset-right));
+    bottom:286px;
+    min-width:92px;
+    padding:6px 8px;
+    border-radius:10px;
+  }
+  .speed strong{font-size:27px}
+  .stats{
+    left:max(10px,env(safe-area-inset-left));
+    bottom:292px;
+    padding:6px 8px;
+    font-size:8px;
+  }
+  #powerReadout{bottom:263px;font-size:10px;padding:5px 9px}
+  #flightReadout{top:48px;font-size:10px;padding:5px 9px}
+}
+@media(max-width:520px){
+  #contractCard{max-width:52vw}
+  #minimap{width:96px;height:66px}
+  .speed{bottom:278px}
+  .stats{bottom:284px}
+}
+@media(max-height:540px) and (min-width:560px){
+  .topbar{left:10px;top:9px}
+  #contractCard{left:148px;top:64px;max-width:29vw}
+  #minimap{right:148px;top:72px;width:104px;height:68px}
+  .speed{right:148px;bottom:12px}
+  .stats{left:148px;bottom:12px}
+  #powerReadout{bottom:44px}
+}
