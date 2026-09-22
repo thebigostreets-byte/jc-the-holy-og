@@ -319,5 +319,6 @@ $('bootText').textContent='WebGL2 master runtime ready';setTimeout(()=>{$('boot'
 $('start').onclick=()=>{state.playing=true;$('menu').style.display='none';$('hud').style.display='block';notice('RESTORE SOULS · BUILD YOUR FLOW')}
 }catch(err){console.error(err);$('boot').style.display='none';$('fatal').style.display='grid';$('fatalText').textContent='WebGL2 startup error: '+(err?.message||err)}
 </script>
-<script type="module" src="/master-upgrade.js?v=20260921-master-v4"></script>\n</body>
+<script type="module" src="./master-upgrade.js?v=20260921-master-v4"></script>
+</body>
 </html>
