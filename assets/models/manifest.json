@@ -1,11 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "coordinateSystem": "local-game-meters",
-  "notes": "Set status=ready and src to a committed .glb when available. Missing/planned assets never block boot.",
+  "notes": "Streaming manifest for JC master upgrade. Missing/planned GLBs never block boot; ready GLBs load by distance with bounded concurrency and visible fallback geometry.",
   "defaults": {
-    "loadDistance": 420,
-    "unloadDistance": 620,
-    "fallback": "box"
+    "loadDistance": 360,
+    "unloadDistance": 560,
+    "fallback": "box",
+    "maxConcurrentLoads": 2,
+    "retryMs": 30000
   },
   "assets": [
     {
@@ -35,7 +37,10 @@
           120,
           70
         ]
-      }
+      },
+      "priority": "normal",
+      "loadDistance": 360,
+      "unloadDistance": 560
     },
     {
       "id": "strip-center",
@@ -64,7 +69,10 @@
           145,
           85
         ]
-      }
+      },
+      "priority": "high",
+      "loadDistance": 420,
+      "unloadDistance": 620
     },
     {
       "id": "stadium",
@@ -93,7 +101,10 @@
           55,
           140
         ]
-      }
+      },
+      "priority": "normal",
+      "loadDistance": 360,
+      "unloadDistance": 560
     }
   ]
-}
+}\n
