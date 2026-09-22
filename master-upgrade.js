@@ -74,7 +74,7 @@ function applyFaction(faction){
   const buttons = Array.from($('abilityGrid')?.children || []);
   buttons.forEach((b,i) => { const title=b.querySelector('b'); if(title && game.abilities[i]) title.textContent=String(i+1).padStart(2,'0')+' · '+game.abilities[i][0]; });
   const power = $('power'); if(power && game.abilities[state.selected]) power.textContent=game.abilities[state.selected][0].toUpperCase()+' · X / RT';
-  const brand = document.querySelector('.brand'); if(brand) brand.childNodes[0].nodeValue = satan ? 'SATAN • SIN CITY ' : 'JC • SIN CITY ';
+  const brand = document.querySelector('.brand'); if(brand) brand.childNodes[0].nodeValue = satan ? 'SATAN • SIN CITY ' : 'JC • SIN CITY ';\n  const body=player.children?.[0];const halo=player.children?.[2];if(body?.material?.color)body.material.color.setHex(satan?0x351010:0xf2f0e8);if(halo?.material?.color)halo.material.color.setHex(satan?0xff3f24:0xffd45a);
 }
 
 const oldStart = $('start')?.onclick;
@@ -114,7 +114,7 @@ function spawnDebris(pos,color){
 function nearestBuilding(max=85){let best=null,d=max;for(const m of destructible){if(m.userData.collapsed)continue;const q=player.position.distanceTo(m.position);if(q<d){d=q;best=m}}return best}
 function hitBuilding(amount){const m=nearestBuilding();if(!m)return;m.userData.hp-=amount;if(m.userData.hp<=0){m.userData.collapsed=true;spawnDebris(m.position,m.material.color.getHex());m.scale.y=.08;m.position.y=2;state.score=(state.score||0)+500;const msg=state.faction==='jc'?'BUILDING COLLAPSED · CIVILIAN RISK':'STRUCTURE DESTROYED';const el=$('notice');if(el){el.textContent=msg;el.style.opacity=1;setTimeout(()=>el.style.opacity=0,1700)}}}
 
-const keyState={};let boostUntil=0,last=performance.now(),npcTick=0,miniTick=0,saveTick=0;
+const keyState={};let boostUntil=0,last=performance.now(),npcTick=0,miniTick=0,saveTick=0,lastSoulCount=state.souls||0;
 function enterExitCar(){
   if(state.inVehicle){state.inVehicle=false;state.paused=false;player.visible=true;player.position.copy(car.position).add(new THREE.Vector3(2.4,0,0));return}
   if(player.position.distanceTo(car.position)<9){state.inVehicle=true;state.paused=true;player.visible=false;state.board=false;board.visible=false;}
@@ -181,7 +181,7 @@ function updateMission(){
 function drawMini(t){
   if(t<miniTick)return;miniTick=t+140;const c=$('jcMini');if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);g.fillStyle='#07101a';g.fillRect(0,0,w,h);g.strokeStyle='#2f3a48';g.lineWidth=3;for(let x=36;x<w;x+=54){g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke()}for(let y=24;y<h;y+=44){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke()}g.fillStyle=state.faction==='jc'?'#ffd45a':'#ff6538';g.beginPath();g.arc(w/2,h/2,7,0,Math.PI*2);g.fill();g.fillStyle='#b4c3d7';for(let i=0;i<Math.min(12,npcs.length);i++){const dx=(npcs[i].position.x-player.position.x)*.08,dz=(npcs[i].position.z-player.position.z)*.08;if(Math.abs(dx)<w/2&&Math.abs(dz)<h/2)g.fillRect(w/2+dx-2,h/2+dz-2,4,4)}}
 function save(t){if(t<saveTick)return;saveTick=t+5000;try{localStorage.setItem('jc-master-upgrade',JSON.stringify({faction:state.faction,score:state.score,souls:state.souls,contract:state.contract,hope:state.cityHope,corruption:state.cityCorruption}))}catch{}}
-function loop(t){requestAnimationFrame(loop);const dt=Math.min(.05,(t-last)/1000);last=t;updateVehicle(dt,t);updateBoard(dt,t);updateNPCs(t);updateDebris(dt,t);updateMission();drawMini(t);save(t);if($('jcFlight')){$('jcFlight').textContent=state.inVehicle?'HALO CAR · '+Math.round(Math.abs(state.vehicleSpeed)*2.237)+' MPH':state.board?(state.boardHover?'HOVERBOARD':'BOARD'):(state.flight?'FLIGHT · ALT '+Math.round(player.position.y)+'m':'')}if($('jcLock'))$('jcLock').textContent=state.lockTarget?'TARGET LOCK':'';carBody.material.color.setHex(state.faction==='jc'?0xeee6ce:0x2c0808);carHalo.material.color.setHex(state.faction==='jc'?0xffd45a:0xff3f24)}
+function loop(t){requestAnimationFrame(loop);const dt=Math.min(.05,(t-last)/1000);last=t;updateVehicle(dt,t);updateFlight(dt,t);updateBoard(dt,t);updateNPCs(t);updateDebris(dt,t);updateMission();drawMini(t);save(t);if($('jcFlight')){$('jcFlight').textContent=state.inVehicle?'HALO CAR · '+Math.round(Math.abs(state.vehicleSpeed)*2.237)+' MPH':state.board?(state.boardHover?'HOVERBOARD':'BOARD'):(state.flight?'FLIGHT · ALT '+Math.round(player.position.y)+'m':'')}if($('jcLock'))$('jcLock').textContent=state.lockTarget?'TARGET LOCK':'';carBody.material.color.setHex(state.faction==='jc'?0xeee6ce:0x2c0808);carHalo.material.color.setHex(state.faction==='jc'?0xffd45a:0xff3f24)}
 requestAnimationFrame(loop);
 
 try{const saved=JSON.parse(localStorage.getItem('jc-master-upgrade')||'null');if(saved){state.faction=saved.faction||'jc';state.score=saved.score||state.score;state.souls=saved.souls||state.souls;state.contract=saved.contract||1;state.cityHope=saved.hope??50;state.cityCorruption=saved.corruption??50;applyFaction(state.faction)}}catch{}
