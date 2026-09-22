@@ -210,7 +210,7 @@ function streamAssets(now){
 }
 async function initAssetStreaming(){
  try{
-   const response=await fetch('/assets/models/manifest.json?build=glb-stream-v1',{cache:'no-store'});
+   const response=await fetch('./assets/models/manifest.json?build=glb-stream-v1',{cache:'no-store'});
    if(!response.ok)throw new Error('manifest HTTP '+response.status);
    const manifest=await response.json(),defaults=manifest.defaults||{};
    for(const def of manifest.assets||[]){
