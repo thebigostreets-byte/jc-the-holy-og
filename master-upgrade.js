@@ -79,8 +79,8 @@ function applyFaction(faction){
 }
 
 const oldStart = $('start')?.onclick;
-if($('start')) $('start').onclick = () => { applyFaction('jc'); if(oldStart) oldStart(); };
-if($('startSatan')) $('startSatan').onclick = () => { applyFaction('satan'); if(oldStart) oldStart(); };
+if($('start')) $('start').onclick = () => { applyFaction('jc'); if(oldStart) oldStart(); setTimeout(()=>{const n=$('notice');if(n){n.textContent='RESTORE THE LOST · TAKE BACK THE STRIP';n.style.opacity=1}},0); };
+if($('startSatan')) $('startSatan').onclick = () => { applyFaction('satan'); if(oldStart) oldStart(); setTimeout(()=>{const n=$('notice');if(n){n.textContent='CLAIM SOULS · CORRUPT THE STRIP';n.style.opacity=1}},0); };
 
 const car = new THREE.Group();
 const carBody = new THREE.Mesh(new THREE.BoxGeometry(2.1,.72,4.2),new THREE.MeshLambertMaterial({color:0xeee6ce})); carBody.position.y=.82; car.add(carBody);
@@ -224,6 +224,17 @@ function updateNPCs(t){
 }
 function updateDebris(dt,t){for(let i=debris.length-1;i>=0;i--){const d=debris[i];d.position.addScaledVector(d.userData.v,dt);d.userData.v.y-=18*dt;d.rotation.x+=dt*3;d.rotation.z+=dt*2;if(t>d.userData.life){scene.remove(d);d.geometry.dispose();d.material.dispose();debris.splice(i,1)}}}
 function updateMission(){
+  const delta=(state.souls||0)-lastSoulCount;
+  if(delta>0){
+    if(state.faction==='jc'){
+      state.cityHope=clamp(state.cityHope+delta*1.2,0,100);
+      state.cityCorruption=clamp(state.cityCorruption-delta*.7,0,100);
+    }else{
+      state.cityCorruption=clamp(state.cityCorruption+delta*1.2,0,100);
+      state.cityHope=clamp(state.cityHope-delta*.7,0,100);
+    }
+    lastSoulCount=state.souls||0;
+  }
   const goal=state.contract*state.contractGoal;
   if((state.souls||0)>=goal){state.contract++;state.score=(state.score||0)+1500;if(state.faction==='jc'){state.cityHope=clamp(state.cityHope+7,0,100);state.cityCorruption=clamp(state.cityCorruption-4,0,100)}else{state.cityCorruption=clamp(state.cityCorruption+7,0,100);state.cityHope=clamp(state.cityHope-4,0,100)}}
   const need=Math.max(0,state.contract*state.contractGoal-(state.souls||0));
