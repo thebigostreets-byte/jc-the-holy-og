@@ -1,5 +1,5 @@
 JC THE HOLY OG redeploy trigger
 branch: main
-source_commit: 4cba4467ca5941bcab65177b1ebe630d59ed6ad3
+source_commit: 318467a00f8b18d88d41cd258a0be556d005240b
 requested_at: 2026-09-21T18:29:00-07:00
-reason: master WebGL2 gameplay upgrade - 20 abilities, controller/mobile controls, instancing, dynamic resolution, image-assisted facade impostors
+reason: enable future GLB manifest streaming, lightweight fallbacks, distance loading and safe missing-asset handling
