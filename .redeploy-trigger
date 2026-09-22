@@ -1,5 +1,5 @@
 JC THE HOLY OG redeploy trigger
 branch: main
-source_commit: 6446e45715a96f0668ae3f3142d814910e6d22ab
-requested_at: 2026-09-21T19:08:00-07:00
-reason: deploy consolidated JC master v4 gameplay runtime and cache-busted index
+source_commit: e7640ba1cfdd5cf440d4dcb0772ebb2af8ac1c86
+requested_at: 2026-09-21
+reason: full master upgrade pass — JC/Satan modes, abilities, halo vehicle, board/hoverboard, flight burst, city simulation, NPCs, destructible structures, minimap/HUD, mobile controls, checkpoints, adaptive GLB streaming and performance safeguards
