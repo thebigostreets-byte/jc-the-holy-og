@@ -58,6 +58,7 @@ p{color:#cfd3da;line-height:1.45}.primary,.secondary{border:0;padding:14px 20px;
 
 <script type="module">
 import * as THREE from 'three';
+import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/loaders/GLTFLoader.js';
 const $=id=>document.getElementById(id);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const low=(navigator.hardwareConcurrency||4)<=4||(('deviceMemory'in navigator)&&(navigator.deviceMemory||4)<=4);
@@ -128,7 +129,74 @@ const player=new THREE.Group();
 const robe=new THREE.Mesh(new THREE.CylinderGeometry(.55,.9,2.2,10),new THREE.MeshLambertMaterial({color:0xf2f0e8}));robe.position.y=1.1;player.add(robe);
 const head=new THREE.Mesh(new THREE.SphereGeometry(.47,12,10),new THREE.MeshLambertMaterial({color:0xc78d69}));head.position.y=2.65;player.add(head);
 const halo=new THREE.Mesh(new THREE.TorusGeometry(.57,.06,8,24),new THREE.MeshBasicMaterial({color:0xffd45a}));halo.rotation.x=Math.PI/2;halo.position.y=3.35;player.add(halo);
+
 scene.add(player);player.position.set(0,0,120);
+
+// Future GLB pipeline: assets can be absent today and dropped in later without changing gameplay.
+const gltfLoader=new GLTFLoader();
+const assetRegistry=new Map();
+const assetFallbackMaterial=new THREE.MeshLambertMaterial({color:0x5c6573,transparent:true,opacity:.72});
+let nextAssetStream=0;
+function applyAssetTransform(root,def){
+ const p=def.position||[0,0,0],r=def.rotation||[0,0,0],s=def.scale||[1,1,1];
+ root.position.set(Number(p[0])||0,Number(p[1])||0,Number(p[2])||0);
+ root.rotation.set(Number(r[0])||0,Number(r[1])||0,Number(r[2])||0);
+ root.scale.set(Number(s[0])||1,Number(s[1])||1,Number(s[2])||1);
+}
+function makeAssetFallback(def){
+ if(def.fallback?.type==='none')return null;
+ const size=def.fallback?.size||[40,50,40];
+ const box=new THREE.Mesh(new THREE.BoxGeometry(Math.max(1,size[0]),Math.max(1,size[1]),Math.max(1,size[2])),assetFallbackMaterial);
+ const p=def.position||[0,0,0];box.position.set(Number(p[0])||0,(Number(p[1])||0)+Math.max(1,size[1])/2,Number(p[2])||0);
+ box.userData.assetFallback=def.id;scene.add(box);return box;
+}
+function disposeObject(root){
+ root.traverse?.(o=>{o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach(m=>m?.dispose?.());else o.material?.dispose?.()});
+}
+function loadAsset(rec,now){
+ const def=rec.def;if(rec.loading||rec.model||def.status!=='ready'||!def.src||now<(rec.retryAt||0))return;
+ rec.loading=true;
+ gltfLoader.load(def.src,(gltf)=>{
+   const model=gltf.scene||gltf.scenes?.[0];if(!model)throw new Error('GLB has no scene');
+   applyAssetTransform(model,def);model.userData.assetId=def.id;scene.add(model);
+   rec.model=model;rec.loading=false;rec.failed=false;if(rec.fallback)rec.fallback.visible=false;
+ },undefined,(error)=>{
+   console.warn('GLB unavailable, keeping fallback:',def.id,def.src,error);
+   rec.loading=false;rec.failed=true;rec.retryAt=performance.now()+30000;if(rec.fallback)rec.fallback.visible=true;
+ });
+}
+function unloadAsset(rec){
+ if(!rec.model)return;scene.remove(rec.model);disposeObject(rec.model);rec.model=null;if(rec.fallback)rec.fallback.visible=true;
+}
+function streamAssets(now){
+ let loaded=0;
+ for(const rec of assetRegistry.values()){
+   const p=rec.def.position||[0,0,0],dx=player.position.x-(Number(p[0])||0),dz=player.position.z-(Number(p[2])||0),d=Math.hypot(dx,dz);
+   if(d<=rec.loadDistance)loadAsset(rec,now);
+   else if(d>=rec.unloadDistance)unloadAsset(rec);
+   if(rec.fallback)rec.fallback.visible=!rec.model&&d<Math.max(1100,rec.unloadDistance*1.5);
+   if(rec.model)loaded++;
+ }
+ if(window.JC_ASSETS){window.JC_ASSETS.loaded=loaded;window.JC_ASSETS.total=assetRegistry.size;}
+}
+async function initAssetStreaming(){
+ try{
+   const response=await fetch('/assets/models/manifest.json?build=glb-stream-v1',{cache:'no-store'});
+   if(!response.ok)throw new Error('manifest HTTP '+response.status);
+   const manifest=await response.json(),defaults=manifest.defaults||{};
+   for(const def of manifest.assets||[]){
+     const fallback=makeAssetFallback(def);
+     assetRegistry.set(def.id,{def,fallback,model:null,loading:false,failed:false,retryAt:0,loadDistance:def.loadDistance||defaults.loadDistance||420,unloadDistance:def.unloadDistance||defaults.unloadDistance||620});
+   }
+   window.JC_ASSETS={manifest,registry:assetRegistry,loaded:0,total:assetRegistry.size,status:'ready'};
+   streamAssets(performance.now());
+ }catch(error){
+   console.warn('Optional GLB manifest unavailable; gameplay continues',error);
+   window.JC_ASSETS={status:'optional-manifest-unavailable',error:String(error),loaded:0,total:0};
+ }
+}
+initAssetStreaming();
+
 
 const shield=new THREE.Mesh(new THREE.SphereGeometry(1.6,12,8),new THREE.MeshBasicMaterial({color:0x78d8ff,transparent:true,opacity:.16,wireframe:true}));shield.position.y=1.6;shield.visible=false;player.add(shield);
 const angel=new THREE.Mesh(new THREE.SphereGeometry(.45,12,8),new THREE.MeshBasicMaterial({color:0xffefb1}));angel.visible=false;scene.add(angel);
@@ -183,6 +251,7 @@ function pollGamepad(){
 }
 function update(dt,now){
  if(!state.playing||state.paused)return;pollGamepad();dt*=state.timeScale;
+ if(now>=nextAssetStream){streamAssets(now);nextAssetStream=now+500;}
  const k=input.keys;let mx=(k.KeyD?1:0)-(k.KeyA?1:0)+input.moveX,my=(k.KeyW?1:0)-(k.KeyS?1:0)+input.moveY;
  const len=Math.hypot(mx,my);if(len>1){mx/=len;my/=len}
  forward.set(Math.sin(state.yaw),0,-Math.cos(state.yaw));right.set(Math.cos(state.yaw),0,Math.sin(state.yaw));vel.set(0,0,0).addScaledVector(forward,my).addScaledVector(right,mx);
@@ -196,7 +265,7 @@ function update(dt,now){
  if(now>state.comboUntil)state.combo=0;$('combo').style.opacity=state.combo>=2?1:0;$('combo').textContent='x'+Math.min(8,state.combo)+' FLOW';
  state.grace=clamp(state.grace+dt*1.6,0,100);$('health').style.width=state.health+'%';$('grace').style.width=state.grace+'%';$('score').textContent=String(state.score).padStart(6,'0');$('souls').textContent=state.souls;$('mode').textContent=state.flight?'FLIGHT':'GROUND'
 }
-function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-prev)/1000);prev=now;update(dt,now);renderer.render(scene,camera);frames++;if(now-fpsAt>1000){const fps=frames*1000/(now-fpsAt);$('fps').textContent=Math.round(fps);frames=0;fpsAt=now;if(fps<38&&pixelRatio>.72){pixelRatio=Math.max(.72,pixelRatio-.08);renderer.setPixelRatio(pixelRatio);renderer.setSize(innerWidth,innerHeight,false)}$('perf').textContent='render '+pixelRatio.toFixed(2)+'x · '+(low?'lean':'balanced')}}
+function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-prev)/1000);prev=now;update(dt,now);renderer.render(scene,camera);frames++;if(now-fpsAt>1000){const fps=frames*1000/(now-fpsAt);$('fps').textContent=Math.round(fps);frames=0;fpsAt=now;if(fps<38&&pixelRatio>.72){pixelRatio=Math.max(.72,pixelRatio-.08);renderer.setPixelRatio(pixelRatio);renderer.setSize(innerWidth,innerHeight,false)}$('perf').textContent='render '+pixelRatio.toFixed(2)+'x · '+(low?'lean':'balanced')+' · GLB '+(window.JC_ASSETS?.loaded||0)+'/'+(window.JC_ASSETS?.total||0)}}
 requestAnimationFrame(loop);
 
 addEventListener('keydown',e=>{if(['Tab','Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();input.keys[e.code]=true;if(e.repeat)return;if(e.code==='Tab')openWheel();if(e.code==='Escape')closeWheel();if(e.code==='KeyF')toggleFlight();if(e.code==='KeyX')castAbility();if(e.code==='BracketLeft')selectAbility(state.selected-1);if(e.code==='BracketRight')selectAbility(state.selected+1);if(e.code==='KeyQ'){state.speedBoost=performance.now()+1200;pulse(0xffef9d,10)}if(e.code==='KeyV'){const i=abilities.findIndex(a=>a[3]==='slam');selectAbility(i);castAbility()}if(/^Digit[0-9]$/.test(e.code)){const n=e.code==='Digit0'?9:Number(e.code.slice(-1))-1;if(n>=0&&n<abilities.length)selectAbility(n)}});
@@ -215,8 +284,8 @@ bindStick('moveStick',(x,y)=>{input.moveX=x;input.moveY=y});bindStick('lookStick
 $('mFly').onclick=toggleFlight;$('mPowers').onclick=openWheel;$('mBurst').onclick=()=>{state.speedBoost=performance.now()+1400;pulse(0xffef9d,10)};$('mCast').onclick=castAbility;
 $('closeWheel').onclick=closeWheel;$('powers').onclick=openWheel;$('wheel').addEventListener('click',e=>{if(e.target===$('wheel'))closeWheel()});
 $('quality').textContent=low?'LEAN':'BALANCED';
-window.JC_GAME={scene,camera,renderer,player,state,abilities,selectAbility,castAbility,version:'master-webgl2-v2'};
-window.JC_VISUAL_CHEATS={facadePlanes:cheatGroup.children.length,description:'2D facade/impostor layer for distant city detail; replace CanvasTextures with generated facade images without increasing geometry'};
+window.JC_GAME={scene,camera,renderer,player,state,abilities,selectAbility,castAbility,version:'master-webgl2-v3-glb-stream'};
+window.JC_VISUAL_CHEATS={facadePlanes:cheatGroup.children.length,description:'2D facade/impostor layer for distant city detail plus manifest-driven GLB streaming and missing-model fallbacks'};
 $('bootText').textContent='WebGL2 master runtime ready';setTimeout(()=>{$('boot').style.display='none';$('menu').style.display='grid'},100);
 $('start').onclick=()=>{state.playing=true;$('menu').style.display='none';$('hud').style.display='block';notice('RESTORE SOULS · BUILD YOUR FLOW')}
 }catch(err){console.error(err);$('boot').style.display='none';$('fatal').style.display='grid';$('fatalText').textContent='WebGL2 startup error: '+(err?.message||err)}
