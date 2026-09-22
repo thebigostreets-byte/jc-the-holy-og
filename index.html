@@ -111,19 +111,48 @@ for(const x of [-140,-70,0,70,140]){const r=new THREE.Mesh(new THREE.PlaneGeomet
 for(const z of [-900,-600,-300,0,300,600,900]){const r=new THREE.Mesh(new THREE.PlaneGeometry(2600,24),roadMat);r.rotation.x=-Math.PI/2;r.position.set(0,.019,z);scene.add(r)}
 
 const buildingGeo=new THREE.BoxGeometry(1,1,1);
-const buildingMat=new THREE.MeshLambertMaterial({color:0x8f775f});
-const count=low?150:320;const buildings=new THREE.InstancedMesh(buildingGeo,buildingMat,count);buildings.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+const textureLoader=new THREE.TextureLoader();
+const facadePaths=[
+ '/assets/facades/hotel.jpg',
+ '/assets/facades/holy.jpg',
+ '/assets/facades/demonic.jpg',
+ '/assets/facades/neon.jpg'
+];
+const facadeTextures=facadePaths.map((src)=>{
+ const tex=textureLoader.load(src,()=>{tex.needsUpdate=true},undefined,(err)=>console.warn('Facade texture unavailable',src,err));
+ tex.colorSpace=THREE.SRGBColorSpace;
+ tex.wrapS=THREE.RepeatWrapping;tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(1,2);
+ tex.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+ return tex;
+});
+const facadeMaterials=facadeTextures.map((map)=>new THREE.MeshLambertMaterial({map,color:0xffffff}));
+const count=low?150:320;
+const groupCount=facadeMaterials.length;
+const perGroup=Math.ceil(count/groupCount);
+const buildingMeshes=facadeMaterials.map((mat)=>{const mesh=new THREE.InstancedMesh(buildingGeo,mat,perGroup);mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);mesh.count=0;scene.add(mesh);return mesh});
 const dummy=new THREE.Object3D();
-for(let i=0;i<count;i++){let x,z;do{x=(Math.random()-.5)*2200;z=(Math.random()-.5)*2200}while(Math.min(...[-140,-70,0,70,140].map(v=>Math.abs(x-v)))<25||[-900,-600,-300,0,300,600,900].some(v=>Math.abs(z-v)<24));const w=18+Math.random()*44,h=18+Math.random()*(low?95:170),d=18+Math.random()*48;dummy.position.set(x,h/2,z);dummy.scale.set(w,h,d);dummy.updateMatrix();buildings.setMatrixAt(i,dummy.matrix)}
-scene.add(buildings);
-
-function facadeTexture(seed){
- const c=document.createElement('canvas');c.width=128;c.height=256;const g=c.getContext('2d');g.fillStyle=seed%2?'#171b24':'#211c1d';g.fillRect(0,0,128,256);
- for(let y=10;y<250;y+=14)for(let x=8;x<124;x+=14){const on=Math.random()>.35;g.fillStyle=on?(Math.random()>.5?'#ffd98a':'#8fdcff'):'#11141a';g.fillRect(x,y,8,8)}
- const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t
+const groupUsed=new Array(groupCount).fill(0);
+for(let i=0;i<count;i++){
+ let x,z;
+ do{x=(Math.random()-.5)*2200;z=(Math.random()-.5)*2200}while(Math.min(...[-140,-70,0,70,140].map(v=>Math.abs(x-v)))<25||[-900,-600,-300,0,300,600,900].some(v=>Math.abs(z-v)<24));
+ const w=18+Math.random()*44,h=18+Math.random()*(low?95:170),d=18+Math.random()*48;
+ dummy.position.set(x,h/2,z);dummy.scale.set(w,h,d);dummy.updateMatrix();
+ const g=i%groupCount,slot=groupUsed[g]++;
+ buildingMeshes[g].setMatrixAt(slot,dummy.matrix);buildingMeshes[g].count=groupUsed[g];
 }
+buildingMeshes.forEach(mesh=>mesh.instanceMatrix.needsUpdate=true);
+
 const cheatGroup=new THREE.Group();scene.add(cheatGroup);
-for(let i=0;i<(low?12:24);i++){const tex=facadeTexture(i);const mat=new THREE.MeshBasicMaterial({map:tex,transparent:false});const geo=new THREE.PlaneGeometry(75,150);const p=new THREE.Mesh(geo,mat);const a=i/(low?12:24)*Math.PI*2,r=780+Math.random()*380;p.position.set(Math.sin(a)*r,75,Math.cos(a)*r);p.lookAt(0,75,0);cheatGroup.add(p)}
+const impostorCount=low?12:24;
+for(let i=0;i<impostorCount;i++){
+ const map=facadeTextures[i%facadeTextures.length].clone();
+ map.needsUpdate=true;map.repeat.set(1,1.5);
+ const mat=new THREE.MeshBasicMaterial({map,transparent:false});
+ const geo=new THREE.PlaneGeometry(75,150);
+ const p=new THREE.Mesh(geo,mat);
+ const a=i/impostorCount*Math.PI*2,r=780+Math.random()*380;
+ p.position.set(Math.sin(a)*r,75,Math.cos(a)*r);p.lookAt(0,75,0);cheatGroup.add(p);
+}
 
 const player=new THREE.Group();
 const robe=new THREE.Mesh(new THREE.CylinderGeometry(.55,.9,2.2,10),new THREE.MeshLambertMaterial({color:0xf2f0e8}));robe.position.y=1.1;player.add(robe);
@@ -284,8 +313,8 @@ bindStick('moveStick',(x,y)=>{input.moveX=x;input.moveY=y});bindStick('lookStick
 $('mFly').onclick=toggleFlight;$('mPowers').onclick=openWheel;$('mBurst').onclick=()=>{state.speedBoost=performance.now()+1400;pulse(0xffef9d,10)};$('mCast').onclick=castAbility;
 $('closeWheel').onclick=closeWheel;$('powers').onclick=openWheel;$('wheel').addEventListener('click',e=>{if(e.target===$('wheel'))closeWheel()});
 $('quality').textContent=low?'LEAN':'BALANCED';
-window.JC_GAME={scene,camera,renderer,player,state,abilities,selectAbility,castAbility,version:'master-webgl2-v3-glb-stream'};
-window.JC_VISUAL_CHEATS={facadePlanes:cheatGroup.children.length,description:'2D facade/impostor layer for distant city detail plus manifest-driven GLB streaming and missing-model fallbacks'};
+window.JC_GAME={scene,camera,renderer,player,state,abilities,selectAbility,castAbility,version:'master-webgl2-v4-github-facades'};
+window.JC_VISUAL_CHEATS={facadePlanes:cheatGroup.children.length,description:'GitHub-hosted AI facade wallpapers on instanced buildings plus distant impostors, GLB streaming and safe fallbacks'};
 $('bootText').textContent='WebGL2 master runtime ready';setTimeout(()=>{$('boot').style.display='none';$('menu').style.display='grid'},100);
 $('start').onclick=()=>{state.playing=true;$('menu').style.display='none';$('hud').style.display='block';notice('RESTORE SOULS · BUILD YOUR FLOW')}
 }catch(err){console.error(err);$('boot').style.display='none';$('fatal').style.display='grid';$('fatalText').textContent='WebGL2 startup error: '+(err?.message||err)}
