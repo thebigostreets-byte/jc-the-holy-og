@@ -1,5 +1,5 @@
 JC THE HOLY OG redeploy trigger
 branch: main
-source_commit: 318467a00f8b18d88d41cd258a0be556d005240b
-requested_at: 2026-09-21T18:29:00-07:00
-reason: enable future GLB manifest streaming, lightweight fallbacks, distance loading and safe missing-asset handling
+source_commit: 50b8480a65beb2c061cdab436200c18f64f8c302
+requested_at: 2026-09-21T18:05:00-07:00
+reason: deploy upgraded responsive HUD, mobile spacing, minimap, speedometer, mission card, reticle, flight readout, and JC/Satan visual themes
