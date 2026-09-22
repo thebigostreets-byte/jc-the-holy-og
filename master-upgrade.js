@@ -74,7 +74,8 @@ function applyFaction(faction){
   const buttons = Array.from($('abilityGrid')?.children || []);
   buttons.forEach((b,i) => { const title=b.querySelector('b'); if(title && game.abilities[i]) title.textContent=String(i+1).padStart(2,'0')+' · '+game.abilities[i][0]; });
   const power = $('power'); if(power && game.abilities[state.selected]) power.textContent=game.abilities[state.selected][0].toUpperCase()+' · X / RT';
-  const brand = document.querySelector('.brand'); if(brand) brand.childNodes[0].nodeValue = satan ? 'SATAN • SIN CITY ' : 'JC • SIN CITY ';\n  const body=player.children?.[0];const halo=player.children?.[2];if(body?.material?.color)body.material.color.setHex(satan?0x351010:0xf2f0e8);if(halo?.material?.color)halo.material.color.setHex(satan?0xff3f24:0xffd45a);
+  const brand = document.querySelector('.brand'); if(brand) brand.childNodes[0].nodeValue = satan ? 'SATAN • SIN CITY ' : 'JC • SIN CITY ';
+  const body=player.children?.[0];const halo=player.children?.[2];if(body?.material?.color)body.material.color.setHex(satan?0x351010:0xf2f0e8);if(halo?.material?.color)halo.material.color.setHex(satan?0xff3f24:0xffd45a);
 }
 
 const oldStart = $('start')?.onclick;
