@@ -22,10 +22,10 @@ const manifest = JSON.parse(await readFile('assets/models/manifest.json', 'utf8'
 if (!index.includes("getContext('webgl2'")) errors.push('index.html must explicitly request WebGL2');
 if (!index.includes('src="./master-upgrade.js')) errors.push('index.html must load master-upgrade.js relatively');
 if (index.includes("'/assets/") || index.includes('"/assets/')) errors.push('index.html contains root-relative /assets paths that break GitHub Pages subpaths');
-if (!index.includes('state.paused||state.inVehicle')) errors.push('base runtime must isolate player movement while driving');
+if (!index.includes('state.paused||state.inVehicle||state.board')) errors.push('base runtime must isolate player movement while driving');
 if (!index.includes('maxConcurrentAssetLoads')) errors.push('GLB streaming concurrency guard is missing');
 if (!master.includes('sharedInput.moveY') || !master.includes('sharedInput.moveX')) errors.push('mobile/controller shared vehicle input is missing');
-if (!master.includes("version:'2026.09.23-master-v5'")) errors.push('master runtime version marker is stale');
+if (!master.includes("version:'2026.09.23-master-v6'")) errors.push('master runtime version marker is stale');
 
 const ids = new Set();
 for (const asset of manifest.assets || []) {
