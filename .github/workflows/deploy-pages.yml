@@ -37,6 +37,9 @@ jobs:
       - name: Validate JC site contract
         run: node scripts/validate-site.mjs
 
+      - name: Validate streamed-world budgets
+        run: node scripts/validate-streaming-budget.mjs
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
