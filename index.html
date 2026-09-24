@@ -65,7 +65,7 @@ const saveData=navigator.connection?.saveData===true;
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const low=saveData||(navigator.hardwareConcurrency||4)<=4||(('deviceMemory'in navigator)&&(navigator.deviceMemory||4)<=4);
 const coarse=matchMedia('(pointer:coarse)').matches;
-const state={playing:false,paused:false,flight:false,health:100,grace:100,score:0,souls:0,combo:0,comboUntil:0,selected:0,yaw:0,pitch:-.18,speedBoost:0,timeScale:1,resurrection:false,shieldUntil:0};
+const state={playing:false,paused:false,inVehicle:false,cameraMode:0,flight:false,health:100,grace:100,score:0,souls:0,combo:0,comboUntil:0,selected:0,yaw:0,pitch:-.18,speedBoost:0,timeScale:1,resurrection:false,shieldUntil:0};
 const input={keys:{},moveX:0,moveY:0,lookX:0,lookY:0,cast:false};
 let selectedButton=null,noticeTimer=0;
 function notice(t){$('notice').textContent=t;$('notice').style.opacity=1;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').style.opacity=0,1500)}
@@ -383,7 +383,7 @@ bindStick('moveStick',(x,y)=>{input.moveX=x;input.moveY=y});bindStick('lookStick
 $('mFly').onclick=toggleFlight;$('mPowers').onclick=openWheel;$('mBurst').onclick=()=>{state.speedBoost=performance.now()+1400;pulse(0xffef9d,10)};$('mCast').onclick=castAbility;
 $('closeWheel').onclick=closeWheel;$('powers').onclick=openWheel;$('wheel').addEventListener('click',e=>{if(e.target===$('wheel'))closeWheel()});
 $('quality').textContent=low?'LEAN':'BALANCED';
-window.JC_GAME={scene,camera,renderer,player,state,abilities,selectAbility,castAbility,version:'master-webgl2-v5-visible-jc'};
+window.JC_GAME={scene,camera,renderer,player,state,input,abilities,selectAbility,castAbility,version:'master-webgl2-v6-stream-safe'};
 window.JC_VISUAL_CHEATS={facadePlanes:cheatGroup.children.length,description:'GitHub-hosted AI facade wallpapers on instanced buildings plus distant impostors, GLB streaming and safe fallbacks'};
 $('bootText').textContent='WebGL2 master runtime ready';setTimeout(()=>{$('boot').style.display='none';$('menu').style.display='grid'},100);
 $('start').onclick=()=>{state.playing=true;$('menu').style.display='none';$('hud').style.display='block';notice('RESTORE SOULS · BUILD YOUR FLOW')}
