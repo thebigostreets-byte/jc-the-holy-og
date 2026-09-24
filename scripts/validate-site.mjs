@@ -38,9 +38,13 @@ for (const facade of ['hotel.jpg','holy.jpg','demonic.jpg','neon.jpg']) {
 const defaults = manifest.defaults || {};
 if (!(Number(defaults.maxConcurrentLoads) >= 1 && Number(defaults.maxConcurrentLoads) <= 8)) errors.push('Manifest maxConcurrentLoads must be between 1 and 8');
 if (!(Number(defaults.retryMs) >= 1000)) errors.push('Manifest retryMs must be at least 1000ms');
+if (!(Number(defaults.loadDistance) > 0)) errors.push('Manifest default loadDistance must be positive');
+if (!(Number(defaults.unloadDistance) > Number(defaults.loadDistance))) errors.push('Manifest default unloadDistance must exceed loadDistance');
+if (!Array.isArray(manifest.assets)) errors.push('Manifest assets must be an array');
 
 const finiteVec = (value, length) => Array.isArray(value) && value.length === length && value.every(Number.isFinite);
 const ids = new Set();
+const sources = new Set();
 for (const asset of manifest.assets || []) {
   if (!asset?.id) errors.push('Manifest asset is missing id');
   else if (ids.has(asset.id)) errors.push(`Duplicate manifest asset id: ${asset.id}`);
@@ -49,6 +53,8 @@ for (const asset of manifest.assets || []) {
   if (!['planned', 'ready'].includes(asset?.status)) errors.push(`Invalid asset status for ${asset?.id || 'unknown asset'}`);
   if (asset?.status === 'ready' && !asset?.src) errors.push(`Ready asset has no src: ${asset.id}`);
   if (asset?.src && (/^(?:\/|\\)/.test(asset.src) || asset.src.includes('..'))) errors.push(`Unsafe/non-portable asset src: ${asset.id}`);
+  if (asset?.src && sources.has(asset.src)) errors.push(`Duplicate manifest asset src: ${asset.src}`);
+  if (asset?.src) sources.add(asset.src);
   if (!finiteVec(asset?.position, 3)) errors.push(`Invalid position vector for ${asset?.id || 'unknown asset'}`);
   if (!finiteVec(asset?.rotation, 3)) errors.push(`Invalid rotation vector for ${asset?.id || 'unknown asset'}`);
   if (!finiteVec(asset?.scale, 3) || asset.scale.some(v => v <= 0)) errors.push(`Invalid scale vector for ${asset?.id || 'unknown asset'}`);
@@ -57,6 +63,11 @@ for (const asset of manifest.assets || []) {
   const loadDistance = Number(asset?.loadDistance ?? defaults.loadDistance);
   const unloadDistance = Number(asset?.unloadDistance ?? defaults.unloadDistance);
   if (!(loadDistance > 0 && unloadDistance > loadDistance)) errors.push(`Invalid stream distances for ${asset?.id || 'unknown asset'}`);
+
+  if (asset?.status === 'ready' && asset?.src) {
+    try { await access(asset.src); }
+    catch { errors.push(`Ready asset file is missing: ${asset.id} -> ${asset.src}`); }
+  }
 }
 
 for (const file of ['webgl1.html','game.html','real-city-climb-demo.html']) {
@@ -70,4 +81,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(`JC site validation passed: ${requiredFiles.length} required files, ${ids.size} manifest assets.`);
+console.log(`JC site validation passed: ${requiredFiles.length} required files, ${ids.size} manifest assets, ${sources.size} streamed sources.`);
