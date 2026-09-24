@@ -1,4 +1,4 @@
-import { BOOT_STAGES, createBootPipeline, retryTask, selectQualityProfile } from "/boot-runtime.js";
+import { BOOT_STAGES, createBootPipeline, retryTask, selectQualityProfile } from "./boot-runtime.js";
 
 const BUILD_TOKEN = "809cc9d2cb01";
 const status = document.getElementById("bootStatus");
@@ -121,7 +121,7 @@ function loadRequiredScript(src) {
 async function loadRealWorldData() {
   const started = performance.now();
   status.textContent = `LOADING REAL LAS VEGAS · ${profile.toUpperCase()} PROFILE`;
-  const response=await retryTask(() => fetch(`/jc-the-holy-og-assets/generated/world/index.json?v=${BUILD_TOKEN}`,{cache:'no-store'}).then((value) => {
+  const response=await retryTask(() => fetch(`./jc-the-holy-og-assets/generated/world/index.json?v=${BUILD_TOKEN}`,{cache:'no-store'}).then((value) => {
     if (!value.ok) throw new Error(`World index HTTP ${value.status}`);
     return value;
   }), { attempts: 3 });
@@ -132,7 +132,7 @@ async function loadRealWorldData() {
   const roadProfile=profile==='high'?'full':profile;
   try{await loadRequiredScript(index.roadProfiles[roadProfile]);}
   catch(error){if(roadProfile==='low')throw error;await loadRequiredScript(index.roadProfiles.low);window.JC_DEVICE_PROFILE='low';degrade('road-pack-fallback');}
-  await loadRequiredScript('/jc-the-holy-og-assets/vegas-sections.js?v=17');
+  await loadRequiredScript('./jc-the-holy-og-assets/vegas-sections.js?v=17');
   const roads = window.JC_VEGAS_OSM;
   if (!roads?.roads?.length || !/openstreetmap/i.test(roads.source || "")) {
     throw new Error("Real Las Vegas road registry unavailable");
@@ -158,9 +158,9 @@ async function startCompatibility(reason) {
 
 async function boot3D() {
   status.textContent = `PREPARING LOCAL LAS VEGAS · ${cores} CPU · ${memory} GB RAM`;
-  const engine = new URL("/game-current.js", location.href);
+  const engine = new URL("./game-current.js", location.href);
   engine.searchParams.set("build", BUILD_TOKEN);
-  await import(`/real-life-runtime.bundle.js?v=${BUILD_TOKEN}`);
+  await import(`./real-life-runtime.bundle.js?v=${BUILD_TOKEN}`);
   boot.complete("boot", { profile });
   await import(engine.href);
   if (engineState === "compat-active") return;
