@@ -38,10 +38,13 @@ for (const facade of ['hotel.jpg','holy.jpg','demonic.jpg','neon.jpg']) {
 if (!(Number.isInteger(manifest.version) && manifest.version >= 1)) errors.push('Manifest version must be a positive integer');
 if (manifest.coordinateSystem !== 'local-game-meters') errors.push('Manifest coordinateSystem must remain local-game-meters');
 const defaults = manifest.defaults || {};
+const defaultLoadDistance = Number(defaults.loadDistance);
+const defaultUnloadDistance = Number(defaults.unloadDistance);
+const defaultRetryMs = Number(defaults.retryMs);
 if (!(Number(defaults.maxConcurrentLoads) >= 1 && Number(defaults.maxConcurrentLoads) <= 8)) errors.push('Manifest maxConcurrentLoads must be between 1 and 8');
-if (!(Number(defaults.retryMs) >= 1000)) errors.push('Manifest retryMs must be at least 1000ms');
-if (!(Number(defaults.loadDistance) > 0)) errors.push('Manifest default loadDistance must be positive');
-if (!(Number(defaults.unloadDistance) > Number(defaults.loadDistance))) errors.push('Manifest default unloadDistance must exceed loadDistance');
+if (!(Number.isFinite(defaultRetryMs) && defaultRetryMs >= 1000 && defaultRetryMs <= 300000)) errors.push('Manifest retryMs must be finite and between 1000ms and 300000ms');
+if (!(Number.isFinite(defaultLoadDistance) && defaultLoadDistance > 0 && defaultLoadDistance <= 10000)) errors.push('Manifest default loadDistance must be finite and between 0 and 10000m');
+if (!(Number.isFinite(defaultUnloadDistance) && defaultUnloadDistance > defaultLoadDistance && defaultUnloadDistance <= 20000)) errors.push('Manifest default unloadDistance must be finite, exceed loadDistance, and be at most 20000m');
 if (!['box'].includes(defaults.fallback)) errors.push('Manifest default fallback must be a supported type');
 if (!Array.isArray(manifest.assets)) errors.push('Manifest assets must be an array');
 
@@ -73,7 +76,7 @@ for (const asset of manifest.assets || []) {
 
   const loadDistance = Number(asset?.loadDistance ?? defaults.loadDistance);
   const unloadDistance = Number(asset?.unloadDistance ?? defaults.unloadDistance);
-  if (!(loadDistance > 0 && unloadDistance > loadDistance)) errors.push(`Invalid stream distances for ${asset?.id || 'unknown asset'}`);
+  if (!(Number.isFinite(loadDistance) && Number.isFinite(unloadDistance) && loadDistance > 0 && loadDistance <= 10000 && unloadDistance > loadDistance && unloadDistance <= 20000)) errors.push(`Invalid stream distances for ${asset?.id || 'unknown asset'}`);
 
   if (asset?.status === 'ready' && asset?.src) {
     try { await access(asset.src); }
