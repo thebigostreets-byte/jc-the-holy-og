@@ -25,7 +25,7 @@ if (index.includes("'/assets/") || index.includes('"/assets/')) errors.push('ind
 if (!index.includes('state.paused||state.inVehicle||state.board')) errors.push('base runtime must isolate player movement while driving');
 if (!index.includes('maxConcurrentAssetLoads')) errors.push('GLB streaming concurrency guard is missing');
 if (!master.includes('sharedInput.moveY') || !master.includes('sharedInput.moveX')) errors.push('mobile/controller shared vehicle input is missing');
-if (!master.includes("version:'2026.09.23-master-v6'")) errors.push('master runtime version marker is stale');
+if (!master.includes("version:'2026.09.23-master-v7'")) errors.push('master runtime version marker is stale');
 
 const ids = new Set();
 for (const asset of manifest.assets || []) {
