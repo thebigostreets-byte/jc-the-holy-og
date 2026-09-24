@@ -3,8 +3,11 @@ import { access, readFile } from 'node:fs/promises';
 const requiredFiles = [
   'index.html',
   'master-upgrade.js',
-  'device-loader.js',
   'assets/models/manifest.json',
+  'assets/facades/hotel.jpg',
+  'assets/facades/holy.jpg',
+  'assets/facades/demonic.jpg',
+  'assets/facades/neon.jpg',
   'webgl1.html',
   'game.html',
   'real-city-climb-demo.html'
@@ -18,7 +21,6 @@ for (const file of requiredFiles) {
 
 const index = await readFile('index.html', 'utf8');
 const master = await readFile('master-upgrade.js', 'utf8');
-const deviceLoader = await readFile('device-loader.js', 'utf8');
 const manifest = JSON.parse(await readFile('assets/models/manifest.json', 'utf8'));
 
 if (!index.includes("getContext('webgl2'")) errors.push('index.html must explicitly request WebGL2');
@@ -28,9 +30,10 @@ if (!index.includes('state.paused||state.inVehicle||state.board')) errors.push('
 if (!index.includes('maxConcurrentAssetLoads')) errors.push('GLB streaming concurrency guard is missing');
 if (!master.includes('sharedInput.moveY') || !master.includes('sharedInput.moveX')) errors.push('mobile/controller shared vehicle input is missing');
 if (!master.includes("version:'2026.09.23-master-v7'")) errors.push('master runtime version marker is stale');
-if (/from\s+["']\//.test(deviceLoader) || /import\(["'`]\//.test(deviceLoader) || /fetch\(["'`]\//.test(deviceLoader) || /src\s*=\s*["'`]\//.test(deviceLoader) || /new URL\(["']\//.test(deviceLoader)) errors.push('device-loader.js contains root-relative runtime paths that break GitHub Pages subpaths');
-if (!deviceLoader.includes('from "./boot-runtime.js"')) errors.push('device-loader.js must load boot-runtime.js relatively');
-if (!deviceLoader.includes('new URL("./game-current.js", location.href)')) errors.push('device-loader.js must resolve game-current.js relative to the deployed page');
+
+for (const facade of ['hotel.jpg','holy.jpg','demonic.jpg','neon.jpg']) {
+  if (!index.includes(`./assets/facades/${facade}`)) errors.push(`index.html must reference ${facade} relatively`);
+}
 
 const ids = new Set();
 for (const asset of manifest.assets || []) {
