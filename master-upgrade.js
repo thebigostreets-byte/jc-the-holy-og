@@ -91,7 +91,13 @@ const carHalo = new THREE.Mesh(new THREE.TorusGeometry(1.35,.055,8,28),new THREE
 const board = new THREE.Mesh(new THREE.BoxGeometry(1.7,.11,.46),new THREE.MeshLambertMaterial({color:0xd9bd65}));board.position.y=-.05;board.visible=false;player.add(board);
 
 const npcGroup = new THREE.Group();scene.add(npcGroup);const npcs=[];
-const npcCount = Math.max(16,Math.min(56,(navigator.hardwareConcurrency||4)*4));
+const npcMemory = navigator.deviceMemory || 4;
+const npcCores = navigator.hardwareConcurrency || 4;
+const npcSaveData = navigator.connection?.saveData === true;
+const npcLowPower = npcSaveData || npcMemory <= 4 || npcCores <= 4;
+const npcBudget = npcLowPower ? 10 : (npcMemory >= 8 && npcCores >= 8 ? 32 : 20);
+const npcCount = Math.max(8,Math.min(40,window.JC_NPC_COUNT || npcBudget));
+const npcUpdateInterval = npcCount <= 10 ? 420 : (npcCount <= 20 ? 300 : 220);
 for(let i=0;i<npcCount;i++){
   const n=new THREE.Mesh(new THREE.CapsuleGeometry(.25,.75,3,5),new THREE.MeshLambertMaterial({color:i%5===0?0xe2b27d:0x728399}));
   n.position.set((Math.random()-.5)*900,.72,(Math.random()-.5)*1200);n.userData.dir=Math.random()*Math.PI*2;n.userData.next=0;npcGroup.add(n);npcs.push(n);
@@ -131,9 +137,13 @@ function manipulateBuilding(kind){
 }
 
 const keyState={};let boostUntil=0,last=performance.now(),npcTick=0,miniTick=0,saveTick=0,lastSoulCount=state.souls||0;
-let upgradePadButtons=[];
+let upgradePadButtons=[],upgradePadSteer=0,upgradePadThrottle=0;
 function pollUpgradeGamepad(){
-  const gp=navigator.getGamepads?.()[0];if(!gp)return;
+  const gp=navigator.getGamepads?.()[0];
+  if(!gp){upgradePadSteer=0;upgradePadThrottle=0;return;}
+  const deadzone=.16,axis=v=>Math.abs(v)>deadzone?v:0;
+  upgradePadSteer=axis(gp.axes[0]||0);
+  upgradePadThrottle=-axis(gp.axes[1]||0);
   const p=i=>!!gp.buttons[i]?.pressed,edge=i=>p(i)&&!upgradePadButtons[i];
   if(edge(12))toggleBoard();
   if(edge(13))enterExitCar();
@@ -171,8 +181,8 @@ addEventListener('keyup',e=>keyState[e.code]=false);
 
 function updateVehicle(dt,t){
   if(!state.inVehicle)return;
-  const throttle=(keyState.KeyW?1:0)-(keyState.KeyS?1:0);
-  const steer=(keyState.KeyD?1:0)-(keyState.KeyA?1:0);
+  const throttle=clamp((keyState.KeyW?1:0)-(keyState.KeyS?1:0)+upgradePadThrottle,-1,1);
+  const steer=clamp((keyState.KeyD?1:0)-(keyState.KeyA?1:0)+upgradePadSteer,-1,1);
   state.vehicleSpeed += throttle*28*dt;
   state.vehicleSpeed *= Math.pow((keyState.KeyB||keyState.Space)?0.9:0.986,dt*60);
   state.vehicleSpeed=clamp(state.vehicleSpeed,-12,t<boostUntil?72:42);
@@ -187,7 +197,9 @@ function updateVehicle(dt,t){
   camera.position.lerp(target,.16);camera.lookAt(car.position.x,car.position.y+1.2,car.position.z);
 }
 let flightFxTick=0;
+const reducedEffects = matchMedia('(prefers-reduced-motion: reduce)').matches || npcLowPower;
 function flightShockwave(){
+  if(reducedEffects)return;
   const ring=new THREE.Mesh(
     new THREE.RingGeometry(1.1,1.55,32),
     new THREE.MeshBasicMaterial({color:state.faction==='satan'?0xff6a3d:0xe7f7ff,transparent:true,opacity:.9,side:THREE.DoubleSide})
@@ -219,7 +231,7 @@ function updateBoard(dt,t){
   board.rotation.z=Math.sin(t*.008)*.05;
 }
 function updateNPCs(t){
-  if(t<npcTick)return;npcTick=t+220;
+  if(document.hidden||t<npcTick)return;npcTick=t+npcUpdateInterval;
   for(const n of npcs){if(t>n.userData.next){n.userData.dir+=(Math.random()-.5)*1.8;n.userData.next=t+700+Math.random()*1800}if(n.position.distanceTo(player.position)<160){n.position.x+=Math.sin(n.userData.dir)*.35;n.position.z+=Math.cos(n.userData.dir)*.35}}
 }
 function updateDebris(dt,t){for(let i=debris.length-1;i>=0;i--){const d=debris[i];d.position.addScaledVector(d.userData.v,dt);d.userData.v.y-=18*dt;d.rotation.x+=dt*3;d.rotation.z+=dt*2;if(t>d.userData.life){scene.remove(d);d.geometry.dispose();d.material.dispose();debris.splice(i,1)}}}
