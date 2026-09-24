@@ -343,7 +343,7 @@ function pollGamepad(){
 function update(dt,now){
  if(!state.playing)return;
  if(now>=nextAssetStream){streamAssets(now);nextAssetStream=now+500;}
- if(state.paused||state.inVehicle)return;
+ if(state.paused||state.inVehicle||state.board)return;
  pollGamepad();dt*=state.timeScale;
  const k=input.keys;let mx=(k.KeyD?1:0)-(k.KeyA?1:0)+input.moveX,my=(k.KeyW?1:0)-(k.KeyS?1:0)+input.moveY;
  const len=Math.hypot(mx,my);if(len>1){mx/=len;my/=len}
