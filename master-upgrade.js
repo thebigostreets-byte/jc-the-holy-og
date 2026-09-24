@@ -16,6 +16,7 @@ const game = await getGame();
 if(!game) throw new Error('JC master upgrade could not attach to game runtime');
 
 const {scene,camera,renderer,player,state} = game;
+const sharedInput = game.input || {moveX:0,moveY:0};
 state.faction ||= 'jc';
 state.board ||= false;
 state.boardHover ||= false;
@@ -123,7 +124,8 @@ for(let i=0;i<18;i++){
 
 const debris=[];
 function spawnDebris(pos,color){
-  for(let i=0;i<7;i++){
+  const pieces=npcLowPower?4:7;
+  for(let i=0;i<pieces;i++){
     const m=new THREE.Mesh(new THREE.BoxGeometry(.5+Math.random(),.5+Math.random(),.5+Math.random()),new THREE.MeshLambertMaterial({color}));
     m.position.copy(pos).add(new THREE.Vector3((Math.random()-.5)*5,1+Math.random()*5,(Math.random()-.5)*5));m.userData.v=new THREE.Vector3((Math.random()-.5)*7,4+Math.random()*6,(Math.random()-.5)*7);m.userData.life=performance.now()+1500;scene.add(m);debris.push(m);
   }
@@ -148,12 +150,13 @@ function pollUpgradeGamepad(){
   if(edge(12))toggleBoard();
   if(edge(13))enterExitCar();
   if(edge(8))toggleCamera();
-  if(p(1)&&state.inVehicle)state.vehicleSpeed*=.92;
+  if(p(1)&&state.inVehicle)state.vehicleSpeed*=.90;
+  if(p(0)&&state.inVehicle)boostUntil=performance.now()+180;
   upgradePadButtons=gp.buttons.map(b=>b.pressed);
 }
 function enterExitCar(){
-  if(state.inVehicle){state.inVehicle=false;state.paused=false;player.visible=true;player.position.copy(car.position).add(new THREE.Vector3(2.4,0,0));return}
-  if(player.position.distanceTo(car.position)<9){state.inVehicle=true;state.paused=true;player.visible=false;state.board=false;board.visible=false;}
+  if(state.inVehicle){state.inVehicle=false;player.visible=true;player.position.copy(car.position).add(new THREE.Vector3(2.4,0,0));return}
+  if(player.position.distanceTo(car.position)<9){state.inVehicle=true;player.visible=false;state.board=false;board.visible=false;}
 }
 function toggleBoard(){if(state.inVehicle)return;state.board=!state.board;board.visible=state.board;}
 function toggleCamera(){state.cameraMode=(state.cameraMode+1)%3;}
@@ -181,14 +184,16 @@ addEventListener('keyup',e=>keyState[e.code]=false);
 
 function updateVehicle(dt,t){
   if(!state.inVehicle)return;
-  const throttle=clamp((keyState.KeyW?1:0)-(keyState.KeyS?1:0)+upgradePadThrottle,-1,1);
-  const steer=clamp((keyState.KeyD?1:0)-(keyState.KeyA?1:0)+upgradePadSteer,-1,1);
+  const throttle=clamp((keyState.KeyW?1:0)-(keyState.KeyS?1:0)+upgradePadThrottle+sharedInput.moveY,-1,1);
+  const steer=clamp((keyState.KeyD?1:0)-(keyState.KeyA?1:0)+upgradePadSteer+sharedInput.moveX,-1,1);
   state.vehicleSpeed += throttle*28*dt;
   state.vehicleSpeed *= Math.pow((keyState.KeyB||keyState.Space)?0.9:0.986,dt*60);
   state.vehicleSpeed=clamp(state.vehicleSpeed,-12,t<boostUntil?72:42);
-  car.rotation.y -= steer*dt*(1.15+Math.abs(state.vehicleSpeed)*.02);
+  const steerRate=1.3/(1+Math.abs(state.vehicleSpeed)*.018);
+  car.rotation.y -= steer*dt*steerRate;
   car.position.x += Math.sin(car.rotation.y)*state.vehicleSpeed*dt;
   car.position.z -= Math.cos(car.rotation.y)*state.vehicleSpeed*dt;
+  car.position.x=clamp(car.position.x,-1240,1240);car.position.z=clamp(car.position.z,-1240,1240);
   wheels.forEach(w=>w.rotation.x-=state.vehicleSpeed*dt/.4);
   player.position.copy(car.position);
   const d=state.cameraMode===2?7.5:state.cameraMode===1?17:11;
@@ -227,7 +232,8 @@ function updateFlight(dt,t){
 function updateBoard(dt,t){
   if(!state.board||state.inVehicle)return;
   const speed=state.boardHover?(keyState.ShiftLeft?30:20):(keyState.ShiftLeft?23:15);
-  if(keyState.KeyW){player.position.x+=Math.sin(state.yaw||0)*speed*dt;player.position.z-=Math.cos(state.yaw||0)*speed*dt;}
+  const forwardAmount=clamp((keyState.KeyW?1:0)-(keyState.KeyS?1:0)+sharedInput.moveY,-1,1);
+  if(Math.abs(forwardAmount)>.05){player.position.x+=Math.sin(state.yaw||0)*speed*dt*forwardAmount;player.position.z-=Math.cos(state.yaw||0)*speed*dt*forwardAmount;}
   board.rotation.z=Math.sin(t*.008)*.05;
 }
 function updateNPCs(t){
@@ -256,12 +262,12 @@ function updateMission(){
   window.JC_CITY_SIM.hope=state.cityHope;window.JC_CITY_SIM.corruption=state.cityCorruption;
 }
 function drawMini(t){
-  if(t<miniTick)return;miniTick=t+140;const c=$('jcMini');if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);g.fillStyle='#07101a';g.fillRect(0,0,w,h);g.strokeStyle='#2f3a48';g.lineWidth=3;for(let x=36;x<w;x+=54){g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke()}for(let y=24;y<h;y+=44){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke()}g.fillStyle=state.faction==='jc'?'#ffd45a':'#ff6538';g.beginPath();g.arc(w/2,h/2,7,0,Math.PI*2);g.fill();g.fillStyle='#b4c3d7';for(let i=0;i<Math.min(12,npcs.length);i++){const dx=(npcs[i].position.x-player.position.x)*.08,dz=(npcs[i].position.z-player.position.z)*.08;if(Math.abs(dx)<w/2&&Math.abs(dz)<h/2)g.fillRect(w/2+dx-2,h/2+dz-2,4,4)}}
-function save(t){if(t<saveTick)return;saveTick=t+5000;try{localStorage.setItem('jc-master-upgrade',JSON.stringify({faction:state.faction,score:state.score,souls:state.souls,contract:state.contract,hope:state.cityHope,corruption:state.cityCorruption}))}catch{}}
+  if(t<miniTick)return;miniTick=t+(npcLowPower?240:140);const c=$('jcMini');if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);g.fillStyle='#07101a';g.fillRect(0,0,w,h);g.strokeStyle='#2f3a48';g.lineWidth=3;for(let x=36;x<w;x+=54){g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke()}for(let y=24;y<h;y+=44){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke()}g.fillStyle=state.faction==='jc'?'#ffd45a':'#ff6538';g.beginPath();g.arc(w/2,h/2,7,0,Math.PI*2);g.fill();g.fillStyle='#b4c3d7';for(let i=0;i<Math.min(12,npcs.length);i++){const dx=(npcs[i].position.x-player.position.x)*.08,dz=(npcs[i].position.z-player.position.z)*.08;if(Math.abs(dx)<w/2&&Math.abs(dz)<h/2)g.fillRect(w/2+dx-2,h/2+dz-2,4,4)}}
+function save(t){if(t<saveTick)return;saveTick=t+5000;try{localStorage.setItem('jc-master-upgrade',JSON.stringify({faction:state.faction,score:state.score,souls:state.souls,contract:state.contract,hope:state.cityHope,corruption:state.cityCorruption,cameraMode:state.cameraMode,dayNight:state.dayNight,position:[player.position.x,player.position.y,player.position.z]}))}catch{}}
 function loop(t){requestAnimationFrame(loop);const dt=Math.min(.05,(t-last)/1000);last=t;pollUpgradeGamepad();updateVehicle(dt,t);updateFlight(dt,t);updateBoard(dt,t);updateNPCs(t);updateDebris(dt,t);updateMission();drawMini(t);save(t);if($('jcFlight')){$('jcFlight').textContent=state.inVehicle?'HALO CAR · '+Math.round(Math.abs(state.vehicleSpeed)*2.237)+' MPH':state.board?(state.boardHover?'HOVERBOARD':'BOARD'):(state.flight?'FLIGHT · ALT '+Math.round(player.position.y)+'m':'')}if($('jcLock'))$('jcLock').textContent=state.lockTarget?'TARGET LOCK':'';carBody.material.color.setHex(state.faction==='jc'?0xeee6ce:0x2c0808);carHalo.material.color.setHex(state.faction==='jc'?0xffd45a:0xff3f24)}
 requestAnimationFrame(loop);
 
-try{const saved=JSON.parse(localStorage.getItem('jc-master-upgrade')||'null');if(saved){state.faction=saved.faction||'jc';state.score=saved.score||state.score;state.souls=saved.souls||state.souls;state.contract=saved.contract||1;state.cityHope=saved.hope??50;state.cityCorruption=saved.corruption??50;applyFaction(state.faction)}}catch{}
+try{const saved=JSON.parse(localStorage.getItem('jc-master-upgrade')||'null');if(saved){state.faction=saved.faction||'jc';state.score=saved.score||state.score;state.souls=saved.souls||state.souls;state.contract=saved.contract||1;state.cityHope=saved.hope??50;state.cityCorruption=saved.corruption??50;state.cameraMode=clamp(Number(saved.cameraMode)||0,0,2);state.dayNight=saved.dayNight==='night'?'night':'day';if(Array.isArray(saved.position)&&saved.position.length===3){player.position.set(clamp(Number(saved.position[0])||0,-1250,1250),clamp(Number(saved.position[1])||0,0,180),clamp(Number(saved.position[2])||120,-1250,1250))}const night=state.dayNight==='night';scene.background?.setHex(night?0x060817:0x8fa8bc);if(scene.fog)scene.fog.color.setHex(night?0x060817:0x8fa8bc);applyFaction(state.faction)}}catch{}
 
 const mobileActions=document.querySelector('.mobile-actions');
 if(mobileActions){
@@ -270,5 +276,5 @@ if(mobileActions){
   const cam=document.createElement('button');cam.id='mCameraUpgrade';cam.textContent='CAM';cam.onclick=()=>{if(state.board)state.boardHover=!state.boardHover;else toggleCamera()};mobileActions.appendChild(cam);
 }
 
-window.JC_MASTER_UPGRADE={version:'2026.09.21-master-v4',vehicle:car,board,npcs,destructible,citySim:window.JC_CITY_SIM,applyFaction};
+window.JC_MASTER_UPGRADE={version:'2026.09.23-master-v5',vehicle:car,board,npcs,destructible,citySim:window.JC_CITY_SIM,applyFaction};
 console.info('JC master upgrade attached',window.JC_MASTER_UPGRADE.version);
