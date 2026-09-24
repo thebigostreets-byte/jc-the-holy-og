@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="iLLCo-AI Builder Library — practical technical books built from real AI product, game, agent, MCP, and deployment work.">
+<title>iLLCo-AI Builder Library — From Prototype to Production</title>
+<style>
+:root{--bg:#090b10;--panel:#111620;--panel2:#171e2b;--text:#eef2f7;--muted:#9da8b7;--gold:#ffd45a;--line:#ffffff1a;--max:1180px}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:linear-gradient(180deg,#080a0f,#0d1118 45%,#080a0f);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.65}
+a{color:inherit}.wrap{width:min(var(--max),92vw);margin:auto}.top{position:sticky;top:0;z-index:20;background:#090b10e8;backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav{height:66px;display:flex;align-items:center;justify-content:space-between;gap:18px}.brand{font-weight:900;letter-spacing:.04em}.brand b{color:var(--gold)}.navlinks{display:flex;gap:18px;font-size:14px;color:var(--muted)}.navlinks a{text-decoration:none}.navlinks a:hover{color:#fff}
+.hero{padding:92px 0 64px;border-bottom:1px solid var(--line)}.eyebrow{color:var(--gold);font-weight:900;text-transform:uppercase;letter-spacing:.18em;font-size:12px}.hero h1{font-size:clamp(48px,8vw,94px);line-height:.92;letter-spacing:-.055em;max-width:920px;margin:14px 0 20px}.hero h1 span{display:block;color:var(--gold)}.hero p{max-width:760px;color:#c0c8d3;font-size:19px}.stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}.stat{padding:10px 14px;border:1px solid var(--line);background:#ffffff08;border-radius:999px;font-size:13px;color:#cbd3de}.stat strong{color:#fff}
+.layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:48px;padding:54px 0 100px}.toc{position:sticky;top:90px;align-self:start}.toc h3{font-size:13px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted)}.toc a{display:block;padding:10px 0;text-decoration:none;color:#aeb8c6;border-bottom:1px solid #ffffff0d;font-size:14px}.toc a:hover{color:var(--gold)}
+.bookhead{padding:0 0 28px;border-bottom:1px solid var(--line);margin-bottom:42px}.bookhead h2{font-size:clamp(34px,5vw,60px);line-height:1;margin:8px 0 12px;letter-spacing:-.04em}.bookhead p{color:var(--muted);max-width:760px}
+.chapter{scroll-margin-top:90px;margin:0 0 74px}.chapter .num{color:var(--gold);font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:.16em}.chapter h2{font-size:clamp(31px,4vw,52px);line-height:1.04;letter-spacing:-.035em;margin:8px 0 24px}.chapter h3{font-size:24px;line-height:1.2;margin:40px 0 12px}.chapter p{font-size:17px;color:#d5dbe4}.chapter blockquote{margin:28px 0;padding:18px 22px;border-left:4px solid var(--gold);background:#ffffff08;font-size:20px;font-weight:700}.chapter pre{overflow:auto;padding:18px;border:1px solid var(--line);background:#05070b;border-radius:12px;color:#dce5ef}.chapter code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px}.takeaway{margin-top:36px;padding:24px;border:1px solid #ffd45a55;background:#ffd45a0d;border-radius:14px}.takeaway h3{margin:0 0 8px;color:var(--gold)}
+.catalog{margin-top:70px;padding-top:45px;border-top:1px solid var(--line)}.catalog h2{font-size:36px;letter-spacing:-.03em}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.card{border:1px solid var(--line);background:var(--panel);padding:18px;border-radius:12px}.card b{display:block}.card small{color:var(--muted)}.live{display:inline-block;color:#091018;background:var(--gold);font-size:11px;font-weight:1000;padding:3px 7px;border-radius:99px;margin-left:6px}
+footer{border-top:1px solid var(--line);padding:34px 0 50px;color:var(--muted);font-size:13px}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.toc{position:relative;top:auto;border:1px solid var(--line);padding:14px 18px;border-radius:12px}.navlinks{display:none}.grid{grid-template-columns:1fr}.hero{padding-top:64px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap nav"><div class="brand">iLLCo-<b>AI</b> Builder Library</div><nav class="navlinks"><a href="#chapter-1">Chapter 1</a><a href="#chapter-2">Chapter 2</a><a href="#chapter-3">Chapter 3</a><a href="#catalog">16-Book Catalog</a></nav></div></header>
+<section class="hero"><div class="wrap"><div class="eyebrow">Book 1 of 16 • Live Manuscript</div><h1>From Prototype <span>to Production</span></h1><p>An AI Builder’s Field Manual for turning prompts, prototypes, generated assets, agent workflows, and ambitious ideas into systems that can be tested, verified, deployed, and trusted.</p><div class="stats"><div class="stat"><strong>3</strong> chapters published</div><div class="stat"><strong>16</strong> books planned</div><div class="stat">Built from real project experience</div></div></div></section>
+<main class="wrap layout">
+<aside class="toc"><h3>Contents</h3><a href="#chapter-1">1. A Prototype Is a Question, Not a Product</a><a href="#chapter-2">2. Turn the Idea Into a System Before Code</a><a href="#chapter-3">3. Build the Smallest Vertical Slice</a><a href="#catalog">The full library</a></aside>
+<article>
+<section class="bookhead"><div class="eyebrow">iLLCo-AI Builder Library</div><h2>From Prototype to Production</h2><p>The first book in a 16-title technical collection covering AI product engineering, agent swarms, MCP systems, browser games, 3D worlds, verification, resilience, media automation, retrieval, and one-person AI teams.</p></section>
+
+<section class="chapter" id="chapter-1">
+<div class="num">Chapter 1</div><h2>A Prototype Is a Question, Not a Product</h2>
+<p>The first version of an AI product has one job: <strong>prove that something important is possible.</strong> It does not have to prove that the system is scalable, the interface is finished, every integration is reliable, or every edge case has been discovered.</p>
+<p>A prototype answers a question. Can an AI generate the required output? Can the browser render the world? Can a model call the tool? Can the application retrieve the right document? Can a character fly through a large environment? Can a workflow turn an input into a useful finished artifact?</p>
+<p>Production asks something much harder: <strong>Can it do it again, correctly, under real conditions, when nobody is standing over the system fixing whatever breaks?</strong></p>
+<h3>The Seduction of the Working Demo</h3>
+<p>AI dramatically compresses the distance between an idea and something that appears to work. It can generate the interface, populate it with realistic content, create assets, write supporting code, produce a test result, describe the architecture, and confidently explain that the requested feature has been implemented.</p>
+<blockquote>The closer an unfinished system looks to a finished system, the easier it becomes to mistake appearance for capability.</blockquote>
+<p>A game can show a city without having the required city data correctly integrated. A 3D pipeline can produce an attractive render without proving that the render came from the exported GLB. A deployment can succeed while the application still enters an unwanted fallback path. A tool integration can work once without appropriate retry, authentication, observability, or recovery behavior.</p>
+<h3>Define the Claim Before Building</h3>
+<p>A vague requirement allows almost any plausible result to masquerade as success. A production requirement must describe observable behavior. This leads to a basic pattern:</p>
+<pre><code>Requirement → Claim → Evidence → Acceptance</code></pre>
+<p>The requirement describes what is wanted. The claim describes what the implementation supposedly accomplishes. The evidence demonstrates whether the claim is true. The acceptance rule determines whether that evidence is sufficient.</p>
+<h3>The Las Vegas Problem</h3>
+<p>Our Las Vegas game work amplified every architectural mistake. The world specification became concrete: a primary projected coordinate system, explicit geographic bounds, and a 35 × 35 grid covering roughly 35 × 35 kilometers. That means 1,225 one-kilometer sections.</p>
+<p>“Build Las Vegas” is a creative instruction. A 35 × 35 kilometer world with coordinate systems, tile dimensions, terrain sampling, manifests, shared boundaries and known geographic anchors is an engineering specification.</p>
+<h3>Why Tiling Changes Everything</h3>
+<p>A monolithic world asset increases download time, parsing time, memory pressure, GPU usage, collision complexity and recovery cost. Tiling changes the unit of responsibility:</p>
+<pre><code>Player position
+      ↓
+World coordinate
+      ↓
+Tile coordinate
+      ↓
+Required tile set
+   ↙   ↓   ↘
+terrain roads buildings
+      ↓
+Runtime scene</code></pre>
+<p>The runtime no longer needs to understand “Las Vegas” as one indivisible object. It needs to understand the player’s current neighborhood.</p>
+<h3>The Manifest Becomes the Truth</h3>
+<p>Once assets are distributed, the project needs a reliable source of truth. The manifest establishes the contract between the asset pipeline and runtime. The runtime should not guess what exists. Humans should not have to remember where everything is. Agents should not independently invent paths.</p>
+<p>This is why production AI engineering is often less about making the model smarter and more about reducing the number of decisions the model is allowed to improvise.</p>
+<h3>The Evidence Ladder</h3>
+<p>Completion evidence grows stronger as we move from assertion, to artifact existence, to structural validation, functional validation, integrated validation, user-visible proof and finally recovery validation.</p>
+<p>The strongest practical rule is simple: <strong>proof must come from the artifact being accepted.</strong> If testing a GLB, reopen and render the exported GLB. If testing a deployment, test the deployed URL. If testing an archive, reconstruct and verify the archive. Test what the user will actually receive.</p>
+<h3>Failure Is Data</h3>
+<p>A failed attempt can reveal an unstated requirement, invalid assumption, architectural bottleneck, ambiguous contract, missing validation step, unsupported environment, resource limit or integration boundary. The right question is not merely “How do we retry?” but “What did this failure teach us that should permanently change the system?”</p>
+<pre><code>DEFINE → BUILD → INSPECT → TEST → BREAK
+   → RECORD → HARDEN → DEPLOY → OBSERVE → REPEAT</code></pre>
+<div class="takeaway"><h3>Chapter Takeaway</h3><p>A prototype proves that an idea can work. Production proves that the system does work under defined conditions, can demonstrate that it worked, and can respond predictably when it does not. Move from “It looks finished” to “Here is the evidence.”</p></div>
+</section>
+
+<section class="chapter" id="chapter-2">
+<div class="num">Chapter 2</div><h2>Turn the Idea Into a System Before You Turn It Into Code</h2>
+<p>The fastest way to waste the speed AI gives you is to start building before deciding what you are actually building. Generative AI can produce interfaces, schemas, API routes, buttons, game code, authentication, artwork and deployment configuration in minutes. Code generation is not the same thing as system design.</p>
+<p>The solution is not months of specification. It is a <strong>minimum viable architecture</strong> before the minimum viable product.</p>
+<h3>The Prompt Is Not the Specification</h3>
+<p>“Build a creator platform where customers can pay to call creators” hides dozens of system decisions: identity, creator authorization, wallet semantics, billing start conditions, queue behavior, low-balance handling, disconnects, authoritative timers, refunds, moderation and accounting.</p>
+<p>Our creator-platform work became easier to reason about when the concept was decomposed into responsibilities such as identity, payments, wallet ledger, call sessions, queues, billing, moderation and administration.</p>
+<h3>Start With Invariants</h3>
+<p>Before choosing frameworks, define what must always remain true. A prepaid calling system might require: balances never go negative, waiting is not billable, only active sessions create usage charges, every balance change is traceable, the server is authoritative for billable duration, and terminated sessions cannot keep accruing charges.</p>
+<p>These rules survive technology choices. They can also be attacked with AI: ask a model to find contradictions, identify race conditions, and generate tests capable of proving each invariant.</p>
+<h3>Convert Features Into State Machines</h3>
+<pre><code>CREATED → WAITING → CONNECTING → ACTIVE
+                              ↘
+                          ENDING / FAILED
+                              ↓
+                            ENDED</code></pre>
+<p>State machines expose the production questions: what if payment succeeds but the call never becomes active? What if the browser disappears? What if termination events race? What happens on reconnect?</p>
+<h3>The Ledger Pattern</h3>
+<p>A displayed balance is not sufficient accounting. A ledger records why the balance changed. The current balance can be materialized for speed, but its history must remain traceable. Currency should generally be represented in its smallest unit, such as cents, rather than floating-point dollars.</p>
+<h3>Separate Authority From Presentation</h3>
+<p>The browser can display the timer; the server should determine billable time. The client can display player coordinates; the world system should determine authoritative placement. The interface can show an AI artifact; the validation pipeline should determine whether it satisfies the contract.</p>
+<pre><code>PRESENTATION STATE = what the user sees
+AUTHORITATIVE STATE = what the system considers true</code></pre>
+<h3>Decompose by Responsibility, Not by Screen</h3>
+<p>A project organized only around pages tends to duplicate logic. Stronger boundaries center on responsibilities: identity, wallet, payments, sessions, billing, moderation, notifications and analytics. Shared contracts allow multiple interfaces to use the same underlying system.</p>
+<h3>Build the File Tree Before the Files</h3>
+<pre><code>apps/
+  web/
+  creator-dashboard/
+  admin/
+  api/
+
+packages/
+  auth/
+  billing/
+  database/
+  schemas/
+
+ai/
+  prompts/
+  agents/
+  evaluations/
+
+integrations/
+mcp/
+tests/
+infra/
+docs/</code></pre>
+<p>The exact tree varies, but the principle does not. Decide where shared logic, schemas, prompts, integrations, tests, operational documents and deployment definitions belong before agents generate large amounts of code.</p>
+<h3>Architecture Decision Records</h3>
+<p>AI projects move quickly enough that even solo builders forget why decisions were made. A short Architecture Decision Record preserves context such as why a large world must remain tile-addressable rather than being merged back into one huge asset.</p>
+<h3>Design Failure Before Success</h3>
+<p>Production specifications must describe failure behavior: retries, idempotency, checkpoints, backoff, transactional boundaries and compensating actions. Retry safety is architecture. A payment, deployment or publishing operation should not duplicate itself merely because acknowledgement was lost.</p>
+<h3>The Minimum Viable Architecture Document</h3>
+<p>Before substantial implementation, define the product objective, actors, invariants, subsystems, authoritative data, state machines, contracts, failure behavior, security boundaries, observability, acceptance evidence and explicit non-goals.</p>
+<p>AI changes the economics of writing code. It does not repeal the economics of complexity. Cheap code actually makes architecture more important because complexity can accumulate faster than a human notices it.</p>
+<div class="takeaway"><h3>Chapter Takeaway</h3><p>Do not begin a serious AI product by asking what code to generate. Ask what must remain true while the system is running. Define actors, states, authorities, contracts, failure behavior, evidence and non-goals. The goal is not to prevent AI from making decisions; it is to prevent important architectural decisions from being made accidentally.</p></div>
+</section>
+
+<section class="chapter" id="chapter-3">
+<div class="num">Chapter 3</div><h2>Build the Smallest Vertical Slice That Can Tell You the Truth</h2>
+<p>A minimum viable product is often misunderstood as a smaller version of the final product. The most useful early build is the one that crosses enough of the real system to expose whether the architecture actually works.</p>
+<p>For a large browser game, that may mean one geographically correct world section, one controllable character, one vehicle, one streamed neighboring section and one representative interaction. That is a <strong>vertical slice</strong>.</p>
+<h3>Horizontal Progress Can Be Misleading</h3>
+<p>A team can generate hundreds of models, animations, screens, tools and terrain tiles without proving that one player can enter the world, move through a correctly placed section and cross into another without failure. The project has accumulated assets, but it has not yet proved the game.</p>
+<pre><code>Launch → WebGL2 → Spawn → Correct tile
+→ Terrain → Roads → Buildings → Movement
+→ Collision → Boundary crossing → Stream next tile
+→ Unload distant assets</code></pre>
+<h3>The First Slice Should Be Representative, Not Easy</h3>
+<p>Do not pick an empty kilometer merely because it yields a fast green result. Include representative difficulty: irregular roads, multiple buildings, terrain variation, sidewalks, curbs, a large asset, collisions, an adjacent boundary and enough visual complexity to expose performance problems.</p>
+<h3>The Thin-Slice Formula</h3>
+<blockquote>one user + one primary goal + one complete path + one difficult dependency + one failure condition + one measurable outcome</blockquote>
+<p>For image-to-3D, that could be upload → reconstruction → texture → export → reopen → render, with the exported GLB required to reopen successfully and the proof image required to come from that same file.</p>
+<h3>Do Not Mock the Thing You Most Need to Learn</h3>
+<p>Mocks are valuable only when they replace dependencies that are not under investigation. If GLB performance is the biggest uncertainty, use representative GLBs. If geographic alignment is the biggest uncertainty, use actual coordinate transformations. If payment reliability is the risk, use a real sandbox flow. <strong>Never mock the primary risk.</strong></p>
+<h3>Anchor Tests</h3>
+<p>Large systems benefit from facts whose expected outcomes are known independently of the generated system. A known landmark can verify geographic transformations. A fixed transaction sequence can verify accounting. A known source passage can verify retrieval. Anchors turn “looks about right” into numerical debugging.</p>
+<h3>Golden Paths and Poison Paths</h3>
+<p>Test the expected journey, then deliberately introduce failure. What happens when a neighboring tile is missing? When a tool times out? When an optional asset cannot load? The question mark in the failure path is where architecture lives.</p>
+<h3>Build the Instrument Panel Early</h3>
+<p>The first slice should expose what loaded, what failed, how long each stage took, how much memory is used, which model or tool ran, what asset version loaded, and what state transition occurred. Otherwise debugging becomes archaeology.</p>
+<h3>Performance Budgets Must Exist Before Optimization</h3>
+<p>“Make it fast” is not a requirement. Frame time, startup time, memory, GPU memory, draw calls, triangle counts, texture sizes, network transfer, simulation counts and loading latency need explicit budgets appropriate to the target hardware.</p>
+<pre><code>30 FPS → about 33.3 ms per frame
+60 FPS → about 16.7 ms per frame</code></pre>
+<p>That budget must cover input, gameplay logic, physics, animation, AI, streaming, rendering and browser overhead.</p>
+<h3>Fidelity Should Follow Player Attention</h3>
+<p>Not every object deserves maximum fidelity. Distant structures can use simplified geometry, compressed textures and minimal collision. Nearby interactive assets can receive more detail. AI-generated surface imagery can provide visual density while geometry supplies silhouette, collision and major depth.</p>
+<h3>Theme Variants Should Share Structure</h3>
+<p>A normal, heaven-themed and hell-themed city should share authoritative terrain, roads, curbs, sidewalks, driveways, footprints and base geometry wherever possible. Materials, lighting, effects, decals and selective landmark geometry can vary by theme. Fix geographic errors once, not three times.</p>
+<h3>Stop Expanding When the Slice Fails</h3>
+<pre><code>FREEZE SCOPE
+   ↓
+IDENTIFY FAILURE
+   ↓
+REDUCE VARIABLES
+   ↓
+FIX ROOT CAUSE
+   ↓
+ADD REGRESSION TEST
+   ↓
+RERUN SLICE</code></pre>
+<p>If the world cannot load reliably, do not add another superpower. If the wallet cannot reconcile, do not add another payment method. If retrieval cannot identify evidence, do not scale automatic publishing.</p>
+<h3>The Expansion Ladder</h3>
+<p>Scale deliberately: one tile → two adjacent tiles → a 3×3 neighborhood → a representative district → multiple districts → the full world. The same pattern applies to agents, documents, workflows and services.</p>
+<div class="takeaway"><h3>Chapter Takeaway</h3><p>Build one representative vertical slice that crosses the real architecture. Use the real dependencies that contain the greatest uncertainty. Establish anchors, test a golden path and a poison path, measure performance, and stop expanding when the slice fails. The first production build exists to tell you the truth as cheaply and early as possible.</p></div>
+</section>
+
+<section class="catalog" id="catalog"><div class="eyebrow">The Collection</div><h2>16-Book iLLCo-AI Builder Library</h2><div class="grid">
+<div class="card"><b>1. From Prototype to Production <span class="live">LIVE</span></b><small>Idea → architecture → validation → deployment.</small></div>
+<div class="card"><b>2. Building Worlds With AI on a Shoestring</b><small>GIS, tiles, GLBs, streaming and browser-scale worlds.</small></div>
+<div class="card"><b>3. The $20 Company</b><small>Launch real AI businesses with almost no capital.</small></div>
+<div class="card"><b>4. Prompt Tron</b><small>Production prompt systems, schemas and recovery loops.</small></div>
+<div class="card"><b>5. When the AI Says It’s Done and It Isn’t</b><small>Evidence-driven verification for generated work.</small></div>
+<div class="card"><b>6. Agent Swarms in the Real World</b><small>Orchestration, boundaries, critics and recovery.</small></div>
+<div class="card"><b>7. Browser Games That Shouldn’t Be Possible</b><small>WebGL2, streaming, controls, powers and optimization.</small></div>
+<div class="card"><b>8. Fake It With Pixels, Not Performance</b><small>Impostors, facade textures, baked detail and rendering cheats.</small></div>
+<div class="card"><b>9. One Image to a 3D World</b><small>Validated reconstruction and GLB export pipelines.</small></div>
+<div class="card"><b>10. The MCP Builder’s Handbook</b><small>Tools, schemas, auth, testing and deployment.</small></div>
+<div class="card"><b>11. AI Archaeology</b><small>Searchable evidence systems from large document archives.</small></div>
+<div class="card"><b>12. Debate Intelligence</b><small>Speakers, claims, evidence and fact-check media systems.</small></div>
+<div class="card"><b>13. Faceless but Not Personalityless</b><small>Automated publishing that still has an identity.</small></div>
+<div class="card"><b>14. Build, Break, Recover</b><small>Failure engineering and resilient AI systems.</small></div>
+<div class="card"><b>15. AI Product Development for One-Person Teams</b><small>Operate like a larger team with structured AI assistance.</small></div>
+<div class="card"><b>16. From Prompt Engineer to AI Systems Builder</b><small>The path from prompts to integrated production systems.</small></div>
+</div></section>
+</article>
+</main>
+<footer><div class="wrap">iLLCo-AI Builder Library • Book 1 manuscript site • Chapters 1–3</div></footer>
+</body>
+</html>
