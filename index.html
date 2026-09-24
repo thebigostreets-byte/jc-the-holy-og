@@ -28,9 +28,9 @@ p{color:#cfd3da;line-height:1.45}.primary,.secondary{border:0;padding:14px 20px;
 .ability{min-height:86px;padding:10px;background:#131a26;color:#fff;border:1px solid #ffffff1c;text-align:left;cursor:pointer}.ability b{display:block;color:var(--gold);font-size:12px}.ability small{display:block;color:#9ea8b8;margin-top:4px}.ability.selected{outline:2px solid var(--gold);background:#20283a}
 #mobile{position:fixed;inset:0;z-index:12;display:none;pointer-events:none}
 .stick{position:absolute;width:132px;height:132px;border-radius:50%;background:#0b1019a6;border:1px solid #ffffff2d;pointer-events:auto;touch-action:none}
-#moveStick{left:18px;bottom:24px}#lookStick{right:18px;bottom:24px}
+#moveStick{left:max(18px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom))}#lookStick{right:max(18px,env(safe-area-inset-right));bottom:max(24px,env(safe-area-inset-bottom))}
 .knob{position:absolute;width:54px;height:54px;border-radius:50%;left:39px;top:39px;background:#ffffff26;border:1px solid #ffffff55}
-.mobile-actions{position:absolute;right:20px;bottom:174px;display:grid;grid-template-columns:repeat(2,66px);gap:8px;pointer-events:auto}.mobile-actions button{width:66px;height:54px;border:1px solid #ffffff33;background:#101724d9;color:#fff;font-size:10px;font-weight:900}.mobile-actions .cast{background:var(--gold);color:#080a0e}
+.mobile-actions{position:absolute;right:max(20px,env(safe-area-inset-right));bottom:calc(174px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(2,66px);gap:8px;pointer-events:auto}.mobile-actions button{width:66px;height:54px;border:1px solid #ffffff33;background:#101724d9;color:#fff;font-size:10px;font-weight:900}.mobile-actions .cast{background:var(--gold);color:#080a0e}
 #perf{position:absolute;right:12px;bottom:12px;padding:6px 8px;background:#0009;font-size:10px;color:#9fa8b7}
 @media(max-width:850px),(pointer:coarse){#mobile{display:block}#abilityGrid{grid-template-columns:repeat(2,minmax(0,1fr))}#power{bottom:6px;font-size:10px}.stats{font-size:9px}}
 </style>
@@ -61,7 +61,9 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/loaders/GLTFLoader.js';
 const $=id=>document.getElementById(id);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const low=(navigator.hardwareConcurrency||4)<=4||(('deviceMemory'in navigator)&&(navigator.deviceMemory||4)<=4);
+const saveData=navigator.connection?.saveData===true;
+const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const low=saveData||(navigator.hardwareConcurrency||4)<=4||(('deviceMemory'in navigator)&&(navigator.deviceMemory||4)<=4);
 const coarse=matchMedia('(pointer:coarse)').matches;
 const state={playing:false,paused:false,flight:false,health:100,grace:100,score:0,souls:0,combo:0,comboUntil:0,selected:0,yaw:0,pitch:-.18,speedBoost:0,timeScale:1,resurrection:false,shieldUntil:0};
 const input={keys:{},moveX:0,moveY:0,lookX:0,lookY:0,cast:false};
@@ -101,8 +103,11 @@ function closeWheel(){state.paused=false;$('wheel').style.display='none'}
 try{
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x8fa8bc);scene.fog=new THREE.Fog(0x8fa8bc,220,low?1100:1700);
 const camera=new THREE.PerspectiveCamera(64,innerWidth/innerHeight,.25,2200);
-const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance',alpha:false,stencil:false,depth:true});
-let pixelRatio=Math.min(devicePixelRatio,low?1:1.35);renderer.setPixelRatio(pixelRatio);renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;document.body.prepend(renderer.domElement);
+const renderCanvas=document.createElement('canvas');
+const gl=renderCanvas.getContext('webgl2',{alpha:false,antialias:false,depth:true,stencil:false,powerPreference:'high-performance',failIfMajorPerformanceCaveat:false});
+if(!gl)throw new Error('WebGL2 is required for the JC master runtime');
+const renderer=new THREE.WebGLRenderer({canvas:renderCanvas,context:gl,antialias:false,powerPreference:'high-performance',alpha:false,stencil:false,depth:true});
+let pixelRatio=Math.min(devicePixelRatio,low?1:1.35);if(saveData)pixelRatio=Math.min(pixelRatio,.9);renderer.setPixelRatio(pixelRatio);renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;document.body.prepend(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0xe1f1ff,0x4c3b2a,2.1));const sun=new THREE.DirectionalLight(0xfff0d4,2.4);sun.position.set(-220,520,180);scene.add(sun);
 
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(2600,2600),new THREE.MeshLambertMaterial({color:0x9e865f}));ground.rotation.x=-Math.PI/2;scene.add(ground);
@@ -113,10 +118,10 @@ for(const z of [-900,-600,-300,0,300,600,900]){const r=new THREE.Mesh(new THREE.
 const buildingGeo=new THREE.BoxGeometry(1,1,1);
 const textureLoader=new THREE.TextureLoader();
 const facadePaths=[
- '/assets/facades/hotel.jpg',
- '/assets/facades/holy.jpg',
- '/assets/facades/demonic.jpg',
- '/assets/facades/neon.jpg'
+ './assets/facades/hotel.jpg',
+ './assets/facades/holy.jpg',
+ './assets/facades/demonic.jpg',
+ './assets/facades/neon.jpg'
 ];
 const facadeTextures=facadePaths.map((src)=>{
  const tex=textureLoader.load(src,()=>{tex.needsUpdate=true},undefined,(err)=>console.warn('Facade texture unavailable',src,err));
@@ -215,7 +220,7 @@ gltfLoader.load('./assets/models/jc.glb?v=jc-player-v1',(gltf)=>{
 });
 const assetRegistry=new Map();
 const assetFallbackMaterial=new THREE.MeshLambertMaterial({color:0x5c6573,transparent:true,opacity:.72});
-let nextAssetStream=0;
+let nextAssetStream=0,activeAssetLoads=0,maxConcurrentAssetLoads=2,assetRetryMs=30000;
 function applyAssetTransform(root,def){
  const p=def.position||[0,0,0],r=def.rotation||[0,0,0],s=def.scale||[1,1,1];
  root.position.set(Number(p[0])||0,Number(p[1])||0,Number(p[2])||0);
@@ -233,15 +238,17 @@ function disposeObject(root){
  root.traverse?.(o=>{o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach(m=>m?.dispose?.());else o.material?.dispose?.()});
 }
 function loadAsset(rec,now){
- const def=rec.def;if(rec.loading||rec.model||def.status!=='ready'||!def.src||now<(rec.retryAt||0))return;
- rec.loading=true;
+ const def=rec.def;if(rec.loading||rec.model||def.status!=='ready'||!def.src||now<(rec.retryAt||0)||activeAssetLoads>=maxConcurrentAssetLoads)return;
+ rec.loading=true;activeAssetLoads++;
+ const settle=()=>{rec.loading=false;activeAssetLoads=Math.max(0,activeAssetLoads-1)};
  gltfLoader.load(def.src,(gltf)=>{
-   const model=gltf.scene||gltf.scenes?.[0];if(!model){rec.loading=false;rec.failed=true;rec.retryAt=performance.now()+30000;if(rec.fallback)rec.fallback.visible=true;console.warn('GLB has no scene:',def.id);return;}
+   const model=gltf.scene||gltf.scenes?.[0];
+   if(!model){settle();rec.failed=true;rec.retryAt=performance.now()+assetRetryMs;if(rec.fallback)rec.fallback.visible=true;console.warn('GLB has no scene:',def.id);return;}
    applyAssetTransform(model,def);model.userData.assetId=def.id;scene.add(model);
-   rec.model=model;rec.loading=false;rec.failed=false;if(rec.fallback)rec.fallback.visible=false;
+   rec.model=model;settle();rec.failed=false;if(rec.fallback)rec.fallback.visible=false;
  },undefined,(error)=>{
    console.warn('GLB unavailable, keeping fallback:',def.id,def.src,error);
-   rec.loading=false;rec.failed=true;rec.retryAt=performance.now()+30000;if(rec.fallback)rec.fallback.visible=true;
+   settle();rec.failed=true;rec.retryAt=performance.now()+assetRetryMs;if(rec.fallback)rec.fallback.visible=true;
  });
 }
 function unloadAsset(rec){
@@ -263,6 +270,8 @@ async function initAssetStreaming(){
    const response=await fetch('./assets/models/manifest.json?build=glb-stream-v1',{cache:'no-store'});
    if(!response.ok)throw new Error('manifest HTTP '+response.status);
    const manifest=await response.json(),defaults=manifest.defaults||{};
+   maxConcurrentAssetLoads=clamp(Number(defaults.maxConcurrentLoads)||2,1,4);
+   assetRetryMs=Math.max(5000,Number(defaults.retryMs)||30000);
    for(const def of manifest.assets||[]){
      const fallback=makeAssetFallback(def);
      assetRegistry.set(def.id,{def,fallback,model:null,loading:false,failed:false,retryAt:0,loadDistance:def.loadDistance||defaults.loadDistance||420,unloadDistance:def.unloadDistance||defaults.unloadDistance||620});
@@ -321,7 +330,8 @@ function toggleFlight(){state.flight=!state.flight;notice(state.flight?'FLIGHT O
 const vel=new THREE.Vector3(),forward=new THREE.Vector3(),right=new THREE.Vector3();
 let prev=performance.now(),frames=0,fpsAt=prev,lastGamepadButtons=[],drag=false,lastX=0,lastY=0;
 function pollGamepad(){
- const gp=navigator.getGamepads?.()[0];if(!gp)return;
+ const gp=navigator.getGamepads?.()[0];
+ if(!gp){input.moveX=0;input.moveY=0;return;}
  const dz=.18,ax=v=>Math.abs(v)>dz?v:0;input.moveX=ax(gp.axes[0]||0);input.moveY=-ax(gp.axes[1]||0);state.yaw-=ax(gp.axes[2]||0)*.035;state.pitch=clamp(state.pitch-ax(gp.axes[3]||0)*.025,-.65,.35);
  const b=i=>!!gp.buttons[i]?.pressed,edge=i=>b(i)&&!lastGamepadButtons[i];
  if(edge(2)||edge(7))castAbility();if(edge(3))toggleFlight();if(edge(4))openWheel();if(edge(14))selectAbility(state.selected-1);if(edge(15))selectAbility(state.selected+1);
@@ -329,13 +339,16 @@ function pollGamepad(){
  lastGamepadButtons=gp.buttons.map(x=>x.pressed)
 }
 function update(dt,now){
- if(!state.playing||state.paused)return;pollGamepad();dt*=state.timeScale;
+ if(!state.playing)return;
  if(now>=nextAssetStream){streamAssets(now);nextAssetStream=now+500;}
+ if(state.paused||state.inVehicle)return;
+ pollGamepad();dt*=state.timeScale;
  const k=input.keys;let mx=(k.KeyD?1:0)-(k.KeyA?1:0)+input.moveX,my=(k.KeyW?1:0)-(k.KeyS?1:0)+input.moveY;
  const len=Math.hypot(mx,my);if(len>1){mx/=len;my/=len}
  forward.set(Math.sin(state.yaw),0,-Math.cos(state.yaw));right.set(Math.cos(state.yaw),0,Math.sin(state.yaw));vel.set(0,0,0).addScaledVector(forward,my).addScaledVector(right,mx);
  const fast=k.ShiftLeft||now<state.speedBoost;const speed=(state.flight?(fast?52:25):(fast?18:10))*dt;if(vel.lengthSq())player.position.addScaledVector(vel,speed);
  if(state.flight){if(k.Space)player.position.y+=22*dt;if(k.ControlLeft)player.position.y-=22*dt;player.position.y=clamp(player.position.y,.2,180)}else{player.position.y=Math.max(0,player.position.y-18*dt)}
+ player.position.x=clamp(player.position.x,-1250,1250);player.position.z=clamp(player.position.z,-1250,1250);
  if(now>state.shieldUntil)shield.visible=false;
  if(angel.visible){angel.position.lerp(new THREE.Vector3(player.position.x+2.2,player.position.y+3.2,player.position.z+1.8),.08)}
  collectRadius(2.1);
@@ -350,7 +363,7 @@ function update(dt,now){
  if(now>state.comboUntil)state.combo=0;$('combo').style.opacity=state.combo>=2?1:0;$('combo').textContent='x'+Math.min(8,state.combo)+' FLOW';
  state.grace=clamp(state.grace+dt*1.6,0,100);$('health').style.width=state.health+'%';$('grace').style.width=state.grace+'%';$('score').textContent=String(state.score).padStart(6,'0');$('souls').textContent=state.souls;$('mode').textContent=state.flight?'FLIGHT':'GROUND'
 }
-function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-prev)/1000);prev=now;update(dt,now);renderer.render(scene,camera);frames++;if(now-fpsAt>1000){const fps=frames*1000/(now-fpsAt);$('fps').textContent=Math.round(fps);frames=0;fpsAt=now;if(fps<38&&pixelRatio>.72){pixelRatio=Math.max(.72,pixelRatio-.08);renderer.setPixelRatio(pixelRatio);renderer.setSize(innerWidth,innerHeight,false)}$('perf').textContent='render '+pixelRatio.toFixed(2)+'x · '+(low?'lean':'balanced')+' · GLB '+(window.JC_ASSETS?.loaded||0)+'/'+(window.JC_ASSETS?.total||0)}}
+function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-prev)/1000);prev=now;update(dt,now);renderer.render(scene,camera);frames++;if(now-fpsAt>1000){const fps=frames*1000/(now-fpsAt);$('fps').textContent=Math.round(fps);frames=0;fpsAt=now;if(fps<38&&pixelRatio>.72){pixelRatio=Math.max(.72,pixelRatio-.08);renderer.setPixelRatio(pixelRatio);renderer.setSize(innerWidth,innerHeight,false)}$('perf').textContent='render '+pixelRatio.toFixed(2)+'x · '+(low?'lean':'balanced')+' · GLB '+(window.JC_ASSETS?.loaded||0)+'/'+(window.JC_ASSETS?.total||0)+' · Q '+activeAssetLoads+'/'+maxConcurrentAssetLoads}}
 requestAnimationFrame(loop);
 
 addEventListener('keydown',e=>{if(['Tab','Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();input.keys[e.code]=true;if(e.repeat)return;if(e.code==='Tab')openWheel();if(e.code==='Escape')closeWheel();if(e.code==='KeyF')toggleFlight();if(e.code==='KeyX')castAbility();if(e.code==='BracketLeft')selectAbility(state.selected-1);if(e.code==='BracketRight')selectAbility(state.selected+1);if(e.code==='KeyQ'){state.speedBoost=performance.now()+1200;pulse(0xffef9d,10)}if(e.code==='KeyV'){const i=abilities.findIndex(a=>a[3]==='slam');selectAbility(i);castAbility()}if(/^Digit[0-9]$/.test(e.code)){const n=e.code==='Digit0'?9:Number(e.code.slice(-1))-1;if(n>=0&&n<abilities.length)selectAbility(n)}});
@@ -358,6 +371,7 @@ addEventListener('keyup',e=>input.keys[e.code]=false);
 renderer.domElement.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;lastY=e.clientY});
 addEventListener('pointerup',()=>drag=false);addEventListener('pointermove',e=>{if(!drag||coarse)return;state.yaw-=(e.clientX-lastX)*.004;state.pitch=clamp(state.pitch-(e.clientY-lastY)*.003,-.65,.35);lastX=e.clientX;lastY=e.clientY});
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight,false)});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){input.moveX=0;input.moveY=0;input.keys={}}});
 
 function bindStick(id,cb){
  const root=$(id),knob=root.querySelector('.knob');let pid=null,cx=0,cy=0;
