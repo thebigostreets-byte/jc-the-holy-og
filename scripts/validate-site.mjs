@@ -35,29 +35,40 @@ for (const facade of ['hotel.jpg','holy.jpg','demonic.jpg','neon.jpg']) {
   if (!index.includes(`./assets/facades/${facade}`)) errors.push(`index.html must reference ${facade} relatively`);
 }
 
+if (!(Number.isInteger(manifest.version) && manifest.version >= 1)) errors.push('Manifest version must be a positive integer');
+if (manifest.coordinateSystem !== 'local-game-meters') errors.push('Manifest coordinateSystem must remain local-game-meters');
 const defaults = manifest.defaults || {};
 if (!(Number(defaults.maxConcurrentLoads) >= 1 && Number(defaults.maxConcurrentLoads) <= 8)) errors.push('Manifest maxConcurrentLoads must be between 1 and 8');
 if (!(Number(defaults.retryMs) >= 1000)) errors.push('Manifest retryMs must be at least 1000ms');
 if (!(Number(defaults.loadDistance) > 0)) errors.push('Manifest default loadDistance must be positive');
 if (!(Number(defaults.unloadDistance) > Number(defaults.loadDistance))) errors.push('Manifest default unloadDistance must exceed loadDistance');
+if (!['box'].includes(defaults.fallback)) errors.push('Manifest default fallback must be a supported type');
 if (!Array.isArray(manifest.assets)) errors.push('Manifest assets must be an array');
 
 const finiteVec = (value, length) => Array.isArray(value) && value.length === length && value.every(Number.isFinite);
 const ids = new Set();
+const names = new Set();
 const sources = new Set();
 for (const asset of manifest.assets || []) {
-  if (!asset?.id) errors.push('Manifest asset is missing id');
+  if (!asset?.id || typeof asset.id !== 'string' || !/^[a-z0-9][a-z0-9-]*$/.test(asset.id)) errors.push('Manifest asset has an invalid id');
   else if (ids.has(asset.id)) errors.push(`Duplicate manifest asset id: ${asset.id}`);
   else ids.add(asset.id);
 
+  if (!asset?.name || typeof asset.name !== 'string' || !asset.name.trim()) errors.push(`Manifest asset has no usable name: ${asset?.id || 'unknown asset'}`);
+  else if (names.has(asset.name.trim().toLowerCase())) errors.push(`Duplicate manifest asset name: ${asset.name}`);
+  else names.add(asset.name.trim().toLowerCase());
+
   if (!['planned', 'ready'].includes(asset?.status)) errors.push(`Invalid asset status for ${asset?.id || 'unknown asset'}`);
   if (asset?.status === 'ready' && !asset?.src) errors.push(`Ready asset has no src: ${asset.id}`);
-  if (asset?.src && (/^(?:\/|\\)/.test(asset.src) || asset.src.includes('..'))) errors.push(`Unsafe/non-portable asset src: ${asset.id}`);
+  if (asset?.status === 'planned' && asset?.src) errors.push(`Planned asset must not advertise a loadable src: ${asset.id}`);
+  if (asset?.src && (!asset.src.toLowerCase().endsWith('.glb') || /^(?:\/|\\)/.test(asset.src) || asset.src.includes('..'))) errors.push(`Unsafe/non-GLB asset src: ${asset.id}`);
   if (asset?.src && sources.has(asset.src)) errors.push(`Duplicate manifest asset src: ${asset.src}`);
   if (asset?.src) sources.add(asset.src);
   if (!finiteVec(asset?.position, 3)) errors.push(`Invalid position vector for ${asset?.id || 'unknown asset'}`);
   if (!finiteVec(asset?.rotation, 3)) errors.push(`Invalid rotation vector for ${asset?.id || 'unknown asset'}`);
-  if (!finiteVec(asset?.scale, 3) || asset.scale.some(v => v <= 0)) errors.push(`Invalid scale vector for ${asset?.id || 'unknown asset'}`);
+  if (!finiteVec(asset?.scale, 3) || asset.scale.some(v => v <= 0 || v > 1000)) errors.push(`Invalid scale vector for ${asset?.id || 'unknown asset'}`);
+  if (!['low','normal','high'].includes(asset?.priority)) errors.push(`Invalid streaming priority for ${asset?.id || 'unknown asset'}`);
+  if (asset?.fallback?.type !== 'box') errors.push(`Unsupported fallback type for ${asset?.id || 'unknown asset'}`);
   if (asset?.fallback?.type === 'box' && (!finiteVec(asset.fallback.size, 3) || asset.fallback.size.some(v => v <= 0))) errors.push(`Invalid fallback box for ${asset?.id || 'unknown asset'}`);
 
   const loadDistance = Number(asset?.loadDistance ?? defaults.loadDistance);
