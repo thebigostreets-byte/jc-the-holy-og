@@ -107,7 +107,9 @@ const renderCanvas=document.createElement('canvas');
 const gl=renderCanvas.getContext('webgl2',{alpha:false,antialias:false,depth:true,stencil:false,powerPreference:'high-performance',failIfMajorPerformanceCaveat:false});
 if(!gl)throw new Error('WebGL2 is required for the JC master runtime');
 const renderer=new THREE.WebGLRenderer({canvas:renderCanvas,context:gl,antialias:false,powerPreference:'high-performance',alpha:false,stencil:false,depth:true});
-let pixelRatio=Math.min(devicePixelRatio,low?1:1.35);if(saveData)pixelRatio=Math.min(pixelRatio,.9);renderer.setPixelRatio(pixelRatio);renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;document.body.prepend(renderer.domElement);
+const maxPixelRatio=saveData?Math.min(devicePixelRatio,.9):Math.min(devicePixelRatio,low?1:1.35);
+let pixelRatio=maxPixelRatio;
+renderer.setPixelRatio(pixelRatio);renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;document.body.prepend(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0xe1f1ff,0x4c3b2a,2.1));const sun=new THREE.DirectionalLight(0xfff0d4,2.4);sun.position.set(-220,520,180);scene.add(sun);
 
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(2600,2600),new THREE.MeshLambertMaterial({color:0x9e865f}));ground.rotation.x=-Math.PI/2;scene.add(ground);
@@ -327,8 +329,8 @@ function castAbility(){
 }
 function toggleFlight(){state.flight=!state.flight;notice(state.flight?'FLIGHT ON':'FLIGHT OFF')}
 
-const vel=new THREE.Vector3(),forward=new THREE.Vector3(),right=new THREE.Vector3();
-let prev=performance.now(),frames=0,fpsAt=prev,lastGamepadButtons=[],drag=false,lastX=0,lastY=0;
+const vel=new THREE.Vector3(),forward=new THREE.Vector3(),right=new THREE.Vector3(),cameraTarget=new THREE.Vector3(),angelTarget=new THREE.Vector3();
+let prev=performance.now(),frames=0,fpsAt=prev,lastGamepadButtons=[],drag=false,lastX=0,lastY=0,highFpsWindows=0;
 function pollGamepad(){
  const gp=navigator.getGamepads?.()[0];
  if(!gp){input.moveX=0;input.moveY=0;return;}
@@ -350,20 +352,20 @@ function update(dt,now){
  if(state.flight){if(k.Space)player.position.y+=22*dt;if(k.ControlLeft)player.position.y-=22*dt;player.position.y=clamp(player.position.y,.2,180)}else{player.position.y=Math.max(0,player.position.y-18*dt)}
  player.position.x=clamp(player.position.x,-1250,1250);player.position.z=clamp(player.position.z,-1250,1250);
  if(now>state.shieldUntil)shield.visible=false;
- if(angel.visible){angel.position.lerp(new THREE.Vector3(player.position.x+2.2,player.position.y+3.2,player.position.z+1.8),.08)}
+ if(angel.visible){angelTarget.set(player.position.x+2.2,player.position.y+3.2,player.position.z+1.8);angel.position.lerp(angelTarget,.08)}
  collectRadius(2.1);
  player.rotation.y=state.yaw;
  const closeMode=(state.cameraMode||0)===2,wideMode=(state.cameraMode||0)===1;
  const camDist=state.flight?(closeMode?9.5:wideMode?18:12):(closeMode?6.6:wideMode?13:8.2);
  const camHeight=state.flight?(closeMode?5.2:wideMode?8.4:6.2):(closeMode?3.9:wideMode?6.8:4.7);
  const lookHeight=state.flight?2.8:2.65;
- const target=new THREE.Vector3(player.position.x-Math.sin(state.yaw)*camDist,player.position.y+camHeight,player.position.z+Math.cos(state.yaw)*camDist);
- camera.position.lerp(target,.16);camera.lookAt(player.position.x,player.position.y+lookHeight,player.position.z);
+ cameraTarget.set(player.position.x-Math.sin(state.yaw)*camDist,player.position.y+camHeight,player.position.z+Math.cos(state.yaw)*camDist);
+ camera.position.lerp(cameraTarget,.16);camera.lookAt(player.position.x,player.position.y+lookHeight,player.position.z);
  for(let i=fx.length-1;i>=0;i--){const f=fx[i],age=(now-f.born)/f.life;f.m.scale.setScalar(1+age*f.r);f.m.material.opacity=1-age;if(age>=1){scene.remove(f.m);f.m.geometry.dispose();f.m.material.dispose();fx.splice(i,1)}}
  if(now>state.comboUntil)state.combo=0;$('combo').style.opacity=state.combo>=2?1:0;$('combo').textContent='x'+Math.min(8,state.combo)+' FLOW';
  state.grace=clamp(state.grace+dt*1.6,0,100);$('health').style.width=state.health+'%';$('grace').style.width=state.grace+'%';$('score').textContent=String(state.score).padStart(6,'0');$('souls').textContent=state.souls;$('mode').textContent=state.flight?'FLIGHT':'GROUND'
 }
-function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-prev)/1000);prev=now;update(dt,now);renderer.render(scene,camera);frames++;if(now-fpsAt>1000){const fps=frames*1000/(now-fpsAt);$('fps').textContent=Math.round(fps);frames=0;fpsAt=now;if(fps<38&&pixelRatio>.72){pixelRatio=Math.max(.72,pixelRatio-.08);renderer.setPixelRatio(pixelRatio);renderer.setSize(innerWidth,innerHeight,false)}$('perf').textContent='render '+pixelRatio.toFixed(2)+'x · '+(low?'lean':'balanced')+' · GLB '+(window.JC_ASSETS?.loaded||0)+'/'+(window.JC_ASSETS?.total||0)+' · Q '+activeAssetLoads+'/'+maxConcurrentAssetLoads}}
+function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-prev)/1000);prev=now;update(dt,now);renderer.render(scene,camera);frames++;if(now-fpsAt>1000){const fps=frames*1000/(now-fpsAt);$('fps').textContent=Math.round(fps);frames=0;fpsAt=now;if(fps<38&&pixelRatio>.72){highFpsWindows=0;pixelRatio=Math.max(.72,pixelRatio-.08);renderer.setPixelRatio(pixelRatio);renderer.setSize(innerWidth,innerHeight,false)}else if(fps>57&&pixelRatio<maxPixelRatio){highFpsWindows++;if(highFpsWindows>=4){pixelRatio=Math.min(maxPixelRatio,pixelRatio+.05);renderer.setPixelRatio(pixelRatio);renderer.setSize(innerWidth,innerHeight,false);highFpsWindows=0}}else{highFpsWindows=0}$('perf').textContent='render '+pixelRatio.toFixed(2)+'x · '+(low?'lean':'balanced')+' · GLB '+(window.JC_ASSETS?.loaded||0)+'/'+(window.JC_ASSETS?.total||0)+' · Q '+activeAssetLoads+'/'+maxConcurrentAssetLoads}}
 requestAnimationFrame(loop);
 
 addEventListener('keydown',e=>{if(['Tab','Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();input.keys[e.code]=true;if(e.repeat)return;if(e.code==='Tab')openWheel();if(e.code==='Escape')closeWheel();if(e.code==='KeyF')toggleFlight();if(e.code==='KeyX')castAbility();if(e.code==='BracketLeft')selectAbility(state.selected-1);if(e.code==='BracketRight')selectAbility(state.selected+1);if(e.code==='KeyQ'){state.speedBoost=performance.now()+1200;pulse(0xffef9d,10)}if(e.code==='KeyV'){const i=abilities.findIndex(a=>a[3]==='slam');selectAbility(i);castAbility()}if(/^Digit[0-9]$/.test(e.code)){const n=e.code==='Digit0'?9:Number(e.code.slice(-1))-1;if(n>=0&&n<abilities.length)selectAbility(n)}});
@@ -371,7 +373,8 @@ addEventListener('keyup',e=>input.keys[e.code]=false);
 renderer.domElement.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;lastY=e.clientY});
 addEventListener('pointerup',()=>drag=false);addEventListener('pointermove',e=>{if(!drag||coarse)return;state.yaw-=(e.clientX-lastX)*.004;state.pitch=clamp(state.pitch-(e.clientY-lastY)*.003,-.65,.35);lastX=e.clientX;lastY=e.clientY});
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight,false)});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){input.moveX=0;input.moveY=0;input.keys={}}});
+renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();state.playing=false;$('fatal').style.display='grid';$('fatalText').textContent='Graphics context was lost. Tap RETRY to restart the WebGL2 runtime.'});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){input.moveX=0;input.moveY=0;input.keys={};drag=false}});
 
 function bindStick(id,cb){
  const root=$(id),knob=root.querySelector('.knob');let pid=null,cx=0,cy=0;
@@ -383,12 +386,12 @@ bindStick('moveStick',(x,y)=>{input.moveX=x;input.moveY=y});bindStick('lookStick
 $('mFly').onclick=toggleFlight;$('mPowers').onclick=openWheel;$('mBurst').onclick=()=>{state.speedBoost=performance.now()+1400;pulse(0xffef9d,10)};$('mCast').onclick=castAbility;
 $('closeWheel').onclick=closeWheel;$('powers').onclick=openWheel;$('wheel').addEventListener('click',e=>{if(e.target===$('wheel'))closeWheel()});
 $('quality').textContent=low?'LEAN':'BALANCED';
-window.JC_GAME={scene,camera,renderer,player,state,input,abilities,selectAbility,castAbility,version:'master-webgl2-v6-stream-safe'};
+window.JC_GAME={scene,camera,renderer,player,state,input,abilities,selectAbility,castAbility,version:'master-webgl2-v7-adaptive-recovery'};
 window.JC_VISUAL_CHEATS={facadePlanes:cheatGroup.children.length,description:'GitHub-hosted AI facade wallpapers on instanced buildings plus distant impostors, GLB streaming and safe fallbacks'};
 $('bootText').textContent='WebGL2 master runtime ready';setTimeout(()=>{$('boot').style.display='none';$('menu').style.display='grid'},100);
 $('start').onclick=()=>{state.playing=true;$('menu').style.display='none';$('hud').style.display='block';notice('RESTORE SOULS · BUILD YOUR FLOW')}
 }catch(err){console.error(err);$('boot').style.display='none';$('fatal').style.display='grid';$('fatalText').textContent='WebGL2 startup error: '+(err?.message||err)}
 </script>
-<script type="module" src="./master-upgrade.js?v=20260921-master-v4"></script>
+<script type="module" src="./master-upgrade.js?v=20260923-master-v6"></script>
 </body>
 </html>
