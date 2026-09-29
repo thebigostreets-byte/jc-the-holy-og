@@ -26,7 +26,7 @@ body.jc-playing #jcHud{display:block}
 #jcTarget{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#ffe29c;font-size:14px;text-shadow:0 2px 4px #000;text-align:center}
 #jcTarget b{display:block;font-size:32px;font-weight:normal}#jcFlight{position:absolute;right:12px;top:158px;background:#091018dc;padding:8px 12px;font-variant-numeric:tabular-nums}
 #jcHud .jc-score button{padding:6px 9px;margin-top:6px;font-size:12px}
-@media(max-height:520px){#jcHud .jc-top{top:4px}#jcHud .jc-score{padding:5px 8px}#jcHud .jc-ability{top:4px;right:125px}#jcFlight{top:78px}#jcHud .jc-touch{bottom:8px}}
+@media(max-height:520px){#jcHud .jc-top{top:4px}#jcHud .jc-score{padding:5px 8px}#jcHud .jc-ability{top:4px;right:125px}#jcFlight{top:78px}#jcHud .jc-touch{bottom:max(8px,env(safe-area-inset-bottom))}}
 #jcHud .jc-top{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:start;gap:12px}
 #jcHud .jc-score{padding:10px 13px;background:#091018df;border-left:3px solid #f9d878;line-height:1.6}
 #jcHud .jc-score strong{font-size:18px}
@@ -36,9 +36,12 @@ body.jc-playing #jcHud{display:block}
 #jcHud .jc-dpad{display:none;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,52px);gap:4px;pointer-events:auto}
 #jcHud .jc-dpad button{padding:0;touch-action:none}
 #jcHud .jc-dpad button:first-child{grid-column:2}
-#jcHud .jc-actions{display:flex;gap:5px;pointer-events:auto}
-#jcHud .jc-actions button{min-height:56px;touch-action:none}
-#jcHud .jc-actions{flex-wrap:wrap;max-width:250px;justify-content:end}
+#jcHud .jc-actions{pointer-events:auto}
+#jcHud .jc-actions{display:grid;grid-template-columns:repeat(2,minmax(70px,1fr));gap:6px;width:158px;max-height:44vh;overflow-y:auto;overscroll-behavior:contain;justify-content:stretch}
+#jcHud .jc-actions button{min-height:48px;touch-action:none}
+#jcHud .jc-extras{display:none;grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+#jcHud .jc-extras.open{display:grid}
+#jcHud .jc-extras button{min-width:0;padding:7px 4px}
 #jcHud .jc-ability{position:absolute;right:12px;top:70px;padding:9px 12px;background:#091018e8;border:1px solid #f9d87877;max-width:260px}
 #jcHud .jc-ability strong{display:block;color:#ffdf91}
 #jcWheel{display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(680px,96vw);max-height:min(75vh,680px);overflow:auto;background:#101820f5;border:1px solid #bb9771;padding:14px;pointer-events:auto}
@@ -51,13 +54,13 @@ body.jc-playing #jcHud{display:block}
 #jcWheel .jc-wheel-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 #jcPlayReturn{display:none;position:fixed;top:12px;right:12px;z-index:7}
 body:not(.jc-playing) #jcPlayReturn{display:block}
-@media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{display:flex}#jcHud .jc-hint{display:none}#jcHud .jc-score{font-size:12px}#jcHud .jc-score strong{font-size:15px}#jcWheel .jc-list{grid-template-columns:repeat(2,minmax(0,1fr))}#jcHud .jc-ability{top:76px;right:8px;font-size:12px}#jcHud .jc-actions{max-width:calc(100vw - 150px)}#jcHud .jc-actions button{padding:8px;font-size:11px;min-height:44px}}
+@media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{display:flex;bottom:calc(env(safe-area-inset-bottom) + 12px)}#jcHud .jc-hint{display:none}#jcHud .jc-score{font-size:12px}#jcHud .jc-score strong{font-size:15px}#jcWheel .jc-list{grid-template-columns:repeat(2,minmax(0,1fr))}#jcHud .jc-ability{top:76px;right:8px;font-size:12px}#jcHud .jc-actions{width:146px;max-height:42vh;gap:5px}#jcHud .jc-actions button{padding:7px 5px;font-size:12px;min-height:46px}}
 `;
 document.head.append(style);
 
 const hud = document.createElement('div');
 hud.id = 'jcHud';
-hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · C talk · Drag to look · Shift sprint · Space dash / rise · Ctrl descend · F fly · G boost · V dive · B brake · K building target · L light target · T choose teleport · Q cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Movement joystick"><i></i></div><div class="jc-dpad"><button data-move="w" aria-label="Forward">▲</button><button data-move="a" aria-label="Left">◀</button><button data-move="s" aria-label="Back">▼</button><button data-move="d" aria-label="Right">▶</button></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="lock" type="button">TARGET</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="wheel" type="button">39 MIRACLES</button></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>39 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div>`;
+hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look · Shift sprint · Space dash / rise · Ctrl descend · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Movement joystick"><i></i></div><div class="jc-dpad"><button data-move="w" aria-label="Forward">▲</button><button data-move="a" aria-label="Left">◀</button><button data-move="s" aria-label="Back">▼</button><button data-move="d" aria-label="Right">▶</button></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="wheel" type="button">39 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>39 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div>`;
 document.body.append(hud);
 style.textContent += '#jcNpcReadout{position:absolute;left:12px;bottom:144px;max-width:min(390px,78vw);padding:7px 10px;background:#091018d9;border-left:2px solid #c4ffee;color:#c4ffee;font-size:11px;letter-spacing:.4px;pointer-events:auto}#jcNpcTalkButton{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 178px);transform:translateX(-50%);display:none;pointer-events:auto;padding:11px 16px;border:1px solid #f1d17e;border-radius:8px;background:#111b2aee;color:#ffe6a4;font-weight:900;box-shadow:0 6px 18px #0009;z-index:2}#jcNpcTalkButton.available{display:block}@media(pointer:fine){#jcNpcTalkButton{display:none!important}}';
 const npcReadout=document.createElement('div');npcReadout.id='jcNpcReadout';npcReadout.textContent='CITY FOLKS · OBSERVING';hud.append(npcReadout);
@@ -933,12 +936,12 @@ function frameStep(now) {
   if (!playing) return;
   const paused=wheel.classList.contains('open');
   const pad=Array.from(navigator.getGamepads?.()||[]).find(Boolean);
-  analog.x=touchStick.x;analog.y=touchStick.y;
+  analog.x=stickAxis(touchStick.x,.12);analog.y=stickAxis(touchStick.y,.12);
   if(pad){
     if(!paused){
       analog.x=THREE.MathUtils.clamp(analog.x+stickAxis(pad.axes[0]||0),-1,1);
       analog.y=THREE.MathUtils.clamp(analog.y+stickAxis(pad.axes[1]||0),-1,1);
-      yaw-=stickAxis(pad.axes[2]||0)*dt*2.5;
+      yaw-=stickAxis(pad.axes[2]||0)*dt*1.65;
       for(const [button,key] of [[6,'Control'],[7,'Space'],[10,'Shift'],[11,'b']]){if(pad.buttons[button]?.pressed)padKeys.add(key);else padKeys.delete(key);}
     }
     for(const [button,id] of [[0,'flight'],[1,selectedAbility],[2,'dash'],[3,'teleport'],[4,'target'],[5,'hypersonic'],[8,'wheel']]){
@@ -965,8 +968,8 @@ function frameStep(now) {
   const boost = hypersonic && flying && grace > 0 && !braking;
   grace = THREE.MathUtils.clamp(grace + (boost ? -24 : sprint ? -20 : now < graceSurgeUntil ? 24 : now < sanctuaryUntil ? 19 : now < shieldUntil ? 17 : 12) * dt, 0, 100);
   if (boost && grace <= 0) hypersonic=false;
-  const speed=(diving?34:boost?72:flying?24:sprint?13:7)*(now<timeScaleUntil?1.5:1);
-  const steering = braking?26:desired.lengthSq()<.01?16:flying?(boost?7:12):18;
+  const speed=(diving?34:boost?72:flying?24:sprint?9:4.8)*(now<timeScaleUntil?1.5:1);
+  const steering = braking?38:desired.lengthSq()<.01?(flying?10:24):flying?(boost?20:28):32;
   velocity.lerp(desired.clone().multiplyScalar(braking?0:speed), response(steering,dt));
   moveSafely(velocity.x*dt,velocity.z*dt,now<phaseUntil);
   const previousHeight=flightHeight;
@@ -1167,7 +1170,7 @@ const group = game.loaded.get('C15_R14');
   for(const type of ['pointerup','pointercancel'])addEventListener(type,e=>{if(e.pointerId===lookPointer){dragging=false;lookPointer=null;}});
   addEventListener('pointermove', e => {
     if (!dragging || !playing || e.pointerId!==lookPointer) return;
-    yaw -= (e.clientX - pointerX) * .004;
+    yaw -= (e.clientX - pointerX) * (coarseDevice ? 0.0034 : 0.0025);
     pointerX = e.clientX;pointerY = e.clientY;
   });
   hud.querySelectorAll('[data-move]').forEach(button => {
@@ -1189,6 +1192,8 @@ const group = game.loaded.get('C15_R14');
   hud.querySelector('[data-action="teleport"]').onclick=()=>{if(teleportAim)cast('teleport');else beginTeleportTarget();};
   hud.querySelector('[data-action="cast"]').onclick=()=>cast();
   hud.querySelector('[data-action="wheel"]').onclick=()=>toggleWheel();
+  const moreButton=hud.querySelector('[data-action="more"]'),extras=hud.querySelector('.jc-extras');
+  moreButton.onclick=()=>{const open=extras.classList.toggle('open');moreButton.setAttribute('aria-expanded',String(open));moreButton.textContent=open?'LESS':'MORE';};
   hud.querySelector('#jcWheelClose').onclick=()=>wheel.classList.remove('open');
   renderWheel();
   playReturn.textContent = 'PLAY AS JC';

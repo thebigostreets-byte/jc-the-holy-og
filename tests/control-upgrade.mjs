@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import * as THREE from '../three.module.js';
+import {stickAxis,response,advanceChain} from '../jc-control-math.js';
+assert.equal(stickAxis(.12),0);assert.equal(stickAxis(-1),-1);assert.ok(stickAxis(.5)>.3&&stickAxis(.5)<.5);
+assert.equal(stickAxis(.08,.12),0,'touch stick ignores resting thumb drift');assert.ok(Math.abs(stickAxis(.56,.12)-.5)<1e-9,'touch and gamepad use the same rescaled deadzone');
+function coast(hz){let velocity=72;for(let i=0;i<hz;i++)velocity+=(0-velocity)*response(12,1/hz);return velocity;}
+assert.ok(Math.abs(coast(30)-coast(120))<1e-9);
+let chain={count:0,last:0,points:0};for(let i=1;i<=8;i++)chain=advanceChain(chain,i*3);
+assert.equal(chain.points,3600);assert.equal(chain.count,8);assert.equal(advanceChain(chain,40).count,1);
+const source=readFileSync(new URL('../jc-map-game.js',import.meta.url),'utf8');
+assert.match(source,/analog\.x=stickAxis\(touchStick\.x,\.12\);analog\.y=stickAxis\(touchStick\.y,\.12\)/,'mobile stick filters thumb drift');
+assert.match(source,/const speed=\(diving\?34:boost\?72:flying\?24:sprint\?9:4\.8\)/,'walking and running use deliberate speeds');
+assert.match(source,/steering = braking\?38:desired\.lengthSq\(\)<\.01\?\(flying\?10:24\):flying\?\(boost\?20:28\):32/,'movement responds quickly without retaining the old soft steering');
+assert.match(source,/const open=extras\.classList\.toggle\('open'\)/,'small screens can reveal secondary controls on demand');
+const start=source.indexOf('function blockedAt('),end=source.indexOf('\nlet flying',start);
+const player={position:new THREE.Vector3(0,0,0)},velocity=new THREE.Vector3(72,0,0);
+const box=new THREE.Box3(new THREE.Vector3(5,-2,-10),new THREE.Vector3(6,10,10));
+const collisionCells=new Map([['0:0',[box]],['0:-1',[box]]]);
+const context=vm.createContext({THREE,player,velocity,collisionCells,cellSize:64,Math,performance:{now:()=>1000},lastImpact:0,showPose:()=>{},feedback:()=>{}});
+vm.runInContext(source.slice(start,end),context);
+context.moveSafely(12,0);assert.ok(player.position.x<3.9,'dash cannot tunnel through a thin building');assert.equal(velocity.x,0);
+player.position.set(0,12,0);context.moveSafely(12,0);assert.ok(Math.abs(player.position.x-12)<1e-9,'flight clears roofs');
+player.position.set(0,0,0);context.moveSafely(12,0,true);assert.ok(Math.abs(player.position.x-12)<1e-9,'phase ability preserves deliberate collision bypass');
+player.position.set(0,0,0);context.moveSafely(12,5);assert.ok(player.position.z>4.9,'movement slides along a wall');
+assert.equal(readFileSync(new URL('../dist/client/jc-map-game.js',import.meta.url),'utf8'),source);
+console.log('PASS: analog deadzone, frame-rate independent braking, chain scoring/reset, swept dash collision, roof clearance, phase traversal, wall sliding, deployed source parity');
