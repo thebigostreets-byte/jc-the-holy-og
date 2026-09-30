@@ -62,7 +62,7 @@ document.head.append(style);
 
 const hud = document.createElement('div');
 hud.id = 'jcHud';
-hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Left joystick: move"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: look and steer flight pitch"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="wheel" type="button">39 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>39 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div>`;
+hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Left joystick: move"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: look and steer flight pitch"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="wheel" type="button">43 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>43 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div>`;
 document.body.append(hud);
 style.textContent += '#jcNpcReadout{position:absolute;left:12px;bottom:144px;max-width:min(390px,78vw);padding:7px 10px;background:#091018d9;border-left:2px solid #c4ffee;color:#c4ffee;font-size:11px;letter-spacing:.4px;pointer-events:auto}#jcNpcTalkButton{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 178px);transform:translateX(-50%);display:none;pointer-events:auto;padding:11px 16px;border:1px solid #f1d17e;border-radius:8px;background:#111b2aee;color:#ffe6a4;font-weight:900;box-shadow:0 6px 18px #0009;z-index:2}#jcNpcTalkButton.available{display:block}@media(pointer:fine){#jcNpcTalkButton{display:none!important}}';
 const npcReadout=document.createElement('div');npcReadout.id='jcNpcReadout';npcReadout.textContent='CITY FOLKS · OBSERVING';hud.append(npcReadout);
@@ -281,7 +281,8 @@ const runPoseSet=[31,32,33,34,35,36,37,38];
 const miraclePose = {
   flight:14,hypersonic:20,teleport:7,'beam-down':8,dash:15,hover:14,leap:18,glide:17,'sky-lift':22,skydive:19,'phase-step':7,recall:7,'time-step':7,
   'light-pulse':5,'divine-beam':8,'chain-light':8,'radiance-nova':5,shield:9,heal:9,cleanse:9,reveal:9,sunrise:8,sanctuary:9,restore:9,'grace-surge':9,shockwave:8,
-  rain:8,lightning:8,telekinesis:9,crumble:10,rebuild:9,bless:9,exorcise:8,stasis:9,vortex:5,repel:8,attract:9,'slow-time':7,'redemption-wave':12
+  rain:8,lightning:8,telekinesis:9,crumble:10,rebuild:9,bless:9,exorcise:8,stasis:9,vortex:5,repel:8,attract:9,'slow-time':7,'redemption-wave':12,
+  'heavenly-spear':8,'judgment-storm':8,singularity:5,'sonic-boom':20
 };
 let neutralTexture, cursedTextures = [], restoredTextures = [], spawnPoint, startQueued = false;
 const abilities = [
@@ -294,11 +295,12 @@ const abilities = [
   ['World','rain','Rain',20,6],['World','lightning','Lightning',24,3],['World','telekinesis','Telekinesis',18,3],['World','crumble','Crumble',28,4],
   ['World','rebuild','Rebuild',18,3],['World','bless','Bless Building',15,2],['World','exorcise','Exorcise',40,6],['World','stasis','Stasis',22,7],
   ['World','vortex','Vortex',26,5],['World','repel','Repel',12,2],['World','attract','Attract',12,2],['World','slow-time','Slow Time',24,8],['World','redemption-wave','Redemption Wave',55,12]
+  ,['Light','heavenly-spear','Heavenly Spear',38,7],['Light','judgment-storm','Judgment Storm',48,10],['World','singularity','Singularity',36,9],['Travel','sonic-boom','Sonic Boom',30,6]
 ].map(([group,id,name,cost,cooldown])=>({group,id,name,cost,cooldown}));
-const signatureAbilityIds = ['flight','hypersonic','teleport','dash','hover','leap','glide','sky-lift','skydive','phase-step','light-pulse','divine-beam','chain-light','radiance-nova','shield','heal','lightning','telekinesis','crumble','redemption-wave'];
-const castableAbilityIds = new Set(['flight','hypersonic','teleport','beam-down','dash','hover','leap','glide','sky-lift','skydive','phase-step','recall','time-step','light-pulse','divine-beam','chain-light','radiance-nova','shield','heal','cleanse','reveal','sunrise','sanctuary','restore','grace-surge','shockwave','rain','lightning','telekinesis','crumble','rebuild','bless','exorcise','stasis','vortex','repel','attract','slow-time','redemption-wave']);
-if(signatureAbilityIds.length !== 20 || signatureAbilityIds.some(id => !abilities.some(a => a.id === id) || !castableAbilityIds.has(id))) throw Error('JC signature ability contract failed');
-if (abilities.length !== 39) throw Error('JC miracle catalog must contain 39 abilities');
+const signatureAbilityIds = ['flight','hypersonic','teleport','dash','hover','leap','glide','sky-lift','skydive','phase-step','light-pulse','divine-beam','chain-light','radiance-nova','shield','heal','lightning','telekinesis','crumble','redemption-wave','heavenly-spear','judgment-storm','singularity','sonic-boom'];
+const castableAbilityIds = new Set(['flight','hypersonic','teleport','beam-down','dash','hover','leap','glide','sky-lift','skydive','phase-step','recall','time-step','light-pulse','divine-beam','chain-light','radiance-nova','shield','heal','cleanse','reveal','sunrise','sanctuary','restore','grace-surge','shockwave','rain','lightning','telekinesis','crumble','rebuild','bless','exorcise','stasis','vortex','repel','attract','slow-time','redemption-wave','heavenly-spear','judgment-storm','singularity','sonic-boom']);
+if(signatureAbilityIds.length !== 24 || signatureAbilityIds.some(id => !abilities.some(a => a.id === id) || !castableAbilityIds.has(id))) throw Error('JC signature ability contract failed');
+if (abilities.length !== 43) throw Error('JC miracle catalog must contain 43 abilities');
 
 const studioReady = new Promise(resolve => {
   const check = () => window.JC_BOOT_FAILED ? undefined : window.studio ? resolve(window.studio) : setTimeout(check, 100);
@@ -838,6 +840,7 @@ function cast(id = selectedAbility) {
   if(id==='teleport'&&!teleportTarget){beginTeleportTarget();return;}
   if((cooldowns.get(id)||0)>performance.now()){feedback('Miracle recharging');return;}
   if(grace<ability.cost){feedback(`Need ${ability.cost} grace · release boost to recover`);return;}
+  if((id==='heavenly-spear'||id==='judgment-storm')&&!lockedBuilding&&!nearbyBuildings(id==='heavenly-spear'?105:140,1).length){feedback('No building in range');return;}
   feedback(ability.name);
   const flightAbilities=new Set(['flight','hypersonic','hover','leap','glide','sky-lift','skydive','beam-down']);
   if(!flightAbilities.has(id))showPose(miraclePose[id] ?? 5, id === 'redemption-wave' ? 2400 : 800);
@@ -864,9 +867,9 @@ function cast(id = selectedAbility) {
     case 'recall':player.position.copy(spawnPoint);setFlight('recall');ringAt(player.position);break;
     case 'time-step':timeScaleUntil=performance.now()+3500;ringAt(player.position,0x9afaff,14);break;
     case 'light-pulse':pulse(false);break;
-    case 'divine-beam':strike(80);break;
-    case 'chain-light':strike(80,3);break;
-    case 'radiance-nova':near(48,20).forEach(redeem);ringAt(player.position,0xffe6af,48);break;
+    case 'divine-beam':strike(110);ringAt(player.position,0xfff0bd,18);break;
+    case 'chain-light':strike(100,4);ringAt(player.position,0x9bdcff,24);break;
+    case 'radiance-nova':near(56,8).forEach(redeem);ringAt(player.position,0xffe6af,58);cinematicLook?.impact(player.position);break;
     case 'shield':shieldUntil=performance.now()+6000;ringAt(player.position,0x9fefff,15);break;
     case 'heal':grace=Math.min(100,grace+45);ringAt(player.position,0xbaffd8,12);break;
     case 'cleanse':near(45).forEach(redeem);break;
@@ -875,9 +878,9 @@ function cast(id = selectedAbility) {
     case 'sanctuary':sanctuaryUntil=performance.now()+7000;ringAt(player.position,0xc4ffee,22);break;
     case 'restore':near(60,3).forEach(redeem);break;
     case 'grace-surge':graceSurgeUntil=performance.now()+8000;ringAt(player.position,0xffdfa6,14);break;
-    case 'shockwave':near(30,8).forEach(redeem);ringAt(player.position,0xffd18b,30);break;
+    case 'shockwave':near(40,5).forEach(redeem);ringAt(player.position,0xffd18b,42);cinematicLook?.impact(player.position);break;
     case 'rain':rainEffect();break;
-    case 'lightning':strike(120);ringAt(player.position,0xaed8ff,18);break;
+    case 'lightning':strike(130,3);ringAt(player.position,0xaed8ff,24);cinematicLook?.impact(player.position);break;
     case 'telekinesis':{const ob=near(40)[0];if(ob){const p=ob.getWorldPosition(new THREE.Vector3());beamTo(p,0x9bdcff);ringAt(p,0x9bdcff,16);const original=ob.position.y;ob.position.y+=5;setTimeout(()=>{ob.position.y=original;refreshFootprints();},900);}break;}
     case 'crumble':{const ob=lockedBuilding||near(55)[0];if(!ob){feedback('No building in range');break;}const point=ob.getWorldPosition(new THREE.Vector3());game.destroy(ob,'crumble');cinematicLook?.impact(point);refreshFootprints();ringAt(point,0xffc38e,26);feedback(`${ob.userData.buildingId} CRUMBLED · debris falling`);lockedBuilding=null;break;}
     case 'rebuild':{const ob=lockedBuilding||near(55)[0];if(ob){game.rebuild(ob);refreshFootprints();redeem(ob);feedback(`${ob.userData.buildingId} REBUILT`);lockedBuilding=null;}break;}
@@ -888,7 +891,11 @@ function cast(id = selectedAbility) {
     case 'repel':moveSouls('repel',40);ringAt(player.position,0xffb992,30);break;
     case 'attract':moveSouls('attract',55);ringAt(player.position,0xffe6b0,40);break;
     case 'slow-time':timeScaleUntil=performance.now()+7000;ringAt(player.position,0xb9d8ff,30);break;
-    case 'redemption-wave':near(90,40).forEach(redeem);ringAt(player.position,0xffe7b1,90);break;
+    case 'redemption-wave':near(105,8).forEach(redeem);ringAt(player.position,0xffe7b1,105);cinematicLook?.impact(player.position);break;
+    case 'heavenly-spear':{const ob=lockedBuilding||near(105)[0];if(!ob){feedback('No building in range');break;}const point=ob.getWorldPosition(new THREE.Vector3());point.y+=Math.max(5,ob.userData.heightMetres*.55);beamTo(point,0xffe6a5);game.destroy(ob,'explode');refreshFootprints();cinematicLook?.impact(point);ringAt(point,0xffe6a5,34);ringAt(player.position,0xfff4ce,17);feedback(`${ob.userData.buildingId} · HEAVENLY SPEAR`);lockedBuilding=null;break;}
+    case 'judgment-storm':{const targets=near(140,3);if(!targets.length){feedback('No buildings in range');break;}for(const ob of targets){const point=ob.getWorldPosition(new THREE.Vector3());point.y+=Math.max(5,ob.userData.heightMetres*.45);beamTo(point,0xb6dcff);game.destroy(ob,'crumble');ringAt(point,0xc4e6ff,24);}refreshFootprints();cinematicLook?.impact(player.position);ringAt(player.position,0xaed8ff,55);feedback(`JUDGMENT STORM · ${targets.length} IMPACTS`);break;}
+    case 'singularity':moveSouls('vortex',85);timeScaleUntil=performance.now()+1800;ringAt(player.position,0x9bdcff,72);feedback('SINGULARITY · everything pulled into the moment');break;
+    case 'sonic-boom':{setFlight('boost');const direction=desired.lengthSq()?desired.clone().normalize():forward.clone();moveSafely(direction.x*22,direction.z*22,performance.now()<phaseUntil);velocity.addScaledVector(direction,24);const point=player.position.clone();cinematicLook?.impact(point);ringAt(point,0xbceaff,36);npcSystem?.signal('sonic-boom',point,110);feedback('SONIC BOOM · HYPERFLIGHT');break;}
   }
   graceLabel.textContent=Math.round(grace);
 }
