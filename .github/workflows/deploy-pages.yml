@@ -1,53 +1,40 @@
-name: Deploy JC to GitHub Pages
-
+name: Deploy JC static mirror to GitHub Pages
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
   pages: write
   id-token: write
-
 concurrency:
   group: github-pages
   cancel-in-progress: true
-
 jobs:
   deploy:
-    timeout-minutes: 10
+    timeout-minutes: 20
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Validate JavaScript syntax
-        shell: bash
+      - uses: actions/checkout@v4
+      - name: Restore checked game assets
+        run: npm run hydrate
+      - name: Build the public client
+        run: npm run build
+      - name: Verify gameplay and asset contracts
         run: |
-          set -euo pipefail
-          while IFS= read -r -d '' file; do
-            node --check "$file"
-          done < <(find . -type f \( -name '*.js' -o -name '*.mjs' \) -not -path './.git/*' -print0)
-
-      - name: Validate JC site contract
-        run: node scripts/validate-site.mjs
-
-      - name: Validate streamed-world budgets
-        run: node scripts/validate-streaming-budget.mjs
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload site
-        uses: actions/upload-pages-artifact@v3
+          npm run verify:assets
+          node tests/gameplay-regressions.mjs
+          node tests/flight-state.mjs
+          node tests/control-upgrade.mjs
+          node tests/npc-reactions.mjs
+          node tests/performance-guardrails.mjs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
-
-      - name: Deploy
+          path: dist/client
+      - name: Deploy static mirror
         id: deployment
         uses: actions/deploy-pages@v4

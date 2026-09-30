@@ -1,0 +1,14 @@
+{
+  "name": "jc-city-static",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config vite.config.js",
+    "build": "node scripts/build-site.mjs",
+    "hydrate": "node scripts/hydrate-assets.mjs",
+    "verify:assets": "node scripts/hydrate-assets.mjs --verify-only"
+  },
+  "devDependencies": {
+    "vite": "^6.1.0"
+  }
+}

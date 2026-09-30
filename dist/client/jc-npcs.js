@@ -23,6 +23,8 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8})
   const npcs=[];
   const size=Math.max(6,Math.min(16,Math.round(count||8)));
   let lastReport=0;
+  const restorative=new Set(['heal','shield','cleanse','sunrise','sanctuary','restore','grace-surge','rain','rebuild','bless','redemption-wave']);
+  const travel=new Set(['flight','hypersonic','hover','glide','sky-lift','leap','teleport','beam-down','recall','phase-step']);
   const labels={civilian:'CIVILIANS',authority:'RESPONDERS',angel:'ANGELS',demon:'DEMONS'};
 
   for(let i=0;i<size;i++) {
@@ -41,9 +43,10 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8})
 
   function report(now) {
     if(now-lastReport<2200)return;
-    const active=new Set(npcs.filter(n=>n.event&&n.emotionUntil>now).map(n=>n.faction));
+    const active=new Map();
+    for(const npc of npcs)if(npc.event&&npc.emotionUntil>now)active.set(npc.faction,npc.state);
     if(!active.size)return;
-    const text=[...active].map(k=>`${labels[k]} ${k==='civilian'?'FLEE':k==='authority'?'RESPOND':k==='angel'?'DRAW NEAR':'RETREAT'}`).join(' · ');
+    const text=[...active].map(([faction,state])=>`${labels[faction]} ${state.toUpperCase()}`).join(' · ');
     lastReport=now;onReport?.(text);
   }
 
@@ -51,9 +54,10 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8})
     const now=performance.now(),center=position.clone();
     for(const npc of npcs) {
       if(npc.position.distanceTo(center)>radius)continue;
-      npc.event={type,position:center.clone(),time:now};npc.emotionUntil=now+6500;
-      npc.state=npc.faction==='civilian'?'fear':npc.faction==='authority'?'respond':npc.faction==='angel'?'awe':'retreat';
-      if(npc.faction==='civilian')setDestination(npc,center,28);
+      npc.event={type,position:center.clone(),time:now};npc.memory={type,time:now};npc.emotionUntil=now+6500;
+      const peaceful=restorative.has(type)||travel.has(type);
+      npc.state=npc.faction==='civilian'?(peaceful?'awe':'fear'):npc.faction==='authority'?(peaceful?'awe':'respond'):npc.faction==='angel'?'awe':'retreat';
+      if(npc.faction==='civilian')setDestination(npc,center,peaceful?Math.max(6,Math.min(14,npc.position.distanceTo(center))):28);
       else if(npc.faction==='authority'){
         const [x,z]=chooseOpen(center.x,center.z,isSafe);npc.target.set(x,groundAt(x,z)+1.55,z);
       } else if(npc.faction==='angel')setDestination(npc,player.position,20);
@@ -102,16 +106,23 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8})
       const speed=running?4.4:npc.state==='respond'?2.6:1.1;
       if(len>.12) {
         const step=Math.min(len,speed*dt),nx=npc.position.x+dx/len*step,nz=npc.position.z+dz/len*step;
-        if(isSafe(nx,nz,1.4)){npc.position.x=nx;npc.position.z=nz;npc.position.y=THREE.MathUtils.lerp(npc.position.y,npc.target.y,step/len);npc.stepDistance+=step;npc.gait+=step*(npc.state==='fear'||npc.state==='retreat'?.95:.62);}
-        else npc.nextWander=0;
+        const previousX=npc.position.x,previousZ=npc.position.z;
+        if(isSafe(nx,nz,1.4)){npc.position.x=nx;npc.position.z=nz;}
+        else if(isSafe(nx,npc.position.z,1.4))npc.position.x=nx;
+        else if(isSafe(npc.position.x,nz,1.4))npc.position.z=nz;
+        const moved=Math.hypot(npc.position.x-previousX,npc.position.z-previousZ);
+        if(moved>.0001){npc.position.y=groundAt(npc.position.x,npc.position.z)+1.55;npc.stepDistance+=moved;npc.gait+=moved*(running?.95:.62);npc.blockedSince=null;}
+        else if(dt>0){npc.blockedSince??=now;if(now-npc.blockedSince>350){const angle=Math.atan2(dz,dx)+Math.PI/2;const [x,z]=chooseOpen(npc.position.x+Math.cos(angle)*5,npc.position.z+Math.sin(angle)*5,isSafe);npc.target.set(x,groundAt(x,z)+1.55,z);npc.nextWander=now+800;npc.blockedSince=null;}}
+        npc.moving=moved>.0001;
       }
+      if(len<=.12)npc.moving=false;
       npc.sprite.position.set(npc.position.x,npc.position.y-1.55,npc.position.z);
       if(len>.12)npc.sprite.rotation.y=Math.atan2(dx,dz);
-      const pose=len>.12?(running?31+Math.floor(npc.gait/.45)%8:23+Math.floor(npc.gait/.6)%8):npc.state==='respond'?6:npc.state==='awe'?11:0;
-      npc.sprite.userData.character.setPose(pose,npc.gait,len>.12?speed:0,now,false);
+      const pose=npc.moving?(running?31+Math.floor(npc.gait/.45)%8:23+Math.floor(npc.gait/.6)%8):npc.state==='respond'?6:npc.state==='awe'?11:0;
+      npc.sprite.userData.character.setPose(pose,npc.gait,npc.moving?speed:0,now,false);
     }
     report(now);
   }
 
-  return {npcs,signal,update,setVisible(value){root.visible=!!value;},dispose(){scene.remove(root);root.traverse(o=>{if(o.material){o.material.map?.dispose();o.material.dispose();}});}};
+  return {npcs,signal,update,setVisible(value){root.visible=!!value;},dispose(){scene.remove(root);for(const npc of npcs)npc.sprite?.userData.dispose?.();const materials=new Set();root.traverse(o=>{if(o.material)materials.add(o.material);});for(const material of materials){material.map?.dispose();material.dispose();}}};
 }

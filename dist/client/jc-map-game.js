@@ -172,6 +172,7 @@ function setFlight(action){
   return next;
 }
 let playing = false, yaw = 0, viewPitch = 0, last = performance.now(), lastGround = 0, terrainY = 0;
+let worldClock=performance.now();
 let frameWindow = 0, slowFrames = 0, steadyFrames = 0;
 const coarseDevice = matchMedia('(pointer:coarse), (max-width:800px)').matches || navigator.maxTouchPoints>1 || new URLSearchParams(location.search).get('quality')==='mobile';
 const maximumDpr = coarseDevice ? .9 : Math.min(1.25, devicePixelRatio || 1);
@@ -882,7 +883,7 @@ function setMode(play) {
     return;
   }
   if (!play) {conversation.close({restoreFocus:false});miracleEffects?.clear();}
-  playing = play;
+  playing = play;window.JC_WORLD_SCALE=1;
   if(player)cinematicLook?.update(0,performance.now(),player.position,velocity,false,false,play);
   npcSystem?.setVisible(play);
   window.JC_MAP_PLAYING = play;
@@ -906,11 +907,11 @@ playReturn.onclick = () => setMode(true);
 
 function frameStep(now) {
   miracleEffects?.update(now);
-  if (conversation.isOpen) {last=now;return;}
+  if (conversation.isOpen) {window.JC_WORLD_SCALE=0;last=now;return;}
   const elapsed = Math.max(0, now - last);
   const dt = Math.min(.045, elapsed / 1000);
   last = now;
-  if (document.hidden) {frameWindow = now; return;}
+  if (document.hidden) {window.JC_WORLD_SCALE=0;frameWindow = now; return;}
   // Hysteresis prevents resolution oscillation as tiles stream into view.
   if (playing) {
     slowFrames += elapsed > 22 ? 1 : 0;
@@ -922,7 +923,7 @@ function frameStep(now) {
       slowFrames = steadyFrames = 0; frameWindow = now;
     }
   }
-  if (!playing) return;
+  if (!playing) {window.JC_WORLD_SCALE=1;return;}
   const paused=wheel.classList.contains('open');
   const pad=Array.from(navigator.getGamepads?.()||[]).find(Boolean);
   analog.x=stickAxis(touchStick.x,.12);analog.y=stickAxis(touchStick.y,.12);
@@ -940,7 +941,8 @@ function frameStep(now) {
     }
     gamepadButtons=pad.buttons.map(button=>button.pressed);
   }else{padKeys.clear();gamepadButtons=[];}
-  if(wheel.classList.contains('open')){velocity.set(0,0,0);return;}
+  if(wheel.classList.contains('open')){window.JC_WORLD_SCALE=0;velocity.set(0,0,0);return;}
+  const worldScale=now<stasisUntil?0:now<timeScaleUntil?.22:1;window.JC_WORLD_SCALE=worldScale;const worldDt=dt*worldScale;worldClock+=worldDt*1000;
   const look=advanceLook(yaw,viewPitch,lookX,lookY,dt);
   yaw=look.yaw;viewPitch=look.pitch;
   if(runActive)runTime+=elapsed/1000;
@@ -1009,10 +1011,10 @@ function frameStep(now) {
   portrait.position.y = velocity.lengthSq() > 1 && !flying ? Math.sin(now * .014) * .035 : 0;
   for (const s of souls) {
     if (!s.visible) continue;
-    if(now>stasisUntil) {s.rotation.y += dt * 1.6;s.position.y = s.userData.baseY + Math.sin(now * .002 + s.position.z) * .25;}
+    if(now>stasisUntil) {s.rotation.y += worldDt * 1.6;s.position.y = s.userData.baseY + Math.sin(worldClock * .002 + s.position.z) * .25;}
     if (s.position.distanceTo(player.position.clone().add(new THREE.Vector3(0,1.6,0))) < 3.4) collect(s);
   }
-  npcSystem?.update(dt,now);
+  if(worldDt>0)npcSystem?.update(worldDt,now);
   nearNpc=closestNpc();npcTalkButton.classList.toggle('available',coarseDevice&&!!nearNpc&&!talk.classList.contains('open'));npcTalkButton.textContent=nearNpc?`TALK TO ${nearNpc.name.toUpperCase()}`:'TALK';npcReadout.textContent=talk.classList.contains('open')?npcReadout.textContent:(nearNpc?`NEAR ${nearNpc.name.toUpperCase()} · ${nearNpc.faction.toUpperCase()} · PRESS C TO TALK`:`${npcSystem?.npcs.length||0} LIVING NPCS · MOVE CLOSE TO TALK`);
   graceLabel.textContent = Math.round(grace);
   stateLabel.textContent=teleportAim?'CHOOSE DESTINATION':diving?'DIVE':braking?'BRAKING':hypersonic?'HYPERFLIGHT':flying&&flightHeight<9?'HOVER':flying&&glide?'GLIDE':flying?'CRUISE':flightHeight>0?'LANDING':'GROUNDED';
@@ -1127,7 +1129,7 @@ const group = game.loaded.get('C15_R14');
   spawnPoint=player.position.clone();
   game.scene.add(player);
   createSouls(x, z);
-  npcSystem=createNpcSystem({scene:game.scene,player,groundAt,isSafe:(x,z,r=2)=>!blockedAt(x,terrainY+1.55,z,r),count:coarseDevice?8:(window.JC_NPC_COUNT||12),onReport:text=>{npcReadout.textContent=text;}});
+  npcSystem=createNpcSystem({scene:game.scene,player,groundAt,isSafe:(x,z,r=2)=>!blockedAt(x,groundAt(x,z)+1.55,z,r),count:coarseDevice?8:(window.JC_NPC_COUNT||12),onReport:text=>{npcReadout.textContent=text;}});
   npcReadout.textContent=`${npcSystem.npcs.length} LIVING NPCS · MOVE CLOSE TO TALK`;
   npcReadout.style.cursor='pointer';npcReadout.setAttribute('role','button');npcReadout.tabIndex=0;npcReadout.onclick=()=>openNpcTalk();npcReadout.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openNpcTalk();}};
   hud.querySelector('#jcEditor').onclick = () => setMode(false);

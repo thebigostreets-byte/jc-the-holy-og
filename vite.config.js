@@ -1,0 +1,5 @@
+import {createReadStream,statSync} from 'node:fs';
+import {resolve,extname} from 'node:path';
+const root=resolve('dist/client');
+const types={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json','.css':'text/css','.gz':'application/gzip','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.svg':'image/svg+xml','.glb':'model/gltf-binary'};
+export default {root:'dist/client',publicDir:false,server:{host:'0.0.0.0',allowedHosts:['terminal.local']},optimizeDeps:{noDiscovery:true},plugins:[{name:'static-production-parity',configureServer(server){server.middlewares.use((req,res,next)=>{let pathname;try{pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);}catch{return next();}const file=resolve(root,'.'+(pathname==='/'?'/index.html':pathname==='/map'?'/map.html':pathname));if(!file.startsWith(root+'/'))return next();try{if(!statSync(file).isFile())return next();}catch{return next();}res.setHeader('Content-Type',types[extname(file)]||'application/octet-stream');res.setHeader('Cache-Control','no-store');createReadStream(file).pipe(res);});}}]};

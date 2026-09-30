@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const engine=fs.readFileSync(new URL('../map-engine.js',import.meta.url),'utf8');
+const samples=[];
+const context=vm.createContext({last:0,requestAnimationFrame(){},tick:dt=>samples.push(dt),streamingTick(){},controls:{update(){}},renderer:{render(){}},scene:{},camera:{},mobileMap:false,startInPlay:true,document:{body:{classList:{contains:()=>true}}},window:{JC_MAP_PLAYING:true,JC_PLAYER_READY:true,JC_WORLD_SCALE:.22,studio:{paused:false,renderFrame(){}}}});
+vm.runInContext(engine.slice(engine.indexOf('function animate(t)'),engine.indexOf('window.studio={')),context);
+context.animate(40);assert.ok(Math.abs(samples.at(-1)-.0088)<1e-9,'slow time reduces debris simulation speed');
+context.window.JC_WORLD_SCALE=0;context.animate(80);assert.equal(samples.at(-1),0,'stasis or UI pause stops debris');
+context.window.JC_WORLD_SCALE=1;context.animate(120);assert.equal(samples.at(-1),.04,'normal world speed resumes');
+context.window.JC_WORLD_SCALE=10;context.animate(160);assert.equal(samples.at(-1),.04,'world speed stays inside its physics budget');
+console.log('PASS: world slowdown, stasis, pause/resume and bounded physics timing.');

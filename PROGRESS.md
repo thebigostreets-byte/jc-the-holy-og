@@ -1,3 +1,12 @@
+## 2026-09-30 function and repository audit
+
+- Peaceful miracles produce awe rather than fear; dangerous miracles trigger civilians fleeing and authorities responding. NPCs retain the latest event for dialogue context.
+- NPC movement now samples terrain under its feet, slides along obstructions and replans blocked routes during active reactions. Blocked characters use stationary poses.
+- Slow Time and Stasis affect NPC movement and debris physics. Opening the power wheel or chat pauses debris. Player movement remains independent.
+- Every one of the 43 cast handlers is exercised with a valid target in the behavioral regression harness; conversation cancellation, quota reporting, movement, flight, camera, and effect cleanup checks pass.
+- GitHub reproduction uses complete text source plus a checksum manifest and asset hydration command. The local preview points at the production client directory. This closes the previously missing source module gap without committing credentials.
+- Real-device FPS and browser visual verification remain unmeasured.
+
 ## 2026-09-30 gameplay repair
 
 - Fixed DROP ending flight before ground contact, hover resetting airborne altitude, and Sonic Boom toggling boost off.

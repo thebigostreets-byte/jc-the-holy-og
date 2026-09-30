@@ -1,0 +1,24 @@
+#abilityRing .wheel-slot{width:var(--slot-width,26%)}
+#mobile .touch-stick{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));width:120px;height:120px;border:1px solid #dce6ef70;border-radius:50%;background:radial-gradient(circle,#18212b38 20%,#10151f69 72%);pointer-events:auto;touch-action:none;user-select:none}
+#mobile .move-stick{left:max(18px,env(safe-area-inset-left))}#mobile .look-stick{right:max(18px,env(safe-area-inset-right))}
+.stick-knob{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;border-radius:50%;background:#edf5ff20;border:1px solid #ecf4ff90;transform:translate(var(--stick-x,0px),var(--stick-y,0px));pointer-events:none}.stick-label{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:10px;line-height:1;letter-spacing:0;color:#eef5ff;pointer-events:none}
+#mobile #mobileAbilities{position:absolute;top:-15px;left:22px;width:76px;min-height:40px;padding:7px 4px;background:#192536d9;border-color:#eed49a;color:#ffedc8;font-size:11px!important}
+#mobile .wheel-page{display:none;position:absolute;top:38px;width:44px;height:44px;padding:0;font-size:24px!important;background:#101c2be6}.wheel-prev{left:-12px}.wheel-next{right:-12px}
+#mobile .mobile-flight{position:absolute;left:max(18px,env(safe-area-inset-left));bottom:calc(max(18px,env(safe-area-inset-bottom)) + 138px);display:grid;grid-template-columns:repeat(2,60px);gap:5px;pointer-events:auto}
+#mobile .mobile-flight button{min-height:44px;padding:6px 2px;font-size:10px!important;line-height:1.15}
+#mobile .mobile-cast-actions{position:absolute;right:max(18px,env(safe-area-inset-right));bottom:calc(max(18px,env(safe-area-inset-bottom)) + 147px);display:grid;grid-template-columns:repeat(2,60px);gap:5px;pointer-events:auto}
+#mobile .mobile-cast-actions button{min-height:44px;padding:7px 3px;font-size:11px!important}#mobile #mobileAbilityCast{grid-column:span 2;display:flex;gap:5px;padding:7px;min-height:72px;max-width:125px}#mobileAbilityCast strong{font-size:12px}#mobileAbilityCast em{font-size:9px;white-space:normal}#mobileAbilityCast>svg{width:20px;height:20px;flex-shrink:0}#mobileAbilityCast>span{min-width:0}
+body[data-ability-wheel=true] #hud{visibility:hidden}body[data-ability-wheel=true] #mobile{visibility:visible;z-index:39}body[data-ability-wheel=true] #mobile .move-stick,body[data-ability-wheel=true] #mobile .mobile-flight,body[data-ability-wheel=true] #mobile .mobile-cast-actions{visibility:hidden}body[data-ability-wheel=true] #mobile .wheel-page{display:block}
+@media(pointer:coarse),(max-width:900px){
+ body[data-playing=true]:not([data-paused=true]):not([data-ended=true]) #mobile{display:block}#abilityCast{display:none!important}
+ #abilityTray{--wheel-size:min(340px,calc(100vw - 24px),calc(100dvh - 340px));padding:12px 12px 170px}
+ #abilityTray .wheel-panel{margin-left:auto;gap:6px}.wheel-heading h2{font-size:15px}.wheel-heading p{display:none}.wheel-core strong{font-size:16px}.wheel-core{gap:5px}.wheel-core-label,.wheel-pause-label{display:none}.wheel-footer p{min-height:30px;font-size:12px}.wheel-footer small{display:none}
+ #abilityTabs button{padding:8px 10px;min-height:44px}.wheel-slot kbd{display:none}#abilityRing .wheel-slot{gap:3px}.wheel-slot span{font-size:10px}.wheel-slot svg{width:22px;height:22px}
+ #minimap{bottom:auto;top:150px;width:112px;height:76px}#contractCard{max-width:48vw}.speed{bottom:306px}.stats{bottom:312px}#powerReadout{bottom:280px;max-width:90%;font-size:11px}#flightReadout{top:52px;font-size:11px;max-width:90%}#interactionHint{display:none}#gameTools #abilitiesButton{display:none}#gameTools button{min-height:44px}
+}
+@media(max-height:540px) and (min-width:560px){
+ #mobile .touch-stick{width:112px;height:112px;bottom:12px}#mobile .mobile-flight{bottom:134px}#mobile .mobile-cast-actions{bottom:140px}
+ #mobile #mobileAbilities{left:18px}#contractCard{left:160px;top:74px;max-width:28vw}.stats{left:160px;bottom:14px}.speed{right:160px;bottom:14px}#minimap{top:83px;right:160px;width:108px;height:72px}#powerReadout{bottom:48px;max-width:40%}
+ #abilityTray{--wheel-size:min(280px,calc(100dvh - 36px));padding:12px 155px 12px 12px}#abilityTray .wheel-panel{display:grid;grid-template-columns:150px var(--wheel-size);gap:8px 12px}#abilityTabs,.wheel-footer{width:150px}.wheel-heading h2{font-size:13px}#closeAbilities{width:38px;height:38px}#abilityTabs button{font-size:10px;padding:5px}#abilityTabs{grid-template-columns:1fr 1fr}.wheel-core strong{font-size:14px}
+}
+body[data-left-handed=true] #mobile .move-stick,body[data-left-handed=true] #mobile .mobile-flight{left:auto;right:max(18px,env(safe-area-inset-right))}body[data-left-handed=true] #mobile .look-stick,body[data-left-handed=true] #mobile .mobile-cast-actions{right:auto;left:max(18px,env(safe-area-inset-left))}
