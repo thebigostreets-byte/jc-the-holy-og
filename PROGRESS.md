@@ -1,3 +1,13 @@
+## 2026-09-30 physical building surfaces
+
+- Added shared 512 px photographic material cells for painted stucco, concrete, brick, sandstone, roofing aggregate, and painted metal. Runtime atlas: facades/physical-materials-v1.webp (543 KB).
+- Built-in image generation prompt: square 3-by-2 atlas, top row off-white painted stucco / gray poured concrete / red-brown brick, bottom row sandstone / dark roof aggregate / blue-gray painted metal; orthographic albedo closeups, neutral diffuse light, no labels, borders or objects. Generated texture appearance is fictional, not a survey of actual property finishes.
+- Assign walls by building height and stable building ID. Windowed facades remain on all medium/tall buildings and most small buildings; paint and architectural textures use metre-based projection, including diagonal walls.
+- Preserve aerial roof colors and UVs. Desktop adds shared aggregate bump detail using a separate metre-based UV channel; mobile omits this extra shading work.
+- Gameplay theme no longer overwrites physical building materials or saved paint. Redemption retains the material and uses a subtle warm emissive effect.
+- Tested deterministic assignments, fallback texture counts, diagonal scale, saved paint/reset, redemption, real 616-building mobile/desktop fixture, material isolation, impostor captures, performance guardrails and all 43 ability handlers.
+- Atlas inspected directly. Browser/GPU visual playtesting and device FPS remain unverified.
+
 ## 2026-09-30 predictive streaming
 
 - Added velocity-based tile look-ahead with a 120 m/s prediction clamp. One speculative request warms the next tile before crossing its boundary.

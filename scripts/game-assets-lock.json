@@ -319,8 +319,8 @@
     },
     {
       "path": "jc-map-game.js",
-      "bytes": 79822,
-      "sha256": "821a2852b4f330a07b24bb39c35f43f814effc384bc9a75352e01af0bac1c511"
+      "bytes": 80319,
+      "sha256": "36fde371b106c170ab96b2570ed3b863a731ee59ead64027f6963736839eea55"
     },
     {
       "path": "jc-npcs.js",
@@ -344,8 +344,8 @@
     },
     {
       "path": "map-engine.js",
-      "bytes": 30389,
-      "sha256": "8453f89189fa6dbace1426f80496818020535754507b92c4ff3c8ade0054759c"
+      "bytes": 31293,
+      "sha256": "6f6ccb2433c520c80735bdd722dd83994d93ab8fc052660cd2ce7990987da5a9"
     },
     {
       "path": "map-materials.js",
@@ -359,13 +359,13 @@
     },
     {
       "path": "map.html",
-      "bytes": 8583,
-      "sha256": "133a02b47f7dbd2db0e66006e9fc58e22c98153c0a87329c48354c25dd3eaa77"
+      "bytes": 8589,
+      "sha256": "730d98a882f1ce2ff0801f88bdd1d8ce857b309a383b4673011e242867c413f3"
     },
     {
       "path": "map.html.gz",
-      "bytes": 3454,
-      "sha256": "5415e2ee8cca1d9121016fb49a78c999a7477380d5bd89a92be28d717f98a0fb"
+      "bytes": 3425,
+      "sha256": "50021dee1ef9e068cbba21c7542d3f95f9e6847d576a99eb19a5f5f3bd88c54f"
     },
     {
       "path": "miracles/attract.webp",
@@ -4076,6 +4076,16 @@
       "path": "predictive-streaming.js",
       "bytes": 2091,
       "sha256": "7e7a9c64e2b1f7034f394ef8d93af92a9966794bf8ba19a6314a913268d6f703"
+    },
+    {
+      "path": "physical-building-materials.js",
+      "bytes": 2562,
+      "sha256": "a6267e45e538d3a572b5faedcb8195be3fc012ae068bb81e0252b97924e3429a"
+    },
+    {
+      "path": "facades/physical-materials-v1.webp",
+      "bytes": 555372,
+      "sha256": "adcc6f52b541a1ef0d12071d87329091998c0945d9978b961a801eb044e9f9f0"
     }
   ]
 }

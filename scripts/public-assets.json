@@ -813,5 +813,7 @@
   "character-art/jc-rear-run-v2.webp",
   "character-art/jc-rear-flight-v2.webp",
   "jc-miracle-effects.js",
-  "predictive-streaming.js"
+  "predictive-streaming.js",
+  "physical-building-materials.js",
+  "facades/physical-materials-v1.webp"
 ]

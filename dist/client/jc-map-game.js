@@ -478,6 +478,15 @@ function themedFacade(ownerId, redeemed = false) {
 
 function applyBuildingTheme(mesh, ownerId, redeemed = false) {
   if(mesh.material?.userData?.customTexture) return;
+  // Physical materials already carry their paint, scale and reflectivity.
+  // Preserve editor paint and uploaded textures when play mode themes the city.
+  if(mesh.material?.userData?.physicalSurface){
+    const material=mesh.material,edit=game.edits?.get(ownerId);
+    if(redeemed){material.emissive.set(0xffd8a0);material.emissiveIntensity=.1;}
+    else if(!edit?.glow){material.emissive.set(0x000000);material.emissiveIntensity=0;}
+    material.userData.jcBuildingId=ownerId;
+    return;
+  }
   const hash = buildingHash(ownerId);
   if (!mesh.userData.jcMaterialClone) {
     mesh.material = cloneBuildingMaterial(mesh.material);
