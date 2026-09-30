@@ -3,6 +3,7 @@ import * as THREE from './three.module.js';
 import { OrbitControls } from './map-controls.js';
 import {createBuildingImpostors} from './building-impostors.js';
 import {decodeGlbAttribute} from './ground-sampling.js';
+import {predictTravel,createPrefetchCache} from './predictive-streaming.js';
 const $=id=>document.getElementById(id);
 const statusText=message=>{$('loading').textContent=message;};
 statusText('Opening the city…');
@@ -38,11 +39,9 @@ const base=payload.manifest.boundsEPSG32611, origin=[(base[0]+base[2])/2,(base[1
 let last=performance.now();const particles=[],particleCap=mobileMap?72:180;const status=t=>$('status').textContent=t;const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const locKey='illco-vegas-building-edits-v1';try{for(const [k,v] of Object.entries(JSON.parse(localStorage.getItem(locKey)||'{}')))edits.set(k,v);}catch{}
 function persist(){try{localStorage.setItem(locKey,JSON.stringify(Object.fromEntries(edits)));}catch{}}
-const byteRequests=new Map();
-async function bytes(name){
+async function loadBytes(name){
  if(name==='assets/generated_stucco.png')name='assets/generated_stucco.webp';
  if(files.has(name))return new Uint8Array(await files.get(name).arrayBuffer());
- if(byteRequests.has(name))return byteRequests.get(name);
  const request=(async()=>{
   const url=payload.resources[name]||(/^tiles\/C\d{2}_R\d{2}\.glb$/.test(name)?name+'.gz':name);
   const data=await fetchBytes(url);
@@ -53,9 +52,10 @@ async function bytes(name){
   }
   return data;
  })();
- byteRequests.set(name,request);
- try{return await request;}finally{byteRequests.delete(name);}
+ return request;
 }
+const prefetchedBytes=createPrefetchCache(loadBytes,{maxBytes:(mobileMap?8:24)*1024*1024,maxEntries:mobileMap?2:4});
+function bytes(name){return prefetchedBytes.get(name);}
 function pathRelative(basePath,path){const a=(basePath.slice(0,basePath.lastIndexOf('/')+1)+path).split('/'),o=[];for(const s of a){if(s==='..')o.pop();else if(s!=='.')o.push(s);}return o.join('/');}
 async function textureFrom(data,mime,sampler){
  const url=URL.createObjectURL(new Blob([data],{type:mime}));
@@ -94,7 +94,9 @@ function tick(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];if
 function disposeLoaded(){select(null);for(const id of chunks.keys())clearChunks(id);for(const group of loaded.values()){world.remove(group);group.traverse(x=>{if(x.isMesh){x.geometry.dispose();x.material.dispose();}});group.userData.textures?.forEach(t=>t.dispose());}loaded.clear();buildings.clear();}
 let streamEnabled=true,streamRadius=mobileMap?0:1,loadQueue=Promise.resolve(),desiredRequest=0,lastWanted='',retryAt=0,contextGround=null,contextPromise=null,lastStreamCheck=0;
 const keys=new Set();
-function centerSection(){const e=origin[0]+controls.target.x,n=origin[1]-controls.target.z,c=Math.max(0,Math.min(34,Math.floor((e-base[0])/1000))),r=Math.max(0,Math.min(34,Math.floor((n-base[1])/1000)));return `C${String(c).padStart(2,'0')}_R${String(r).padStart(2,'0')}`;}
+function sectionAt(x,z){const e=origin[0]+x,n=origin[1]-z,c=Math.max(0,Math.min(34,Math.floor((e-base[0])/1000))),r=Math.max(0,Math.min(34,Math.floor((n-base[1])/1000)));return `C${String(c).padStart(2,'0')}_R${String(r).padStart(2,'0')}`;}
+function centerSection(){return sectionAt(controls.target.x,controls.target.z);}
+let streamSample=null;
 function available(name){if(payload.resources[name]||files.has(name))return true;return location.protocol!=='file:'&&/^tiles\/C(?:0[0-9]|1[0-7])_R(?:[0-2][0-9]|3[0-4])\.glb$/.test(name);}
 function removeTile(id){const group=loaded.get(id);if(!group)return;if(selected?.parent===group){select(null);$('selectedName').textContent='Click a building';$('coords').textContent='Each object has a permanent source ID.';}for(const ob of group.children){const bid=ob.userData.buildingId;if(bid){clearChunks(bid);buildings.delete(bid);}}world.remove(group);group.traverse(x=>{if(x.isMesh){x.geometry.dispose();x.material.dispose();}});group.userData.textures?.forEach(t=>t.dispose());loaded.delete(id);tileRevision++;}
 let buildingListDirty=true;
@@ -109,12 +111,20 @@ $('buildingList').addEventListener('focus',()=>{if(buildingListDirty)updateBuild
 async function ensureContext(){if(contextGround||!available('assets/connected_terrain.glb'))return;if(contextPromise)return contextPromise;contextPromise=(async()=>{try{const g=await parseGLB(await bytes('assets/connected_terrain.glb'),'assets/connected_terrain.glb');g.name='Connected 35 km terrain';world.add(g);contextGround=g;}catch(e){status('City terrain could not load: '+e.message);}finally{contextPromise=null;}})();return contextPromise;}
 function loadArea(tile,radius=streamRadius,resetCamera=true){const req=++desiredRequest;loadQueue=loadQueue.catch(()=>{}).then(async()=>{if(req!==desiredRequest)return;loading=true;try{const center=byId.get(tile);if(!center)throw Error('Outside the 35 km city boundary.');const wanted=sections.filter(s=>Math.abs(s.column-center.column)<=radius&&Math.abs(s.row-center.row)<=radius).sort((a,b)=>Math.abs(a.column-center.column)+Math.abs(a.row-center.row)-Math.abs(b.column-center.column)-Math.abs(b.row-center.row));if(!available(center.uri))throw Error('Tile '+tile+' has not been uploaded to this deployment.');wanted.splice(0,wanted.length,...wanted.filter(s=>available(s.uri)));const keep=new Set(wanted.map(s=>s.id));lastWanted=tile;current=tile;$('tile').value=tile;if(resetCamera)view('south',radius);status(`Connecting ${tile} and its neighbors…`);if(!loaded.size){$('loading').style.display='flex';$('loading').textContent='Connecting city tiles…';}await ensureContext();for(const s of wanted){if(req!==desiredRequest)break;if(loaded.has(s.id))continue;const g=await parseGLB(await bytes(s.uri),s.uri);if(req!==desiredRequest){g.traverse(x=>{if(x.isMesh){x.geometry.dispose();x.material.dispose();}});g.userData.textures?.forEach(t=>t.dispose());break;}loaded.set(s.id,g);tileRevision++;world.add(g);g.updateWorldMatrix(true,true);for(const ob of g.children)if(ob.userData.buildingId){buildings.set(ob.userData.buildingId,ob);const e=edits.get(ob.userData.buildingId)||{};setAppearance(ob,e);if(e.state)destroy(ob,e.state,false);}for(const id of [...loaded.keys()])if(!keep.has(id)&&loaded.size>wanted.length)removeTile(id);await new Promise(resolve=>setTimeout(resolve,0));}if(req===desiredRequest){for(const id of [...loaded.keys()])if(!keep.has(id))removeTile(id);updateBuildingList();status(`1,225 connected tiles · ${loaded.size} detailed tiles active · ${buildings.size.toLocaleString()} editable features`);retryAt=0;}}catch(e){retryAt=performance.now()+5000;status(e.message);}finally{loading=false;$('loading').style.display='none';window.ready=true;window.dispatchEvent(new Event('jc-tiles-loaded'));}});return loadQueue;}
 function movement(dt){if(window.JC_MAP_PLAYING||!keys.size)return;const forward=controls.target.clone().sub(camera.position);forward.y=0;forward.normalize();const right=new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0)),delta=new THREE.Vector3(),speed=Math.max(120,camera.position.distanceTo(controls.target)*.7)*(keys.has('Shift')?3:1);if(keys.has('w')||keys.has('ArrowUp'))delta.add(forward);if(keys.has('s')||keys.has('ArrowDown'))delta.sub(forward);if(keys.has('d')||keys.has('ArrowRight'))delta.add(right);if(keys.has('a')||keys.has('ArrowLeft'))delta.sub(right);if(delta.lengthSq()){delta.normalize().multiplyScalar(speed*dt);const next=controls.target.clone().add(delta);next.x=THREE.MathUtils.clamp(next.x,base[0]-origin[0]+1,base[2]-origin[0]-1);next.z=THREE.MathUtils.clamp(next.z,origin[1]-base[3]+1,origin[1]-base[1]-1);delta.copy(next).sub(controls.target);camera.position.add(delta);controls.target.copy(next);}}
-function streamingTick(t,dt){movement(dt);if(!window.JC_CITY_READY||!streamEnabled||loading||t<retryAt||t-lastStreamCheck<400)return;lastStreamCheck=t;const id=centerSection();if(id!==lastWanted)loadArea(id,streamRadius,false);}
+function streamingTick(t,dt){
+ movement(dt);if(!window.JC_CITY_READY||!streamEnabled||loading||t<retryAt||t-lastStreamCheck<400)return;lastStreamCheck=t;
+ const position={x:controls.target.x,z:controls.target.z},ahead=predictTravel(position,streamSample,streamSample?t-streamSample.t:0);streamSample={...position,t};
+ const id=centerSection();if(id!==lastWanted){loadArea(id,streamRadius,false);return;}
+ const connection=navigator.connection;
+ if(connection?.saveData||['slow-2g','2g'].includes(connection?.effectiveType))return;
+ const predicted=sectionAt(ahead.x,ahead.z),section=byId.get(predicted);
+ if(predicted!==id&&section&&!loaded.has(predicted)&&available(section.uri))void prefetchedBytes.prefetch(section.uri);
+}
 window.addEventListener('keydown',e=>{if(e.target.closest('input,select,textarea,button'))return;const k=e.key.length===1?e.key.toLowerCase():e.key;if(['w','a','s','d','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Shift'].includes(k)){keys.add(k);e.preventDefault();}});window.addEventListener('keyup',e=>keys.delete(e.key.length===1?e.key.toLowerCase():e.key));window.addEventListener('blur',()=>keys.clear());
 $('autoStream').onchange=e=>{streamEnabled=e.target.checked;if(streamEnabled){lastWanted='';retryAt=0;}};$('streamRange').onchange=e=>{streamRadius=Number(e.target.value);lastWanted='';retryAt=0;loadArea(centerSection(),streamRadius,false);};
 $('cityView').onclick=()=>{controls.target.set(0,200,0);camera.position.set(4000,38000,42000);controls.update();status('Whole-city terrain overview. Buildings load around your view center; zoom in to edit.');};
 $('fullRender').onclick=()=>{$('renderOverlay').style.display='flex';};$('closeRender').onclick=()=>{$('renderOverlay').style.display='none';};
-async function connectFolder(event){files.clear();const all=[...event.target.files],manifestFile=all.find(f=>f.webkitRelativePath.endsWith('/manifest.json'));if(!manifestFile){status('Choose the extracted city folder containing manifest.json.');return;}const prefix=manifestFile.webkitRelativePath.slice(0,-'manifest.json'.length);for(const f of all)if(f.webkitRelativePath.startsWith(prefix))files.set(f.webkitRelativePath.slice(prefix.length),f);const absent=sections.filter(s=>!files.has(s.uri));if(absent.length){status(`${1225-absent.length}/1,225 tile files found. Extract both ZIP parts into the same folder.`);return;}retryAt=0;lastWanted='';await ensureContext();await loadArea(centerSection(),streamRadius,false);}
+async function connectFolder(event){prefetchedBytes.clear();streamSample=null;files.clear();const all=[...event.target.files],manifestFile=all.find(f=>f.webkitRelativePath.endsWith('/manifest.json'));if(!manifestFile){status('Choose the extracted city folder containing manifest.json.');return;}const prefix=manifestFile.webkitRelativePath.slice(0,-'manifest.json'.length);for(const f of all)if(f.webkitRelativePath.startsWith(prefix))files.set(f.webkitRelativePath.slice(prefix.length),f);const absent=sections.filter(s=>!files.has(s.uri));if(absent.length){status(`${1225-absent.length}/1,225 tile files found. Extract both ZIP parts into the same folder.`);return;}retryAt=0;lastWanted='';await ensureContext();await loadArea(centerSection(),streamRadius,false);}
 
 function view(direction,radius=loaded.size>1?1:0){const s=byId.get(current),x=(s.bounds[0]+s.bounds[2])/2-origin[0],z=origin[1]-(s.bounds[1]+s.bounds[3])/2,y=80,dist=radius?3300:1450;controls.target.set(x,y,z);const delta={south:[.23,.8,1],north:[-.3,.75,-1],east:[1,.7,.08],top:[0,1.5,.001]}[direction]||[.3,.8,1];camera.position.set(x+delta[0]*dist,y+delta[1]*dist,z+delta[2]*dist);controls.update();}
 function focus(){if(!selected)return;const p=selected.getWorldPosition(new THREE.Vector3()),h=selected.userData.heightMetres,bb=selected.userData.collider,d=Math.max(h*2.8,(bb.max[0]-bb.min[0])*2,150);p.y+=h*.35;controls.target.copy(p);camera.position.copy(p).add(new THREE.Vector3(.65*d,.6*d,d));controls.update();}
@@ -130,7 +140,7 @@ function exportEdits(){return {format:'illco-vegas-building-edits',version:1,sou
 $('save').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(exportEdits(),null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='Vegas_Building_Edits.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);};$('loadEdits').onclick=()=>$('editsFile').click();$('editsFile').onchange=async e=>{try{importEdits(JSON.parse(await e.target.files[0].text()));}catch(err){status(err.message);}};
 function resize(){const r=$('viewport').getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}new ResizeObserver(resize).observe($('viewport'));resize();if(mobileMap) $('streamRange').value='0';
 function animate(t){requestAnimationFrame(animate);const dt=Math.min((t-last)/1000,.04);last=t;if(!window.studio?.paused){tick(dt*Math.max(0,Math.min(1,window.JC_WORLD_SCALE??1)));streamingTick(t,dt);}if(!window.JC_MAP_PLAYING)controls.update();window.studio?.buildingViews?.update(t,dt,document.body.classList.contains('jc-playing'));if(!mobileMap||!startInPlay||window.JC_PLAYER_READY){if(window.studio?.renderFrame)window.studio.renderFrame();else renderer.render(scene,camera);}}requestAnimationFrame(animate);
-window.studio={mobileMap,scene,camera,renderer,controls,buildings,chunks,edits,loaded,origin,centerSection,ensureContext,streamingTick,streamInfo:()=>({enabled:streamEnabled,radius:streamRadius,loading,current,lastWanted,context:!!contextGround,availableFiles:files.size}),tileRevision:()=>tileRevision,loadArea,select,focus,view,destroy,rebuild,updateEdit,exportEdits,importEdits,tick,stats:()=>({buildings:buildings.size,tiles:loaded.size,chunks:particles.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),proof:()=>{document.body.classList.add('proof');resize();}};
+window.studio={mobileMap,scene,camera,renderer,controls,buildings,chunks,edits,loaded,origin,centerSection,ensureContext,streamingTick,streamInfo:()=>({enabled:streamEnabled,radius:streamRadius,loading,current,lastWanted,context:!!contextGround,availableFiles:files.size}),tileRevision:()=>tileRevision,prefetchInfo:()=>prefetchedBytes.stats(),loadArea,select,focus,view,destroy,rebuild,updateEdit,exportEdits,importEdits,tick,stats:()=>({buildings:buildings.size,tiles:loaded.size,chunks:particles.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),proof:()=>{document.body.classList.add('proof');resize();}};
 window.studio.buildingViews=createBuildingImpostors(window.studio,{mobile:mobileMap,enabled:new URLSearchParams(location.search).get('buildingViews')!=='off'});
 $('fullCityProof').src=payload.fullCityProof;
 window.studio.ready=loadArea('C15_R14',0);

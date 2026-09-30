@@ -1,3 +1,11 @@
+## 2026-09-30 predictive streaming
+
+- Added velocity-based tile look-ahead with a 120 m/s prediction clamp. One speculative request warms the next tile before crossing its boundary.
+- Raw decoded prefetch data is bounded to 8 MB / 2 entries on mobile and 24 MB / 4 entries on desktop, consumed on demand, and shared with pending demand requests. Folder changes reject stale cache results.
+- Data Saver and slow 2G connections skip speculative downloads. Live city mesh counts remain unchanged.
+- Building image captures defer when frame time exceeds 22 ms, while existing captures and original meshes remain usable.
+- Tests cover direction prediction, memory caps, eviction, duplicate requests, retries, stale results and frame-budget gating. No measured device-FPS improvement is claimed.
+
 ## 2026-09-30 function and repository audit
 
 - Peaceful miracles produce awe rather than fear; dangerous miracles trigger civilians fleeing and authorities responding. NPCs retain the latest event for dialogue context.

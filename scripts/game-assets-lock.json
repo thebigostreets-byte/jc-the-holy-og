@@ -105,7 +105,7 @@
     {
       "path": "building-impostors.js",
       "bytes": 7660,
-      "sha256": "a3692752840fa04af2aeecc1caeed52551a4187b906ae01ac7ff6ebc815ad86d"
+      "sha256": "474dd1c01c44df721e1b4a8df945187b7c837963a61268ec805382779178aa4a"
     },
     {
       "path": "ground-sampling.js",
@@ -344,8 +344,8 @@
     },
     {
       "path": "map-engine.js",
-      "bytes": 29651,
-      "sha256": "35766bc2af5cbf5b07db668bdebb332a2fbf873dab1c0be8a604f9b2d0fe72d6"
+      "bytes": 30389,
+      "sha256": "8453f89189fa6dbace1426f80496818020535754507b92c4ff3c8ade0054759c"
     },
     {
       "path": "map-materials.js",
@@ -4071,6 +4071,11 @@
       "path": "jc-miracle-effects.js",
       "bytes": 4679,
       "sha256": "e8210d54f346857ef4eb9801cbe8080ffd9ccdd9622e67c46f946b7e7a3067c7"
+    },
+    {
+      "path": "predictive-streaming.js",
+      "bytes": 2091,
+      "sha256": "7e7a9c64e2b1f7034f394ef8d93af92a9966794bf8ba19a6314a913268d6f703"
     }
   ]
 }

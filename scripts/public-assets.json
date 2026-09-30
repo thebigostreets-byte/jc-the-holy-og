@@ -812,5 +812,6 @@
   "facades/photographic-atlas-v2.webp",
   "character-art/jc-rear-run-v2.webp",
   "character-art/jc-rear-flight-v2.webp",
-  "jc-miracle-effects.js"
+  "jc-miracle-effects.js",
+  "predictive-streaming.js"
 ]

@@ -100,7 +100,7 @@ export function createBuildingImpostors(game,{mobile=false,enabled=true}={}){
     try{
       for(const r of records.values()){
         if(buildings.get(r.id)!==r.ob||chunks.has(r.id)){release(r);continue;}
-        if(r.frame<9){if(!workDone&&dt<.035&&now>=nextCaptureAt){bake(r);nextCaptureAt=now+(mobile?160:60);workDone=true;}continue;}
+        if(r.frame<9){if(!workDone&&dt<.022&&now>=nextCaptureAt){bake(r);nextCaptureAt=now+(mobile?160:60);workDone=true;}continue;}
         r.plane.position.copy(r.center);r.ob.localToWorld(r.plane.position);
         direction.subVectors(camera.position,r.plane.position);
         const view=buildingViewIndex(direction.x,direction.y,direction.z,r.view),distance=direction.length();

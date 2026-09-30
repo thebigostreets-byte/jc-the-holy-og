@@ -30,22 +30,24 @@ function setup(mobile=false){
 }
 for(const mobile of [false,true]){
   const t=setup(mobile),limit=mobile?4:8;
-  for(let f=0;f<limit*9+2;f++)t.api.update(f*16,.016,true);
+  for(let f=0;f<limit*9+2;f++)t.api.update(f*200,.016,true);
   assert.equal(t.api.stats().ready,limit);assert.equal(t.state.renders,limit*9);
   assert.equal(t.api.stats().visible,limit);assert.equal(t.api.stats().viewsPerBuilding,9);
   assert.deepEqual(t.state.viewport.toArray(),[0,0,100,100]);assert.deepEqual(t.state.scissor.toArray(),[1,2,90,90]);
   assert.equal(t.state.target,null);assert.equal(t.state.test,false);assert.equal(t.renderer.autoClear,false);
   assert.equal(t.state.color.getHex(),0x123456);assert.equal(t.renderer.toneMapping,THREE.ACESFilmicToneMapping);
-  t.camera.position.set(0,40,20);t.api.update(1700,.016,true);
+  const base=(limit*9+2)*200;
+  t.camera.position.set(0,40,20);t.api.update(base,.016,true);
   assert.equal(t.api.stats().visible,0,'near camera restores geometry');
-  t.camera.position.set(0,50,1200);t.api.update(1710,.016,true);
-  const destroyed=t.buildings.get('0');destroyed.children[0].visible=false;t.chunks.set('0',[]);t.api.update(1720,.016,true);
+  t.camera.position.set(0,50,1200);t.api.update(base+10,.016,true);
+  const destroyed=t.buildings.get('0');destroyed.children[0].visible=false;t.chunks.set('0',[]);t.api.update(base+20,.016,true);
   assert.equal(destroyed.visible,true);assert.equal(destroyed.children[0].visible,false,'destruction is not undone');
-  const edited=t.buildings.get('1');edited.children[0].material.color.set(0xff0000);t.api.update(1730,.016,true);
+  const edited=t.buildings.get('1');edited.children[0].material.color.set(0xff0000);t.api.update(base+2000,.016,true);
   assert.equal(edited.visible,true,'edited building immediately returns to mesh');
-  t.api.update(1740,.016,false);assert.equal(t.api.stats().visible,0,'editor always uses mesh');
+  t.api.update(base+2010,.016,false);assert.equal(t.api.stats().visible,0,'editor always uses mesh');
   t.api.dispose();assert.equal(t.api.stats().buildings,0);
 }
+const busy=setup();busy.api.update(0,.03,true);assert.equal(busy.state.renders,0,'over-budget frames defer building captures');busy.api.update(100,.016,true);assert.equal(busy.state.renders,1,'building captures resume when the frame budget recovers');busy.api.dispose();
 const failure=setup();failure.state.throw=true;
 const warn=console.warn;console.warn=()=>{};failure.api.update(0,.016,true);console.warn=warn;
 assert.equal(failure.api.stats().failed,true);assert.equal(failure.state.target,null);
