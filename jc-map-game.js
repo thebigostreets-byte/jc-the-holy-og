@@ -4,7 +4,8 @@ import * as THREE from './three.module.js';
 import {cloneBuildingMaterial} from './map-materials.js';
 
 import {stickAxis, response, advanceChain, advanceGait, advanceLook, setFlightForward} from './jc-control-math.js';
-import {transitionFlight} from './jc-flight-state.js';
+import {transitionFlight,shouldTouchDown} from './jc-flight-state.js';
+import {createMiracleEffects} from './jc-miracle-effects.js';
 import {loadRearWalk,loadPoseSheet,FLIGHT_CELLS} from './rear-walk.js';
 import {cachedGroundSample} from './ground-sampling.js';
 import {createNpcSystem} from './jc-npcs.js';
@@ -202,7 +203,7 @@ function trimMiracleTextures(){
 function loadMiracleTexture(id){
   if(miracleTextures.has(id)){const texture=miracleTextures.get(id);miracleTextures.delete(id);miracleTextures.set(id,texture);return Promise.resolve(texture);}
   if(miracleLoads.has(id))return miracleLoads.get(id);
-  const load=loadTextureSafe(imageLoader,`./miracles/${id}.webp`,fallbackMiracleTexture).then(texture=>{
+  const load=loadTextureSafe(imageLoader,`./miracles/${abilityArt(id)}.webp`,fallbackMiracleTexture).then(texture=>{
     texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=1;
     if(texture.image&&Math.max(texture.image.width,texture.image.height)>512){const ratio=512/Math.max(texture.image.width,texture.image.height),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(texture.image.width*ratio));canvas.height=Math.max(1,Math.round(texture.image.height*ratio));canvas.getContext('2d').drawImage(texture.image,0,0,canvas.width,canvas.height);texture.image=canvas;texture.generateMipmaps=false;texture.minFilter=THREE.LinearFilter;texture.needsUpdate=true;}
     miracleTextures.set(id,texture);trimMiracleTextures();return texture;
@@ -213,13 +214,11 @@ function spawnMiracleSprite(id,position=player?.position){
   if(!position||!game)return;
   const base=position.clone();
   loadMiracleTexture(id).then(texture=>{
-  if(!game?.scene)return;
+  if(!game?.scene||!playing)return;
   activeMiracleSprites.set(id,(activeMiracleSprites.get(id)||0)+1);
   const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthWrite:false,opacity:.96,blending:THREE.AdditiveBlending}));
   sprite.position.copy(base).add(new THREE.Vector3(0,2.4,0));sprite.scale.set(3.4,3.4,1);game.scene.add(sprite);
-  const started=performance.now(),base=sprite.position.clone();
-  const animate=now=>{const t=(now-started)/1000;if(t>1.15){game.scene.remove(sprite);sprite.material.dispose();const active=activeMiracleSprites.get(id)||1;if(active<=1)activeMiracleSprites.delete(id);else activeMiracleSprites.set(id,active-1);trimMiracleTextures();return;}sprite.position.y=base.y+Math.sin(t*8)*.16;sprite.scale.setScalar(3.4+t*2.2);sprite.material.opacity=Math.max(0,1-t/1.15);sprite.material.rotation=t*.9;requestAnimationFrame(animate);};
-  requestAnimationFrame(animate);
+  effects().sprite(sprite,()=>{const active=activeMiracleSprites.get(id)||1;if(active<=1)activeMiracleSprites.delete(id);else activeMiracleSprites.set(id,active-1);trimMiracleTextures();});
   }).catch(error=>console.warn('Miracle effect art unavailable',id,error));
 }
 function clearTeleportMarker(){if(teleportMarker){game?.scene?.remove(teleportMarker);teleportMarker.geometry.dispose();teleportMarker.material.dispose();teleportMarker=null;}}
@@ -235,7 +234,7 @@ function chooseTeleportPoint(clientX,clientY){
   const offset=point.clone().sub(player.position);offset.y=0;if(offset.length()>1500){offset.setLength(1500);point.copy(player.position).add(offset);feedback('Teleport range capped at 1.5 km');}
   const safe=clearSpot(point.x,point.z);
   if(!flying&&Math.hypot(safe[0]-point.x,safe[1]-point.z)>8){feedback('That landing point is blocked');return;}
-  teleportTarget.set(safe[0],groundAt(safe[0],safe[1])+flightHeight,safe[1]);
+  teleportTarget=new THREE.Vector3(safe[0],groundAt(safe[0],safe[1])+flightHeight,safe[1]);
   clearTeleportMarker();
   teleportMarker=new THREE.Mesh(new THREE.RingGeometry(2,2.4,32),new THREE.MeshBasicMaterial({color:0x9fe8ff,transparent:true,opacity:.95,side:THREE.DoubleSide,depthWrite:false}));
   teleportMarker.rotation.x=-Math.PI/2;teleportMarker.position.set(teleportTarget.x,groundAt(teleportTarget.x,teleportTarget.z)+.14,teleportTarget.z);game.scene.add(teleportMarker);
@@ -253,6 +252,7 @@ function cycleTarget(){
   feedback(lockedSoul?'Light tracked · Q pulse within 18 m':'All lights restored');
 }
 function resetRun(){
+  miracleEffects?.clear();phaseUntil=timeScaleUntil=shieldUntil=graceSurgeUntil=sanctuaryUntil=stasisUntil=revealUntil=sunriseUntil=poseOverrideUntil=castingUntil=0;poseOverride=-1;lockedBuilding=null;
   clearTeleportMarker();teleportAim=false;teleportTarget=null;
   redeemed=0;runTime=0;runActive=false;runFinished=false;chain={count:0,last:0,points:0};lockedSoul=null;
   grace=100;cooldowns.clear();dashCooldown=pulseCooldown=0;flightHeight=0;flying=hypersonic=glide=diving=false;
@@ -373,6 +373,10 @@ function buildingHash(id) {
 
 const vegasNeon = [0xff331a,0xff4820,0xffb85b,0xff2210,0xffd28a];
 let cinematicLook=null;
+let miracleEffects=null;
+function effects(){return miracleEffects||(miracleEffects=createMiracleEffects(game.scene,coarseDevice));}
+const abilityArtIds={'heavenly-spear':'divine-beam','judgment-storm':'lightning',singularity:'vortex','sonic-boom':'hypersonic'};
+function abilityArt(id){return abilityArtIds[id]||id;}
 const vegasTints = [0xffffff,0xffd6f3,0xd8fbff,0xfff3c8,0xe6ffd2,0xffdfc8,0xe6ddff,0xd8ffe9,0xffd8e5,0xd6e6ff];
 
 
@@ -684,49 +688,17 @@ function pulse(charge = true) {
   if (charge) grace -= 35;
   pulseCooldown = 1.5;
   for (const soul of souls) if (soul.visible && soul.position.distanceTo(player.position) < 18) collect(soul);
-  const mesh = new THREE.Mesh(new THREE.RingGeometry(.5, 1, 32), new THREE.MeshBasicMaterial({color:0xffe090,transparent:true,opacity:.9,side:THREE.DoubleSide,depthWrite:false}));
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.position.copy(player.position);
-  mesh.position.y += .12;
-  game.scene.add(mesh);
-  let radius = 1;
-  const expand = () => {
-    radius += 1.6;
-    mesh.scale.setScalar(radius);
-    mesh.material.opacity = Math.max(0, 1 - radius / 20);
-    if (radius < 20) requestAnimationFrame(expand);
-    else {game.scene.remove(mesh);mesh.geometry.dispose();mesh.material.dispose();}
-  };
-  requestAnimationFrame(expand);
+  ringAt(player.position,0xffe090,20);
 }
 
-function ringAt(position, color = 0xffe090, max = 20) {
-  const mesh = new THREE.Mesh(new THREE.RingGeometry(.5, 1, 32), new THREE.MeshBasicMaterial({color,transparent:true,opacity:.9,side:THREE.DoubleSide,depthWrite:false}));
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.position.copy(position);
-  mesh.position.y += .12;
-  game.scene.add(mesh);
-  let radius = 1;
-  function grow() {
-    radius += max / 12;
-    mesh.scale.setScalar(radius);
-    mesh.material.opacity = Math.max(0, 1 - radius / max);
-    if (radius < max) requestAnimationFrame(grow);
-    else {game.scene.remove(mesh);mesh.geometry.dispose();mesh.material.dispose();}
-  }
-  requestAnimationFrame(grow);
-}
+function ringAt(position,color=0xffe090,max=20){effects().ring(position,color,max);}
+function beamTo(destination,color=0xffe4a4){effects().beam(player.position.clone().add(new THREE.Vector3(0,2.4,0)),destination,color);}
 
-function beamTo(destination, color = 0xffe4a4) {
-  const from = player.position.clone().add(new THREE.Vector3(0, 2.4, 0));
-  const length = from.distanceTo(destination);
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(.08, .2, length, 8), new THREE.MeshBasicMaterial({color,transparent:true,opacity:.8,depthWrite:false}));
-  beam.position.copy(from).add(destination).multiplyScalar(.5);
-  beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), destination.clone().sub(from).normalize());
-  game.scene.add(beam);
-  setTimeout(() => {game.scene.remove(beam);beam.geometry.dispose();beam.material.dispose();}, 320);
+function nearbyRuins(radius=55){
+  let nearest=null,best=radius*radius;
+  for(const [id,ob] of game.buildings||[]){if(!game.chunks?.has(id))continue;const point=ob.getWorldPosition(new THREE.Vector3());const d=(point.x-player.position.x)**2+(point.z-player.position.z)**2;if(d<best){best=d;nearest=ob;}}
+  return nearest;
 }
-
 function nearbyBuildings(radius, count = 1) {
   return footprints.map(({box,ob}) => ({ob,d:box.distanceToPoint(player.position)}))
     .filter(({ob,d}) => d < radius && ob.userData.buildingId)
@@ -747,36 +719,20 @@ function redeem(ob) {
 function moveSouls(mode, radius = 35) {
   for (const soul of souls) {
     if (!soul.visible || soul.position.distanceTo(player.position) > radius) continue;
-    const direction = player.position.clone().sub(soul.position).setY(0).normalize();
-    const distance = mode === 'repel' ? -25 : mode === 'vortex' ? 18 : 25;
+    const direction = player.position.clone().sub(soul.position).setY(0);
+    const separation=direction.length();direction.normalize();
+    const distance = mode === 'repel' ? -25 : mode === 'vortex' ? Math.min(18,separation) : Math.min(25,separation);
     soul.position.addScaledVector(direction, distance);
     soul.userData.baseY = groundAt(soul.position.x, soul.position.z) + 1.6;
     if (soul.position.distanceTo(player.position) < 3) collect(soul);
   }
 }
 
-function rainEffect() {
-  const drops = new THREE.Group();
-  const material = new THREE.MeshBasicMaterial({color:0x90c6ed,transparent:true,opacity:.8});
-  const geometry = new THREE.BoxGeometry(.04, 1.6, .04);
-  for (let i=0;i<100;i++) {
-    const drop = new THREE.Mesh(geometry, material);
-    drop.position.set(player.position.x+(Math.random()-.5)*55,player.position.y+5+Math.random()*25,player.position.z+(Math.random()-.5)*55);
-    drop.userData.floor=groundAt(drop.position.x,drop.position.z);
-    drops.add(drop);
-  }
-  game.scene.add(drops);
-  const started = performance.now();
-  function fall(now) {
-    if (now-started > 3000) {game.scene.remove(drops);geometry.dispose();material.dispose();return;}
-    for (const drop of drops.children) {drop.position.y-=.9;if(drop.position.y<drop.userData.floor)drop.position.y=player.position.y+25;}
-    requestAnimationFrame(fall);
-  }
-  requestAnimationFrame(fall);
-}
+function rainEffect(){effects().rainAt(player.position);}
 
 function beamDown() {
   if (!flying) return;
+  const landingHeight=flightHeight;
   const [x,z]=clearSpot(player.position.x,player.position.z);
   player.position.x=x;player.position.z=z;terrainY=groundAt(x,z);lastGround=performance.now();
   velocity.set(0,0,0);
@@ -784,9 +740,9 @@ function beamDown() {
   showPose(6,700);
   spawnMiracleSprite('beam-down');
   ringAt(player.position, 0xffedb5, 24);
-  const marker = new THREE.Mesh(new THREE.CylinderGeometry(.7,.7,Math.max(4,flightHeight),12,1,true),new THREE.MeshBasicMaterial({color:0xffe6a0,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false}));
+  const marker = new THREE.Mesh(new THREE.CylinderGeometry(.7,.7,Math.max(4,landingHeight),12,1,true),new THREE.MeshBasicMaterial({color:0xffe6a0,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false}));
   marker.position.copy(player.position);
-  marker.position.y -= flightHeight/2;
+  marker.position.y = terrainY+landingHeight/2;
   game.scene.add(marker);
   setTimeout(()=>{game.scene.remove(marker);marker.geometry.dispose();marker.material.dispose();},800);
 }
@@ -840,7 +796,14 @@ function cast(id = selectedAbility) {
   if(id==='teleport'&&!teleportTarget){beginTeleportTarget();return;}
   if((cooldowns.get(id)||0)>performance.now()){feedback('Miracle recharging');return;}
   if(grace<ability.cost){feedback(`Need ${ability.cost} grace · release boost to recover`);return;}
-  if((id==='heavenly-spear'||id==='judgment-storm')&&!lockedBuilding&&!nearbyBuildings(id==='heavenly-spear'?105:140,1).length){feedback('No building in range');return;}
+  if(id==='skydive'&&(!flying||diving)){feedback(flying?'DIVE ALREADY IN PROGRESS':'TAKE FLIGHT BEFORE DIVING');return;}
+  if(id==='beam-down'&&!flying){feedback('Already grounded');return;}
+  if(id==='dash'&&dashCooldown>0||id==='light-pulse'&&pulseCooldown>0){feedback('Miracle recharging');return;}
+  if(lockedBuilding&&game.buildings?.get(lockedBuilding.userData.buildingId)!==lockedBuilding)lockedBuilding=null;
+  const buildingRadii={'divine-beam':110,'chain-light':100,'radiance-nova':56,cleanse:45,reveal:75,restore:60,shockwave:40,lightning:130,telekinesis:40,crumble:55,bless:45,exorcise:65,'redemption-wave':105,'heavenly-spear':105,'judgment-storm':140};
+  if(buildingRadii[id]&&!nearbyBuildings(buildingRadii[id],1).length){feedback('No building in range');return;}
+  if(id==='rebuild'&&!nearbyRuins()){feedback('No collapsed building in range');return;}
+  if(id==='teleport'&&teleportTarget&&(!Number.isFinite(teleportTarget.x)||!Number.isFinite(teleportTarget.z)||(!flying&&(!openSpace(teleportTarget.x,teleportTarget.z,2)||blockedAt(teleportTarget.x,teleportTarget.y,teleportTarget.z,2))))){teleportTarget=null;clearTeleportMarker();feedback('Choose a clear landing point');return;}
   feedback(ability.name);
   const flightAbilities=new Set(['flight','hypersonic','hover','leap','glide','sky-lift','skydive','beam-down']);
   if(!flightAbilities.has(id))showPose(miraclePose[id] ?? 5, id === 'redemption-wave' ? 2400 : 800);
@@ -881,9 +844,9 @@ function cast(id = selectedAbility) {
     case 'shockwave':near(40,5).forEach(redeem);ringAt(player.position,0xffd18b,42);cinematicLook?.impact(player.position);break;
     case 'rain':rainEffect();break;
     case 'lightning':strike(130,3);ringAt(player.position,0xaed8ff,24);cinematicLook?.impact(player.position);break;
-    case 'telekinesis':{const ob=near(40)[0];if(ob){const p=ob.getWorldPosition(new THREE.Vector3());beamTo(p,0x9bdcff);ringAt(p,0x9bdcff,16);const original=ob.position.y;ob.position.y+=5;setTimeout(()=>{ob.position.y=original;refreshFootprints();},900);}break;}
+    case 'telekinesis':{const ob=near(40)[0];if(ob){const p=ob.getWorldPosition(new THREE.Vector3());beamTo(p,0x9bdcff);ringAt(p,0x9bdcff,16);const original=ob.position.y;ob.position.y+=5;refreshFootprints();setTimeout(()=>{ob.position.y=original;refreshFootprints();},900);}break;}
     case 'crumble':{const ob=lockedBuilding||near(55)[0];if(!ob){feedback('No building in range');break;}const point=ob.getWorldPosition(new THREE.Vector3());game.destroy(ob,'crumble');cinematicLook?.impact(point);refreshFootprints();ringAt(point,0xffc38e,26);feedback(`${ob.userData.buildingId} CRUMBLED · debris falling`);lockedBuilding=null;break;}
-    case 'rebuild':{const ob=lockedBuilding||near(55)[0];if(ob){game.rebuild(ob);refreshFootprints();redeem(ob);feedback(`${ob.userData.buildingId} REBUILT`);lockedBuilding=null;}break;}
+    case 'rebuild':{const ob=nearbyRuins();if(ob){game.rebuild(ob);refreshFootprints();redeem(ob);feedback(`${ob.userData.buildingId} REBUILT`);lockedBuilding=null;}break;}
     case 'bless':near(45).forEach(redeem);break;
     case 'exorcise':near(65,5).forEach(redeem);break;
     case 'stasis':stasisUntil=performance.now()+6000;ringAt(player.position,0x9fd9ff,25);break;
@@ -894,8 +857,8 @@ function cast(id = selectedAbility) {
     case 'redemption-wave':near(105,8).forEach(redeem);ringAt(player.position,0xffe7b1,105);cinematicLook?.impact(player.position);break;
     case 'heavenly-spear':{const ob=lockedBuilding||near(105)[0];if(!ob){feedback('No building in range');break;}const point=ob.getWorldPosition(new THREE.Vector3());point.y+=Math.max(5,ob.userData.heightMetres*.55);beamTo(point,0xffe6a5);game.destroy(ob,'explode');refreshFootprints();cinematicLook?.impact(point);ringAt(point,0xffe6a5,34);ringAt(player.position,0xfff4ce,17);feedback(`${ob.userData.buildingId} · HEAVENLY SPEAR`);lockedBuilding=null;break;}
     case 'judgment-storm':{const targets=near(140,3);if(!targets.length){feedback('No buildings in range');break;}for(const ob of targets){const point=ob.getWorldPosition(new THREE.Vector3());point.y+=Math.max(5,ob.userData.heightMetres*.45);beamTo(point,0xb6dcff);game.destroy(ob,'crumble');ringAt(point,0xc4e6ff,24);}refreshFootprints();cinematicLook?.impact(player.position);ringAt(player.position,0xaed8ff,55);feedback(`JUDGMENT STORM · ${targets.length} IMPACTS`);break;}
-    case 'singularity':moveSouls('vortex',85);timeScaleUntil=performance.now()+1800;ringAt(player.position,0x9bdcff,72);feedback('SINGULARITY · everything pulled into the moment');break;
-    case 'sonic-boom':{setFlight('boost');const direction=desired.lengthSq()?desired.clone().normalize():forward.clone();moveSafely(direction.x*22,direction.z*22,performance.now()<phaseUntil);velocity.addScaledVector(direction,24);const point=player.position.clone();cinematicLook?.impact(point);ringAt(point,0xbceaff,36);npcSystem?.signal('sonic-boom',point,110);feedback('SONIC BOOM · HYPERFLIGHT');break;}
+    case 'singularity':moveSouls('vortex',85);timeScaleUntil=performance.now()+1800;ringAt(player.position,0x9bdcff,72);feedback('SINGULARITY · nearby lights pulled inward');break;
+    case 'sonic-boom':{setFlight('surge');const direction=desired.lengthSq()?desired.clone().normalize():forward.clone();moveSafely(direction.x*22,direction.z*22,performance.now()<phaseUntil);velocity.addScaledVector(direction,24);const point=player.position.clone();cinematicLook?.impact(point);ringAt(point,0xbceaff,36);npcSystem?.signal('sonic-boom',point,110);feedback('SONIC BOOM · HYPERFLIGHT');break;}
   }
   graceLabel.textContent=Math.round(grace);
 }
@@ -906,7 +869,7 @@ function renderWheel() {
   }));
   hud.querySelector('.jc-list').replaceChildren(...abilities.filter(a=>a.group===selectedGroup).map(a=>{
     const button=document.createElement('button');button.className=a.id===selectedAbility?'selected':'';
-    button.innerHTML=`${a.name}<small>${a.cost} grace · ${a.cooldown}s cooldown</small>`;button.style.backgroundImage=`url('./miracles/${a.id}.webp')`;
+    button.innerHTML=`${a.name}<small>${a.cost} grace · ${a.cooldown}s cooldown</small>`;button.style.backgroundImage=`url('./miracles/${abilityArt(a.id)}.webp')`;
     button.onclick=()=>{selectedAbility=a.id;hud.querySelector('#jcSelected').textContent=a.name;wheel.classList.remove('open');renderWheel();};
     return button;
   }));
@@ -918,7 +881,7 @@ function setMode(play) {
     playReturn.textContent = 'LOADING JC...';
     return;
   }
-  if (!play) conversation.close({restoreFocus:false});
+  if (!play) {conversation.close({restoreFocus:false});miracleEffects?.clear();}
   playing = play;
   if(player)cinematicLook?.update(0,performance.now(),player.position,velocity,false,false,play);
   npcSystem?.setVisible(play);
@@ -942,6 +905,7 @@ function setMode(play) {
 playReturn.onclick = () => setMode(true);
 
 function frameStep(now) {
+  miracleEffects?.update(now);
   if (conversation.isOpen) {last=now;return;}
   const elapsed = Math.max(0, now - last);
   const dt = Math.min(.045, elapsed / 1000);
@@ -1017,7 +981,7 @@ function frameStep(now) {
   if(flightHeight===250&&velocity.y>0)velocity.y=0;
   if(!diving&&flightHeight<previousHeight&&blockedAt(player.position.x,terrainY+flightHeight,player.position.z)){flightHeight=previousHeight;velocity.y=0;}
   if(diving&&flightHeight<=0){setFlight('impact');velocity.multiplyScalar(.28);resolveDiveImpact();}
-  else if(flying&&(dropHeld||(previousHeight>0&&flightHeight===0&&velocity.y<0))){setFlight('touchdown');velocity.y=0;}
+  else if(shouldTouchDown(flying,previousHeight,flightHeight,velocity.y)){setFlight('touchdown');velocity.y=0;}
   if (flightHeight===0) descending=0;
   if (now - lastGround > (flying ? 400 : 180)) {
     terrainY=groundAt(player.position.x,player.position.z);
@@ -1183,7 +1147,7 @@ const group = game.loaded.get('C15_R14');
     if (e.code === 'KeyF' && !e.repeat) cast('flight');
     if (e.code === 'KeyG' && !e.repeat) cast('hypersonic');
     if (e.code === 'KeyV' && !e.repeat) beginDive(true);
-    if (e.code === 'KeyT' && !e.repeat) {if(teleportAim)cast('teleport');else beginTeleportTarget();}
+    if (e.code === 'KeyT' && !e.repeat) {cast('teleport');}
     if (e.code === 'KeyR' && !e.repeat) cast('beam-down');
     if (e.code === 'KeyZ' && !e.repeat) cast('light-pulse');
     if (e.code === 'KeyH' && !e.repeat) cast('shield');
@@ -1236,7 +1200,7 @@ const group = game.loaded.get('C15_R14');
   hud.querySelector('[data-action="lock"]').onclick=cycleTarget;
   hud.querySelector('[data-action="fly"]').onclick=()=>cast('flight');
   hud.querySelector('[data-action="land"]').onclick=()=>cast('beam-down');
-  hud.querySelector('[data-action="teleport"]').onclick=()=>{if(teleportAim)cast('teleport');else beginTeleportTarget();};
+  hud.querySelector('[data-action="teleport"]').onclick=()=>{cast('teleport');};
   hud.querySelector('[data-action="cast"]').onclick=()=>cast();
   hud.querySelector('[data-action="wheel"]').onclick=()=>toggleWheel();
   const moreButton=hud.querySelector('[data-action="more"]'),extras=hud.querySelector('.jc-extras');

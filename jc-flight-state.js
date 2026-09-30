@@ -11,8 +11,12 @@ export function transitionFlight(state, action) {
       const start = current.flying ? current : transitionFlight(current,'takeoff');
       return {...start, hypersonic:!current.hypersonic, glide:false, diving:false, height:Math.max(18,start.height), descending:0};
     }
+    case 'surge': {
+      const start=current.flying?current:transitionFlight(current,'takeoff');
+      return {...start,hypersonic:true,glide:false,diving:false,height:Math.max(18,start.height),descending:0};
+    }
     case 'hover':
-      return {...current, flying:true, hypersonic:false, glide:false, diving:false, height:5, descending:0};
+      return {...current, flying:true, hypersonic:false, glide:false, diving:false, height:current.flying?Math.max(5,current.height):5, descending:0};
     case 'leap':
       return {...current, flying:true, hypersonic:false, glide:false, diving:false, height:Math.min(250,current.height+14), descending:0};
     case 'glide': {
@@ -34,3 +38,5 @@ export function transitionFlight(state, action) {
       return current;
   }
 }
+
+export function shouldTouchDown(flying,previousHeight,height,verticalVelocity){return flying&&previousHeight>0&&height===0&&verticalVelocity<=0;}
