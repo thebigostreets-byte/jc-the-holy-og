@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import * as THREE from '../three.module.js';
+
+const source=readFileSync(new URL('../jc-npcs.js',import.meta.url),'utf8');
+const start=source.indexOf('  function update(dt,now=performance.now())');
+const end=source.indexOf('\n  return {npcs',start);
+assert.ok(start>=0&&end>start,'NPC update loop exists');
+const poses=[];
+const player={position:new THREE.Vector3()};
+const npc={faction:'civilian',sprite:{position:new THREE.Vector3(),rotation:{y:0},userData:{character:{setPose(...args){poses.push(args);}}}},position:new THREE.Vector3(0,1.55,0),target:new THREE.Vector3(5,1.55,0),event:null,state:'wander',nextWander:10000,emotionUntil:10000,gait:0,stepDistance:0};
+const context=vm.createContext({THREE,Math,performance:{now:()=>0},player,npcs:[npc],isSafe:()=>true,groundAt:()=>0,chooseOpen:(x,z)=>[x,z],report:()=>{},setDestination:()=>{}});
+vm.runInContext(source.slice(start,end),context);
+context.update(.016,0);
+assert.ok(npc.position.x>0,'walking NPC advances toward its target');
+assert.ok(npc.gait>0,'walking NPC advances its gait cycle');
+assert.equal(poses.at(-1)[0],23,'walking NPC selects a walk frame');
+assert.equal(poses.at(-1)[2],1.1,'walking animation receives an in-scope movement speed');
+npc.state='fear';npc.target.set(5,1.55,0);context.update(.5,20);
+assert.ok(poses.at(-1)[0]>=31&&poses.at(-1)[0]<=38,'fleeing NPC selects a run frame');
+assert.equal(poses.at(-1)[2],4.4,'running animation receives its run speed');
+npc.target.copy(npc.position);npc.state='idle';npc.event={type:'settled'};npc.emotionUntil=10000;context.update(.016,40);
+assert.equal(poses.at(-1)[0],0,'stopped NPC returns to its idle pose');
+assert.equal(poses.at(-1)[2],0,'stopped NPC animation receives zero speed');
+console.log('PASS: NPC walk/run/idle updates complete without frame-loop exceptions.');

@@ -71,7 +71,16 @@ style.textContent += '@media(max-width:800px),(pointer:coarse){#jcTalk{bottom:ca
 const talk=document.createElement('section');talk.id='jcTalk';talk.setAttribute('aria-label','Talk to nearby character');talk.innerHTML='<div id=jcTalkHead><img alt=""><div><strong></strong><small></small></div><button class=close type=button aria-label="Close conversation">×</button></div><div id=jcTalkLog role=log aria-live=polite></div><form><input maxlength=180 aria-label="Message to character" placeholder="Say something…"><button data-voice type=button aria-label="Speak your message" title="Speak your message">🎙</button><button type=submit>Send</button></form>';hud.append(talk);
 let nearNpc=null;
 const conversation=createNpcConversation({panel:talk,log:talk.querySelector('#jcTalkLog'),onOpen:()=>{resetInput();velocity.set(0,0,0);},onClose:()=>resetInput(),notice:message=>feedback(message)});
-function closestNpc(){if(!npcSystem||!player)return null;return npcSystem.npcs.filter(n=>n.sprite).map(n=>[n,n.position.distanceTo(player.position)]).filter(([,d])=>d<10).sort((a,b)=>a[1]-b[1])[0]?.[0]||null;}
+function closestNpc(){
+  if(!npcSystem||!player)return null;
+  let nearest=null,nearestDistance=10;
+  for(const npc of npcSystem.npcs){
+    if(!npc.sprite)continue;
+    const distance=npc.position.distanceTo(player.position);
+    if(distance<nearestDistance){nearest=npc;nearestDistance=distance;}
+  }
+  return nearest;
+}
 function openNpcTalk(npc=nearNpc){if(npc&&playing)conversation.open(npc);}
 npcTalkButton.addEventListener('click',()=>{if(conversation.isOpen)conversation.close();else openNpcTalk();});
 hud.addEventListener('click',e=>{if(e.target.closest('button')&&!wheel.classList.contains('open'))e.target.closest('button').blur();});
@@ -313,6 +322,11 @@ function refreshFootprints() {
       }
     }
   }
+}
+let footprintRefreshTimer=0;
+function queueFootprintRefresh(){
+  clearTimeout(footprintRefreshTimer);
+  footprintRefreshTimer=setTimeout(()=>{footprintRefreshTimer=0;refreshFootprints();},120);
 }
 
 function openSpace(x, z, radius = 2) {
@@ -1057,7 +1071,7 @@ function frameStep(now) {
     }else targetLabel.textContent='';
   }
   const tiles=game.tileRevision?.()??[...game.loaded.keys()].join(',');
-  if(tiles!==lastTiles){lastTiles=tiles;refreshFootprints();}
+  if(tiles!==lastTiles){lastTiles=tiles;queueFootprintRefresh();}
 }
 function frame(now){
   requestAnimationFrame(frame);
