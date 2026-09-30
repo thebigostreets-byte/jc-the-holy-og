@@ -27,6 +27,6 @@ const source=readFileSync(new URL('../jc-map-game.js',import.meta.url),'utf8');
 assert.match(source,/case 'flight':if\(flying\)beamDown\(\);else setFlight\('takeoff'\)/);
 assert.match(source,/if\(riseHeld\)desired\.y\+=1;if\(dropHeld\)desired\.y-=1/,'opposite vertical inputs cancel cleanly');
 assert.match(source,/flightHeight=THREE\.MathUtils\.clamp\(flightHeight\+velocity\.y\*dt,0,250\)/,'flight altitude follows smoothed vertical velocity');
-assert.match(source,/else if\(flying&&dropHeld&&flightHeight<=0\)setFlight\('touchdown'\)/);
+assert.match(source,/else if\(flying&&\(dropHeld\|\|\(previousHeight>0&&flightHeight===0&&velocity\.y<0\)\)\)\{setFlight\('touchdown'\);velocity\.y=0;\}/,'descending into the ground cleanly returns JC to grounded movement');
 assert.match(source,/if\(!flightAbilities\.has\(id\)\)showPose/,'flight casts do not pin a stale ability pose over live flight poses');
 console.log('PASS: flight mode transitions, clean takeoff/landing, glide/dive/boost switching, touchdown, recall reset and live pose priority');

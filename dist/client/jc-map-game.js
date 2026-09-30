@@ -996,7 +996,7 @@ function frameStep(now) {
   if(flightHeight===250&&velocity.y>0)velocity.y=0;
   if(!diving&&flightHeight<previousHeight&&blockedAt(player.position.x,terrainY+flightHeight,player.position.z)){flightHeight=previousHeight;velocity.y=0;}
   if(diving&&flightHeight<=0){setFlight('impact');velocity.multiplyScalar(.28);resolveDiveImpact();}
-  else if(flying&&dropHeld&&flightHeight<=0)setFlight('touchdown');
+  else if(flying&&(dropHeld||(previousHeight>0&&flightHeight===0&&velocity.y<0))){setFlight('touchdown');velocity.y=0;}
   if (flightHeight===0) descending=0;
   if (now - lastGround > (flying ? 400 : 180)) {
     terrainY=groundAt(player.position.x,player.position.z);
