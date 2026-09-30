@@ -5,13 +5,38 @@ export function createCinematicLook(game, mobile=false) {
   const {renderer,scene,camera}=game;
   const skyFallback=new THREE.Color(0x101a30);
   let sky=skyFallback,sunrise=false;
-  scene.background=sky;scene.fog=new THREE.FogExp2(0x172238,.00032);
-  scene.traverse(o=>{if(o.isHemisphereLight)o.intensity=.42;if(o.isDirectionalLight){o.color.set(0xa8bded);o.intensity=1.15;}});
-  const rim=new THREE.DirectionalLight(0xffc685,1.65);rim.position.set(-900,300,-700);scene.add(rim);
-  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
+  scene.background=sky;scene.fog=new THREE.FogExp2(0x172238,mobile?.00044:.00028);
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.03;
+  if('useLegacyLights' in renderer) renderer.useLegacyLights=false;
+  renderer.shadowMap.enabled=!mobile;
+  if(!mobile) renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  scene.traverse(o=>{
+    if(o.isHemisphereLight){o.intensity=.34;o.color.set(0xb9caeb);o.groundColor.set(0x342a24);}
+    if(o.isDirectionalLight){o.color.set(0xfff1d2);o.intensity=2.2;o.castShadow=!mobile;}
+    if(o.isMesh&&o.material){
+      const materials=Array.isArray(o.material)?o.material:[o.material];
+      for(const material of materials){
+        if(material.isMeshStandardMaterial||material.isMeshPhysicalMaterial){
+          material.envMapIntensity=Math.max(.55,material.envMapIntensity||0);
+          material.roughness=THREE.MathUtils.clamp(material.roughness??.72,.24,.96);
+        }
+      }
+      if(!mobile){o.receiveShadow=true;}
+    }
+  });
+  const sun=new THREE.DirectionalLight(0xffe3b8,mobile?1.7:3.1);
+  sun.position.set(650,900,-420);sun.castShadow=!mobile;
+  if(!mobile){
+    sun.shadow.mapSize.set(2048,2048);
+    sun.shadow.camera.left=-420;sun.shadow.camera.right=420;sun.shadow.camera.top=420;sun.shadow.camera.bottom=-420;
+    sun.shadow.camera.near=20;sun.shadow.camera.far=2200;sun.shadow.bias=-.00012;sun.shadow.normalBias=.035;
+  }
+  scene.add(sun);
+  const rim=new THREE.DirectionalLight(0x8db8ff,mobile?.55:1.15);rim.position.set(-900,360,-700);scene.add(rim);
   new THREE.TextureLoader().load('./assets/jc-storm-sky.webp',t=>{
     t.colorSpace=THREE.SRGBColorSpace;t.mapping=THREE.EquirectangularReflectionMapping;
-    sky=t;scene.environment=t;scene.environmentIntensity=.35;if(!sunrise)scene.background=t;
+    sky=t;scene.environment=t;scene.environmentIntensity=mobile?.28:.62;if(!sunrise)scene.background=t;
   },undefined,()=>{});
   const rt=new THREE.WebGLRenderTarget(1,1,{type:renderer.extensions?.has('EXT_color_buffer_float')?THREE.HalfFloatType:THREE.UnsignedByteType,depthBuffer:true,stencilBuffer:false});
   const a=new THREE.WebGLRenderTarget(1,1,{depthBuffer:false}),b=a.clone();
@@ -75,6 +100,15 @@ export function createCinematicLook(game, mobile=false) {
     geom.attributes.position.needsUpdate=true;geom.attributes.color.needsUpdate=true;
     flareLife=Math.max(0,flareLife-dt);flare.intensity=flareLife*220;
   }
-  function setSunrise(active){if(active===sunrise)return;sunrise=active;scene.background=active?new THREE.Color(0xf9dcbc):sky;rim.intensity=active?2.5:1.65;}
+  function setSunrise(active){
+    if(active===sunrise)return;
+    sunrise=active;
+    scene.background=active?new THREE.Color(0xf2b783):sky;
+    scene.fog.color.set(active?0x8f756c:0x172238);
+    scene.fog.density=active?(mobile?.00036:.00022):(mobile?.00044:.00028);
+    sun.color.set(active?0xffc58f:0xffe3b8);sun.intensity=active?(mobile?2.15:3.8):(mobile?1.7:3.1);
+    rim.color.set(active?0xff7f62:0x8db8ff);rim.intensity=active?(mobile?.85:1.5):(mobile?.55:1.15);
+    renderer.toneMappingExposure=active?1.08:1.03;
+  }
   return {render,update,impact,setSunrise,setGlow:on=>{enabled=!!on;}};
 }
