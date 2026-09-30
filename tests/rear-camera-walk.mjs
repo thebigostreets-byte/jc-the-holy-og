@@ -35,6 +35,6 @@ context.snapCameraBehindPlayer();assert.ok(camera.position.z<34,'wall protection
 context.blockedAt=()=>false;context.yaw=0;context.viewPitch=.4;context.snapCameraBehindPlayer();
 assert.ok(camera.position.y<player.position.y+5.3,'look-up aim raises the view direction while retaining rear camera');
 assert.ok(camera.position.z>player.position.z,'pitched camera remains behind JC');
-assert.ok(source.includes('viewPitch=THREE.MathUtils.clamp(viewPitch-lookY*dt*1.35,-.62,.62)'),'camera pitch is bounded for control stability');
+assert.ok(source.includes('advanceLook(yaw,viewPitch,lookX,lookY,dt)'),'camera pitch is bounded by the tested look controller');
 assert.ok(source.includes('game.camera.position.copy(cameraBoom(9))'),'no follow lag or speed-dependent distance');
 console.log('PASS: both stride halves at 20–120 FPS, fixed rear offset and aiming, wall avoidance.');

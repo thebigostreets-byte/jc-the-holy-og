@@ -3,7 +3,7 @@ import {createCinematicLook} from './cinematic-look.js';
 import * as THREE from './three.module.js';
 import {cloneBuildingMaterial} from './map-materials.js';
 
-import {stickAxis, response, advanceChain, advanceGait, setFlightForward} from './jc-control-math.js';
+import {stickAxis, response, advanceChain, advanceGait, advanceLook, setFlightForward} from './jc-control-math.js';
 import {transitionFlight} from './jc-flight-state.js';
 import {loadRearWalk,loadPoseSheet,FLIGHT_CELLS} from './rear-walk.js';
 import {cachedGroundSample} from './ground-sampling.js';
@@ -956,8 +956,8 @@ function frameStep(now) {
     gamepadButtons=pad.buttons.map(button=>button.pressed);
   }else{padKeys.clear();gamepadButtons=[];}
   if(wheel.classList.contains('open')){velocity.set(0,0,0);return;}
-  yaw+=lookX*dt*1.8;
-  viewPitch=THREE.MathUtils.clamp(viewPitch-lookY*dt*1.35,-.62,.62);
+  const look=advanceLook(yaw,viewPitch,lookX,lookY,dt);
+  yaw=look.yaw;viewPitch=look.pitch;
   if(runActive)runTime+=elapsed/1000;
   dashCooldown = Math.max(0, dashCooldown - dt);
   pulseCooldown = Math.max(0, pulseCooldown - dt);

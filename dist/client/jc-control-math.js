@@ -1,5 +1,9 @@
 // Frame-rate independent input response shared by desktop, touch and gamepad.
 export function stickAxis(value,deadzone=.16){return Math.abs(value)<=deadzone?0:Math.sign(value)*Math.min(1,(Math.abs(value)-deadzone)/(1-deadzone));}
+export function advanceLook(yaw,pitch,x,y,dt){
+  const step=Math.max(0,dt);
+  return {yaw:yaw+x*1.8*step,pitch:Math.max(-.62,Math.min(.62,pitch-y*1.35*step))};
+}
 export function setFlightForward(target,yaw,pitch){
   const horizontal=Math.cos(pitch);
   target.set(Math.sin(yaw)*horizontal,Math.sin(pitch),-Math.cos(yaw)*horizontal);
