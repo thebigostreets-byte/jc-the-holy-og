@@ -3,7 +3,7 @@ import {createCinematicLook} from './cinematic-look.js';
 import * as THREE from './three.module.js';
 import {cloneBuildingMaterial} from './map-materials.js';
 
-import {stickAxis, response, advanceChain, advanceGait} from './jc-control-math.js';
+import {stickAxis, response, advanceChain, advanceGait, setFlightForward} from './jc-control-math.js';
 import {transitionFlight} from './jc-flight-state.js';
 import {loadRearWalk,loadPoseSheet,FLIGHT_CELLS} from './rear-walk.js';
 import {cachedGroundSample} from './ground-sampling.js';
@@ -19,8 +19,10 @@ body.jc-playing #viewport{inset:0}
 body.jc-playing #status{display:none}
 #jcHud{display:none;position:fixed;inset:0;z-index:6;pointer-events:none;color:#fff;font:600 14px Arial,sans-serif}
 body.jc-playing #jcHud{display:block}
-#jcStick{width:112px;height:112px;border:2px solid #f9d87880;border-radius:50%;background:#091018a8;pointer-events:auto;touch-action:none;position:relative;flex-shrink:0}
-#jcStick i{position:absolute;left:35px;top:35px;width:38px;height:38px;border-radius:50%;background:#ffe4a6aa;pointer-events:none}
+#jcStick,#jcLookStick{width:min(23vw,92px);height:min(23vw,92px);min-width:68px;min-height:68px;border:2px solid #f9d87880;border-radius:50%;background:#091018a8;pointer-events:auto;touch-action:none;position:relative;flex-shrink:0}
+#jcLookStick{border-color:#a9dfff88;background:#071520ad}
+#jcStick i,#jcLookStick i{position:absolute;left:32%;top:32%;width:36%;height:36%;border-radius:50%;background:#ffe4a6aa;pointer-events:none}
+#jcLookStick i{background:#a9dfffbb}
 #jcFeedback{position:absolute;top:28%;left:50%;transform:translateX(-50%);background:#091018df;padding:10px 16px;border-bottom:2px solid #f9d878;opacity:0;transition:opacity .15s;text-align:center}
 #jcRun{font-size:14px;color:#ffdf91}#jcAbilityReady{display:block;margin-top:6px;color:#b8eddf}
 #jcTarget{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#ffe29c;font-size:14px;text-shadow:0 2px 4px #000;text-align:center}
@@ -32,7 +34,7 @@ body.jc-playing #jcHud{display:block}
 #jcHud .jc-score strong{font-size:18px}
 #jcHud button,#jcPlayReturn{border:1px solid #f9d87888;border-radius:5px;background:#101b24df;color:#fff;padding:11px 14px;font-weight:bold;cursor:pointer;pointer-events:auto}
 #jcHud .jc-hint{position:absolute;bottom:12px;left:12px;padding:8px 10px;background:#091018d9;font-size:12px}
-#jcHud .jc-touch{display:none;position:absolute;bottom:18px;left:12px;right:12px;justify-content:space-between;align-items:end;pointer-events:none}
+#jcHud .jc-touch{display:none;position:absolute;bottom:18px;left:10px;right:10px;grid-template-columns:minmax(68px,23vw) minmax(68px,23vw) minmax(116px,37vw);justify-content:space-between;align-items:end;gap:4px;pointer-events:none}
 #jcHud .jc-dpad{display:none;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,52px);gap:4px;pointer-events:auto}
 #jcHud .jc-dpad button{padding:0;touch-action:none}
 #jcHud .jc-dpad button:first-child{grid-column:2}
@@ -54,13 +56,13 @@ body.jc-playing #jcHud{display:block}
 #jcWheel .jc-wheel-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 #jcPlayReturn{display:none;position:fixed;top:12px;right:12px;z-index:7}
 body:not(.jc-playing) #jcPlayReturn{display:block}
-@media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{display:flex;bottom:calc(env(safe-area-inset-bottom) + 12px)}#jcHud .jc-hint{display:none}#jcHud .jc-score{font-size:12px}#jcHud .jc-score strong{font-size:15px}#jcWheel .jc-list{grid-template-columns:repeat(2,minmax(0,1fr))}#jcHud .jc-ability{top:76px;right:8px;font-size:12px}#jcHud .jc-actions{width:146px;max-height:42vh;gap:5px}#jcHud .jc-actions button{padding:7px 5px;font-size:12px;min-height:46px}}
+@media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{display:grid;bottom:calc(env(safe-area-inset-bottom) + 12px)}#jcHud .jc-hint{display:none}#jcHud .jc-score{font-size:12px}#jcHud .jc-score strong{font-size:15px}#jcWheel .jc-list{grid-template-columns:repeat(2,minmax(0,1fr))}#jcHud .jc-ability{top:76px;right:8px;font-size:12px}#jcHud .jc-actions{width:min(37vw,146px);max-height:42vh;gap:5px}#jcHud .jc-actions button{padding:7px 5px;font-size:12px;min-height:46px}}
 `;
 document.head.append(style);
 
 const hud = document.createElement('div');
 hud.id = 'jcHud';
-hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look · Shift sprint · Space dash / rise · Ctrl descend · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Movement joystick"><i></i></div><div class="jc-dpad"><button data-move="w" aria-label="Forward">▲</button><button data-move="a" aria-label="Left">◀</button><button data-move="s" aria-label="Back">▼</button><button data-move="d" aria-label="Right">▶</button></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="wheel" type="button">39 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>39 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div>`;
+hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Left joystick: move"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: look and steer flight pitch"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="wheel" type="button">39 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>39 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div>`;
 document.body.append(hud);
 style.textContent += '#jcNpcReadout{position:absolute;left:12px;bottom:144px;max-width:min(390px,78vw);padding:7px 10px;background:#091018d9;border-left:2px solid #c4ffee;color:#c4ffee;font-size:11px;letter-spacing:.4px;pointer-events:auto}#jcNpcTalkButton{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 178px);transform:translateX(-50%);display:none;pointer-events:auto;padding:11px 16px;border:1px solid #f1d17e;border-radius:8px;background:#111b2aee;color:#ffe6a4;font-weight:900;box-shadow:0 6px 18px #0009;z-index:2}#jcNpcTalkButton.available{display:block}@media(pointer:fine){#jcNpcTalkButton{display:none!important}}';
 const npcReadout=document.createElement('div');npcReadout.id='jcNpcReadout';npcReadout.textContent='CITY FOLKS · OBSERVING';hud.append(npcReadout);
@@ -86,6 +88,7 @@ const keys = new Set();
 const velocity = new THREE.Vector3();
 const desired = new THREE.Vector3();
 const forward = new THREE.Vector3();
+const flightForward = new THREE.Vector3();
 const right = new THREE.Vector3();
 const ray = new THREE.Raycaster();
 const down = new THREE.Vector3();
@@ -158,14 +161,14 @@ function setFlight(action){
   poseOverride=-1;poseOverrideUntil=0;castingUntil=0;
   return next;
 }
-let playing = false, yaw = 0, last = performance.now(), lastGround = 0, terrainY = 0;
+let playing = false, yaw = 0, viewPitch = 0, last = performance.now(), lastGround = 0, terrainY = 0;
 let frameWindow = 0, slowFrames = 0, steadyFrames = 0;
 const coarseDevice = matchMedia('(pointer:coarse), (max-width:800px)').matches || navigator.maxTouchPoints>1 || new URLSearchParams(location.search).get('quality')==='mobile';
 const maximumDpr = coarseDevice ? .9 : Math.min(1.25, devicePixelRatio || 1);
 let adaptiveDpr = Math.min(maximumDpr, coarseDevice ? .75 : 1);
 let dashCooldown = 0, pulseCooldown = 0, lastTiles = -1, dragging = false;
-let pointerX = 0, pointerY = 0, lookPointer = null;
-const analog = {x:0,y:0}, touchStick = {x:0,y:0};
+let pointerX = 0, pointerY = 0, lookPointer = null, stickPointer = null, lookStickPointer = null;
+const analog = {x:0,y:0}, touchStick = {x:0,y:0}, touchLookStick = {x:0,y:0};
 let lockedSoul = null, lockedBuilding = null, teleportAim = false, teleportTarget = null, teleportMarker = null, feedbackUntil = 0, nextHud = 0, runTime = 0, runActive = false, runFinished = false;
 let chain = {count:0,last:0,points:0}, personalBest = 0;
 try {personalBest = Number(localStorage.getItem('jc-restoration-best')) || 0;} catch {}
@@ -229,7 +232,7 @@ function chooseTeleportPoint(clientX,clientY){
   teleportMarker.rotation.x=-Math.PI/2;teleportMarker.position.set(teleportTarget.x,groundAt(teleportTarget.x,teleportTarget.z)+.14,teleportTarget.z);game.scene.add(teleportMarker);
   teleportAim=false;feedback('DESTINATION LOCKED · click TELEPORT again or press T');
 }
-function resetInput(){keys.clear();padKeys.clear();analog.x=analog.y=touchStick.x=touchStick.y=0;dragging=false;lookPointer=null;hud.querySelector('#jcStick i').style.transform='';}
+function resetInput(){keys.clear();padKeys.clear();analog.x=analog.y=touchStick.x=touchStick.y=touchLookStick.x=touchLookStick.y=0;dragging=false;lookPointer=null;stickPointer=lookStickPointer=null;hud.querySelector('#jcStick i').style.transform='';hud.querySelector('#jcLookStick i').style.transform='';}
 function toggleWheel(){wheel.classList.toggle('open');resetInput();}
 function cycleBuildingTarget(){
   const candidates=nearbyBuildings(90,12);lockedBuilding=candidates[(candidates.indexOf(lockedBuilding)+1)%candidates.length]||null;
@@ -781,7 +784,8 @@ function stabilizeAfterTeleport(){
 function cameraFocus(){return player.position.clone().add(new THREE.Vector3(0,2.3,0));}
 function cameraBoom(distance=9){
   const focus=cameraFocus();
-  const behind=focus.clone().add(new THREE.Vector3(-Math.sin(yaw)*distance,3,Math.cos(yaw)*distance));
+  const horizontal=Math.cos(viewPitch);
+  const behind=focus.clone().add(new THREE.Vector3(-Math.sin(yaw)*horizontal*distance,3-Math.sin(viewPitch)*distance,Math.cos(yaw)*horizontal*distance));
   const line=new THREE.Line3(focus,behind);
   for(let t=.08;t<=1;t+=.08){
     const point=line.at(t,new THREE.Vector3());
@@ -937,11 +941,13 @@ function frameStep(now) {
   const paused=wheel.classList.contains('open');
   const pad=Array.from(navigator.getGamepads?.()||[]).find(Boolean);
   analog.x=stickAxis(touchStick.x,.12);analog.y=stickAxis(touchStick.y,.12);
+  let lookX=stickAxis(touchLookStick.x,.12),lookY=stickAxis(touchLookStick.y,.12);
   if(pad){
     if(!paused){
       analog.x=THREE.MathUtils.clamp(analog.x+stickAxis(pad.axes[0]||0),-1,1);
       analog.y=THREE.MathUtils.clamp(analog.y+stickAxis(pad.axes[1]||0),-1,1);
-      yaw-=stickAxis(pad.axes[2]||0)*dt*1.65;
+      lookX=THREE.MathUtils.clamp(lookX+stickAxis(pad.axes[2]||0),-1,1);
+      lookY=THREE.MathUtils.clamp(lookY+stickAxis(pad.axes[3]||0),-1,1);
       for(const [button,key] of [[6,'Control'],[7,'Space'],[10,'Shift'],[11,'b']]){if(pad.buttons[button]?.pressed)padKeys.add(key);else padKeys.delete(key);}
     }
     for(const [button,id] of [[0,'flight'],[1,selectedAbility],[2,'dash'],[3,'teleport'],[4,'target'],[5,'hypersonic'],[8,'wheel']]){
@@ -950,17 +956,24 @@ function frameStep(now) {
     gamepadButtons=pad.buttons.map(button=>button.pressed);
   }else{padKeys.clear();gamepadButtons=[];}
   if(wheel.classList.contains('open')){velocity.set(0,0,0);return;}
+  yaw+=lookX*dt*1.8;
+  viewPitch=THREE.MathUtils.clamp(viewPitch-lookY*dt*1.35,-.62,.62);
   if(runActive)runTime+=elapsed/1000;
   dashCooldown = Math.max(0, dashCooldown - dt);
   pulseCooldown = Math.max(0, pulseCooldown - dt);
   forward.set(Math.sin(yaw), 0, -Math.cos(yaw));
+  setFlightForward(flightForward,yaw,viewPitch);
   right.set(Math.cos(yaw), 0, Math.sin(yaw));
+  const travelForward=flying?flightForward:forward;
   desired.set(0, 0, 0);
-  if (keys.has('w') || padKeys.has('w') || keys.has('ArrowUp')) desired.add(forward);
-  if (keys.has('s') || padKeys.has('s') || keys.has('ArrowDown')) desired.sub(forward);
+  if (keys.has('w') || padKeys.has('w') || keys.has('ArrowUp')) desired.add(travelForward);
+  if (keys.has('s') || padKeys.has('s') || keys.has('ArrowDown')) desired.sub(travelForward);
   if (keys.has('d') || padKeys.has('d') || keys.has('ArrowRight')) desired.add(right);
   if (keys.has('a') || padKeys.has('a') || keys.has('ArrowLeft')) desired.sub(right);
-  desired.addScaledVector(forward,-analog.y).addScaledVector(right,analog.x);
+  desired.addScaledVector(travelForward,-analog.y).addScaledVector(right,analog.x);
+  const riseHeld=keys.has('e')||keys.has('Space')||padKeys.has('Space');
+  const dropHeld=keys.has('c')||keys.has('Control')||padKeys.has('Control');
+  if(flying){if(riseHeld)desired.y+=1;if(dropHeld)desired.y-=1;}else desired.y=0;
   if (desired.lengthSq()>1) desired.normalize();
   if(!runActive&&!runFinished&&(desired.lengthSq()>.02||flightHeight>0)){runActive=true;}
   const braking=keys.has('b')||padKeys.has('b');
@@ -970,18 +983,18 @@ function frameStep(now) {
   if (boost && grace <= 0) hypersonic=false;
   const speed=(diving?34:boost?72:flying?24:sprint?9:4.8)*(now<timeScaleUntil?1.5:1);
   const steering = braking?38:desired.lengthSq()<.01?(flying?10:24):flying?(boost?20:28):32;
-  velocity.lerp(desired.clone().multiplyScalar(braking?0:speed), response(steering,dt));
+  velocity.x+=(desired.x*(braking?0:speed)-velocity.x)*response(steering,dt);
+  velocity.z+=(desired.z*(braking?0:speed)-velocity.z)*response(steering,dt);
+  velocity.y+=(desired.y*(braking?0:speed)-velocity.y)*response(braking?38:flying?steering:24,dt);
   moveSafely(velocity.x*dt,velocity.z*dt,now<phaseUntil);
   const previousHeight=flightHeight;
-  let dropHeld=false;
   if (flying) {
-    const riseHeld=keys.has('e')||keys.has('Space')||padKeys.has('Space');
-    dropHeld=keys.has('c')||keys.has('Control')||padKeys.has('Control');
-    if(riseHeld!==dropHeld)flightHeight=THREE.MathUtils.clamp(flightHeight+(riseHeld?22:-22)*dt,0,250);
-    if (diving) flightHeight=Math.max(0,flightHeight-110*dt);
-    else if (glide) flightHeight=Math.max(2,flightHeight-2*dt);
-  } else if (flightHeight>0) flightHeight=Math.max(0,flightHeight-(descending?80:28)*dt);
-  if(!diving&&flightHeight<previousHeight&&blockedAt(player.position.x,terrainY+flightHeight,player.position.z))flightHeight=previousHeight;
+    if (diving){flightHeight=Math.max(0,flightHeight-110*dt);velocity.y=0;}
+    else if (glide&&!riseHeld&&!dropHeld){flightHeight=Math.max(2,flightHeight-2*dt);velocity.y=0;}
+    else flightHeight=THREE.MathUtils.clamp(flightHeight+velocity.y*dt,0,250);
+  } else if (flightHeight>0){flightHeight=Math.max(0,flightHeight-(descending?80:28)*dt);velocity.y=0;}
+  if(flightHeight===250&&velocity.y>0)velocity.y=0;
+  if(!diving&&flightHeight<previousHeight&&blockedAt(player.position.x,terrainY+flightHeight,player.position.z)){flightHeight=previousHeight;velocity.y=0;}
   if(diving&&flightHeight<=0){setFlight('impact');velocity.multiplyScalar(.28);resolveDiveImpact();}
   else if(flying&&dropHeld&&flightHeight<=0)setFlight('touchdown');
   if (flightHeight===0) descending=0;
@@ -990,8 +1003,8 @@ function frameStep(now) {
     lastGround = now;
   }
   player.position.y=THREE.MathUtils.lerp(player.position.y,terrainY+flightHeight,Math.min(1,dt*(descending?14:8)));
-  const riseInput=flying&&(keys.has('e')||keys.has('Space')||padKeys.has('Space'));
-  const dropInput=flying&&(keys.has('c')||keys.has('Control')||padKeys.has('Control'));
+  const riseInput=flying&&((keys.has('e')||keys.has('Space')||padKeys.has('Space'))||desired.y>.25);
+  const dropInput=flying&&((keys.has('c')||keys.has('Control')||padKeys.has('Control'))||desired.y<-.25);
   const lateral=desired.dot(right);
   const flightPose=diving?19:braking?21:riseInput?18:dropInput?22:glide?17:lateral<-.25?15:lateral>.25?16:boost?20:horizontalFlightPose();
   const horizontalSpeed=Math.hypot(velocity.x,velocity.z);
@@ -1170,7 +1183,8 @@ const group = game.loaded.get('C15_R14');
   for(const type of ['pointerup','pointercancel'])addEventListener(type,e=>{if(e.pointerId===lookPointer){dragging=false;lookPointer=null;}});
   addEventListener('pointermove', e => {
     if (!dragging || !playing || e.pointerId!==lookPointer) return;
-    yaw -= (e.clientX - pointerX) * (coarseDevice ? 0.0034 : 0.0025);
+    yaw += (e.clientX - pointerX) * (coarseDevice ? 0.0034 : 0.0025);
+    viewPitch=THREE.MathUtils.clamp(viewPitch-(e.clientY-pointerY)*.0025,-.62,.62);
     pointerX = e.clientX;pointerY = e.clientY;
   });
   hud.querySelectorAll('[data-move]').forEach(button => {
@@ -1178,11 +1192,23 @@ const group = game.loaded.get('C15_R14');
     button.addEventListener('pointerdown', e => {e.preventDefault();button.setPointerCapture(e.pointerId);keys.add(key);});
     for (const type of ['pointerup','pointercancel','lostpointercapture']) button.addEventListener(type, () => keys.delete(key));
   });
-  const stick=hud.querySelector('#jcStick');let stickPointer=null;
-  function moveStick(e){if(e.pointerId!==stickPointer)return;const r=stick.getBoundingClientRect();const x=(e.clientX-r.left-r.width/2)/40,y=(e.clientY-r.top-r.height/2)/40;const scale=Math.max(1,Math.hypot(x,y));touchStick.x=x/scale;touchStick.y=y/scale;stick.querySelector('i').style.transform=`translate(${touchStick.x*34}px,${touchStick.y*34}px)`;}
-  stick.addEventListener('pointerdown',e=>{e.preventDefault();stickPointer=e.pointerId;stick.setPointerCapture(e.pointerId);moveStick(e);});
-  stick.addEventListener('pointermove',moveStick);
-  for(const type of ['pointerup','pointercancel','lostpointercapture'])stick.addEventListener(type,()=>{stickPointer=null;touchStick.x=touchStick.y=0;stick.querySelector('i').style.transform='';});
+  const stick=hud.querySelector('#jcStick'),lookStick=hud.querySelector('#jcLookStick');
+  function readStick(e,element,state,pointer){
+    if(e.pointerId!==pointer)return;
+    const r=element.getBoundingClientRect(),travel=r.width*.30;
+    let x=(e.clientX-r.left-r.width/2)/travel,y=(e.clientY-r.top-r.height/2)/travel;
+    const magnitude=Math.hypot(x,y);if(magnitude>1){x/=magnitude;y/=magnitude;}
+    state.x=x;state.y=y;
+    element.querySelector('i').style.transform=`translate(${x*travel}px,${y*travel}px)`;
+  }
+  for(const [element,state,isLook] of [[stick,touchStick,false],[lookStick,touchLookStick,true]]){
+    const pointer=()=>isLook?lookStickPointer:stickPointer;
+    const begin=e=>{e.preventDefault();if(isLook)lookStickPointer=e.pointerId;else stickPointer=e.pointerId;element.setPointerCapture(e.pointerId);readStick(e,element,state,e.pointerId);};
+    const move=e=>readStick(e,element,state,pointer());
+    const end=e=>{if(e.pointerId!==pointer())return;if(isLook)lookStickPointer=null;else stickPointer=null;state.x=state.y=0;element.querySelector('i').style.transform='';};
+    element.addEventListener('pointerdown',begin);element.addEventListener('pointermove',move);
+    for(const type of ['pointerup','pointercancel','lostpointercapture'])element.addEventListener(type,end);
+  }
   hud.querySelector('#jcRestart').onclick=()=>{resetRun();hud.querySelector('#jcRestart').blur();};
   hud.querySelector('[data-action="boost"]').onclick=()=>cast('hypersonic');
   hud.querySelector('[data-action="dive"]').onclick=()=>beginDive(true);
