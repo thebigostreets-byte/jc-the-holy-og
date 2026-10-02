@@ -3,7 +3,7 @@ import {buildRooftopPlan} from '../rooftop-details.js';
 
 const buildings=[
   {id:'tower-a',min:{x:0,y:0,z:0},max:{x:80,y:120,z:60}},
-  {id:'hotel-b',min:{x:100,y:0,z:100},max:{x:140,y:24,z:132}},
+  {id:'hotel-b',min:{x:100,y:0,z:100},max:{x:140,y:80,z:132}},
   {id:'small-shed',min:{x:200,y:0,z:200},max:{x:205,y:4,z:205}},
   {id:'narrow',min:{x:300,y:0,z:300},max:{x:304,y:30,z:330}}
 ];
