@@ -82,13 +82,21 @@ export function buildingSurface(id,meta,photos,physical){
   metalness=.12+(h%3)*.04;
   kind='casino glass / illuminated facade';
  } else if(identity.type==='residential'){
-  const choices=[0,0,0,2,3],index=choices[h%choices.length];
-  map=physical[index]||photos[(2+h%2)%Math.max(1,photos.length)];
-  scale=index===0?[2.2,2.2]:index===2?[3,3]:[3.5,3.5];
-  color=index===0?paint[h%paint.length]:'#ffffff';
-  roughness=.94;
+  // Low-rise photo cells supply doors/windows at house scale; physical stucco,
+  // brick and stone keep neighborhood blocks from looking copy-pasted.
+  const usePhoto=photos.length&&h%4!==0;
+  if(usePhoto){
+   map=photos[(2+h%2)%photos.length];scale=[5.2,3.1];color=paint[h%paint.length];
+   kind='matte residential facade';
+  }else{
+   const choices=[0,0,2,3],index=choices[h%choices.length];
+   map=physical[index]||photos[(2+h%2)%Math.max(1,photos.length)];
+   scale=index===0?[2.2,2.2]:index===2?[3,3]:[3.5,3.5];
+   color=index===0?paint[h%paint.length]:'#ffffff';
+   kind=index===0?'residential stucco':index===2?'residential brick':'residential stone';
+  }
+  roughness=.93;
   metalness=0;
-  kind=index===0?'residential stucco':index===2?'residential brick':'residential stone';
  } else if(identity.type==='low-rise-commercial'){
   const index=[0,1,2,5][h%4];
   map=physical[index]||photos[(2+h%2)%Math.max(1,photos.length)];
