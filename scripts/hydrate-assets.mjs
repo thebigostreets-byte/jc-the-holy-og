@@ -50,5 +50,8 @@ await Promise.all(Array.from({length:4},()=>work()));
 if(refreshedImagery||missingOptionalAssets.size){
   lock.assets=lock.assets.filter(asset=>!missingOptionalAssets.has(asset.path));
   const lockPath=new URL('./game-assets-lock.json',import.meta.url);await writeFile(lockPath,JSON.stringify(lock,null,2)+'\n');
+  const publicAssetsPath=new URL('./public-assets.json',import.meta.url);
+  const publicAssets=JSON.parse(await readFile(publicAssetsPath,'utf8')).filter(asset=>!missingOptionalAssets.has(asset));
+  await writeFile(publicAssetsPath,JSON.stringify(publicAssets,null,2)+'\n');
 }
 console.log(`Verified ${verified}, restored ${downloaded} assets, refreshed ${refreshedImagery} city images, skipped ${skippedOptionalAssets} optional map assets. SHA-256 checks passed.`);
