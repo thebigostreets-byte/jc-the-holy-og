@@ -42,8 +42,8 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8,c
     const sprite=createCharacter3D({faction});
     sprite.position.set(x,groundAt(x,z),z);
     Object.assign(sprite.userData,{faction,avatar,name:npc.name,emotion:'calm',npcRef:npc});
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.15,.065,6,20),new THREE.MeshBasicMaterial({color:0xffd45a,transparent:true,opacity:.9,depthWrite:false}));
-    ring.name='NPC contact tracking ring';ring.rotation.x=Math.PI/2;ring.position.y=.07;ring.visible=false;sprite.add(ring);npc.trackerRing=ring;
+    const trackerRingMesh=new THREE.Mesh(new THREE.TorusGeometry(1.15,.065,6,20),new THREE.MeshBasicMaterial({color:0xffd45a,transparent:true,opacity:.9,depthWrite:false}));
+    trackerRingMesh.name='NPC contact tracking ring';trackerRingMesh.rotation.x=Math.PI/2;trackerRingMesh.position.y=.07;trackerRingMesh.visible=false;sprite.add(trackerRingMesh);npc.trackerRing=trackerRingMesh;
     root.add(sprite);npc.sprite=sprite;
   }
 
