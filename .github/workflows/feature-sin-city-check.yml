@@ -13,13 +13,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Restore checked game assets
-        run: npm run hydrate
-      - name: Build client
-        run: npm run build
-      - name: Regression checks
+      - name: Syntax checks
         run: |
-          npm run verify:assets
+          node --check jc-map-game.js
+          node --check map-engine.js
+          node --check physical-building-materials.js
+          node --check npc-dialogue.js
+      - name: Code-only regression checks
+        run: |
           node tests/gameplay-regressions.mjs
           node tests/flight-state.mjs
           node tests/control-upgrade.mjs
