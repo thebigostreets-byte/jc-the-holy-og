@@ -168,11 +168,6 @@
       "sha256": "9d80cff6999f11839e550f13594c3f286642c075e783cbb13763b0c15ce76ba4"
     },
     {
-      "path": "facades/false-gold.webp",
-      "bytes": 193654,
-      "sha256": "54b2c2c4ac09cd65a0fe42d272c7e23827bc9a433969b1598ca507e1f357f3eb"
-    },
-    {
       "path": "facades/glass.jpg",
       "bytes": 165668,
       "sha256": "03dfb30dd95beeb4f65e1cd0940387b01d17217ff44b5992733a3ab24b70ee00"
