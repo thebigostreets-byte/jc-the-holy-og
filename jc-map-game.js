@@ -525,30 +525,44 @@ function themedFacade(ownerId, redeemed = false) {
 
 function applyBuildingTheme(mesh, ownerId, redeemed = false) {
   if(mesh.material?.userData?.customTexture) return;
-  // Physical materials already carry their paint, scale and reflectivity.
-  // Preserve editor paint and uploaded textures when play mode themes the city.
+  const identity=mesh.material?.userData?.buildingIdentity||mesh.userData.owner?.userData?.identity||game.buildings?.get(ownerId)?.userData?.identity;
+  const casino=identity?.type==='casino';
+  // Non-casino buildings stay physically matte. Redemption changes game state,
+  // not their material class; only verified casino zones receive Strip shine.
   if(mesh.material?.userData?.physicalSurface){
     const material=mesh.material,edit=game.edits?.get(ownerId);
-    if(redeemed){material.emissive.set(0xffd8a0);material.emissiveIntensity=.1;}
-    else if(!edit?.glow){material.emissive.set(0x000000);material.emissiveIntensity=0;}
+    if(casino&&redeemed){material.emissive.set(0xffd8a0);material.emissiveIntensity=.1;}
+    else if(!casino||!edit?.glow){material.emissive.set(0x000000);material.emissiveIntensity=0;material.emissiveMap=null;}
+    material.metalness=casino?(material.userData.original?.metalness??material.metalness):0;
+    if(!casino)material.roughness=Math.max(.82,material.roughness);
     material.userData.jcBuildingId=ownerId;
+    material.needsUpdate=true;
     return;
   }
-  const hash = buildingHash(ownerId);
   if (!mesh.userData.jcMaterialClone) {
     mesh.material = cloneBuildingMaterial(mesh.material);
     mesh.userData.jcMaterialClone = true;
   }
   const material = mesh.material;
+  if(!casino){
+    if(material.emissive)material.emissive.set(0x000000);
+    material.emissiveMap=null;
+    if('emissiveIntensity' in material)material.emissiveIntensity=0;
+    material.roughness=Math.max(.84,material.roughness??.84);
+    material.metalness=0;
+    material.userData.jcBuildingId=ownerId;
+    material.needsUpdate=true;
+    return;
+  }
+  const hash = buildingHash(ownerId);
   material.map = themedFacade(ownerId, redeemed);
   material.color.setRGB(.86+((hash>>>8)&31)/230, (redeemed?.82:.74)+((hash>>>15)&31)/250, (redeemed?.80:.68)+((hash>>>22)&31)/240);
-  // The bright windows glow; dark masonry stays dark instead of a neon wash.
   material.emissiveMap=material.map;
   const heavenly=redeemed || hash%7===0;
   if(material.emissive)material.emissive.set(heavenly?0xffdf9e:vegasNeon[(hash>>>11)%vegasNeon.length]);
   if ('emissiveIntensity' in material) material.emissiveIntensity = (heavenly?.32:.22)+((hash>>>3)&31)/180;
-  material.roughness = redeemed ? .62 : .72;
-  material.metalness = .04;
+  material.roughness = redeemed ? .52 : .62;
+  material.metalness = .12;
   material.userData.original ??= {};
   material.userData.original.map = material.map;
   material.userData.original.color = material.userData.original.color || new THREE.Color();
