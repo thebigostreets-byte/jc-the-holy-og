@@ -5,6 +5,9 @@ import path from 'node:path';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const lock=JSON.parse(await readFile(new URL('./game-assets-lock.json',import.meta.url),'utf8'));
+// The checked-out Git revision is authoritative for deployable source assets. The
+// hosted copy can lag behind, so never replace tracked client code with stale CDN bytes.
+const sourceAssets=new Set(JSON.parse(await readFile(new URL('./public-assets.json',import.meta.url),'utf8')));
 const verifyOnly=process.argv.includes('--verify-only');
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 let cursor=0,verified=0,downloaded=0,refreshedImagery=0;
@@ -15,6 +18,7 @@ async function work(){
     const target=path.resolve(root,asset.path);
     let existing;try{existing=await readFile(target);}catch(error){if(error.code!=='ENOENT')throw error;}
     if(existing&&hash(existing)===asset.sha256){verified++;continue;}
+    if(existing&&sourceAssets.has(asset.path)){verified++;continue;}
     if(verifyOnly)throw Error(`Missing or changed asset: ${asset.path}. Run npm run hydrate.`);
     const extension=path.extname(asset.path).toLowerCase();
     const accept=extension==='.jpg'||extension==='.jpeg'?'image/jpeg':extension==='.webp'?'image/webp':extension==='.png'?'image/png':'*/*';
