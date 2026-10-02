@@ -744,67 +744,146 @@ function addRoadPlane(root, x, z, width, length, rotation, material, y) {
   return mesh;
 }
 
-function installPavedRoads(centerX, centerZ) {
-  if (game.scene.getObjectByName('JC paved Strip roads')) return;
-  const root = new THREE.Group();
-  root.name = 'JC paved Strip roads';
-  const asphalt = new THREE.MeshStandardMaterial({map:asphaltTexture(), color:0x263043, roughness:.30, metalness:.22});
-  asphalt.map.repeat.set(7, 48);
-  asphalt.map.needsUpdate = true;
-  const yellow = roadStripeMaterial(0xffd24a, .95);
-  const white = roadStripeMaterial(0xe8edf1, .75);
-  const concrete = new THREE.MeshStandardMaterial({color:0x62636b, roughness:.92});
-  const curbMaterial = new THREE.MeshStandardMaterial({color:0xa4a1a0, roughness:.85});
-  const lampMaterial = new THREE.MeshStandardMaterial({color:0xffcb81, emissive:0xffa35a, emissiveIntensity:1.4});
-  const roads = [
-    [centerX, centerZ, 34, 1800, 0],
-    [centerX - 86, centerZ, 24, 1500, 0],
-    [centerX + 92, centerZ, 24, 1500, 0],
-    [centerX, centerZ - 285, 24, 520, Math.PI / 2],
-    [centerX, centerZ + 320, 24, 560, Math.PI / 2]
-  ];
-  for (const [x, z, width, length, rotation] of roads) {
-    const alongX = Math.abs(rotation) > .1;
-    const pieces = Math.ceil(length / 50);
-    const pieceLength = length / pieces;
-    for (let i = 0; i < pieces; i++) {
-      const offset = (i + .5) * pieceLength - length / 2;
-      const px = x + (alongX ? offset : 0);
-      const pz = z + (alongX ? 0 : offset);
-      const y = groundAt(px, pz) + .12;
-      addRoadPlane(root, px, pz, width, pieceLength + .35, rotation, asphalt, y);
-      for (const side of [-1, 1]) {
-        const sx = px + (alongX ? 0 : side * (width / 2 + 2.3));
-        const sz = pz + (alongX ? side * (width / 2 + 2.3) : 0);
-        addRoadPlane(root, sx, sz, 3.4, pieceLength + .3, rotation, concrete, y + .09);
-        const cx = px + (alongX ? 0 : side * (width / 2 + .35));
-        const cz = pz + (alongX ? side * (width / 2 + .35) : 0);
-        const edge = new THREE.Mesh(new THREE.BoxGeometry(alongX ? pieceLength + .3 : .48, .22, alongX ? .48 : pieceLength + .3), curbMaterial);
-        edge.position.set(cx, y + .06, cz);
-        root.add(edge);
-        const laneX = px + (alongX ? 0 : side * (width / 2 - 2.5));
-        const laneZ = pz + (alongX ? side * (width / 2 - 2.5) : 0);
-        if (i % 2 === 0) addRoadPlane(root, laneX, laneZ, .18, pieceLength * .58, rotation, white, y + .025);
-      }
-      if (i % 2 === 0) addRoadPlane(root, px, pz, .22, pieceLength * .58, rotation, yellow, y + .03);
-      if (i % 6 === 0) {
-        for (const side of [-1, 1]) {
-          const lx = px + (alongX ? 0 : side * (width / 2 + 3.2));
-          const lz = pz + (alongX ? side * (width / 2 + 3.2) : 0);
-          const pole = new THREE.Mesh(new THREE.CylinderGeometry(.09, .12, 7, 6), curbMaterial);
-          pole.position.set(lx, y + 3.38, lz);
-          root.add(pole);
-          const bulb = new THREE.Mesh(new THREE.SphereGeometry(.38, 6, 4), lampMaterial);
-          bulb.position.set(lx, pole.position.y + 3.6, lz);
-          root.add(bulb);
+function installPavedRoads(centerX,centerZ,network=vegasStreetNetwork) {
+  if(game.scene.getObjectByName('JC paved Strip roads'))return;
+  if(!network){network=createVegasStreetNetwork({anchorX:centerX,anchorZ:centerZ});vegasStreetNetwork=network;}
+  const root=new THREE.Group();root.name='JC paved Strip roads';
+  const asphalt=new THREE.MeshStandardMaterial({map:asphaltTexture(),color:0x263043,roughness:.36,metalness:.12});
+  const yellow=roadStripeMaterial(0xffd24a,.9),white=roadStripeMaterial(0xe8edf1,.78);
+  const concrete=new THREE.MeshStandardMaterial({color:0x62636b,roughness:.92});
+  const planeGeometry=new THREE.PlaneGeometry(1,1),boxGeometry=new THREE.BoxGeometry(1,1,1),dummy=new THREE.Object3D();
+  const surfaces=[],sidewalks=[],yellowDashes=[],whiteDashes=[],curbs=[];
+  const addPlane=(target,x,z,width,length,rotation,y)=>target.push({x,z,width,length,rotation,y});
+  for(const route of network.routes){
+    for(let i=0;i<route.points.length-1;i++){
+      const a=route.points[i],b=route.points[i+1],dx=b[0]-a[0],dz=b[1]-a[1],distance=Math.hypot(dx,dz);
+      if(distance<1)continue;
+      const parts=Math.max(1,Math.ceil(distance/(route.kind==='side'?190:220))),rotation=Math.atan2(dx,-dz),nx=-dz/distance,nz=dx/distance;
+      for(let part=0;part<parts;part++){
+        const t=(part+.5)/parts,x=a[0]+dx*t,z=a[1]+dz*t,length=distance/parts,y=groundAt(x,z)+.13;
+        addPlane(surfaces,x,z,route.width,length+1,rotation,y);
+        if(route.kind==='arterial'){
+          for(const side of [-1,1]){
+            const offset=route.width/2+2.6;
+            addPlane(sidewalks,x+nx*offset*side,z+nz*offset*side,2.4,length+1,rotation,y+.055);
+            curbs.push({x:x+nx*(route.width/2+.35)*side,y:y+.07,z:z+nz*(route.width/2+.35)*side,width:.42,height:.2,length:length+1,rotation});
+          }
         }
+        if(route.kind==='arterial'&&route.width>=18&&part%2===0)addPlane(yellowDashes,x,z,.2,Math.min(18,length*.42),rotation,y+.04);
+        if(route.kind==='freeway'&&part%2===0)for(const offset of [-6,6])addPlane(whiteDashes,x+nx*offset,z+nz*offset,.18,Math.min(22,length*.45),rotation,y+.04);
       }
     }
   }
-  // Road surfaces follow terrain samples; visual lamps are emissive so mobile
-  // renderers do not need a live shadow casting light at every intersection.
-  root.userData.semanticGroups = ['ROADS','SIDEWALKS','CURBS','LIGHTING'];
+  function addPlaneInstances(data,material,name){
+    if(!data.length)return;
+    const mesh=new THREE.InstancedMesh(planeGeometry,material,data.length);mesh.name=name;mesh.frustumCulled=false;
+    data.forEach((item,index)=>{dummy.position.set(item.x,item.y,item.z);dummy.rotation.set(-Math.PI/2,0,item.rotation);dummy.scale.set(item.width,item.length,1);dummy.updateMatrix();mesh.setMatrixAt(index,dummy.matrix);});
+    mesh.instanceMatrix.needsUpdate=true;root.add(mesh);
+  }
+  addPlaneInstances(surfaces,asphalt,'Street surfaces');
+  addPlaneInstances(sidewalks,concrete,'Sidewalks');
+  addPlaneInstances(yellowDashes,yellow,'Yellow lane markings');
+  addPlaneInstances(whiteDashes,white,'Freeway lane markings');
+  if(curbs.length){
+    const mesh=new THREE.InstancedMesh(boxGeometry,concrete,curbs.length);mesh.name='Street curbs';mesh.frustumCulled=false;
+    curbs.forEach((item,index)=>{dummy.position.set(item.x,item.y,item.z);dummy.rotation.set(0,item.rotation,0);dummy.scale.set(item.length,item.height,item.width);dummy.updateMatrix();mesh.setMatrixAt(index,dummy.matrix);});
+    mesh.instanceMatrix.needsUpdate=true;root.add(mesh);
+  }
+  // A raised Tropicana crossing makes the I-15 intersection visibly grade-separated.
+  const bridge=network.project(-115.1775,36.0997),baseY=groundAt(bridge.x,bridge.z),deckY=baseY+8;
+  const bridgeMat=asphalt,railMat=new THREE.MeshStandardMaterial({color:0x9ba5ad,roughness:.65,metalness:.2});
+  function bridgePart(length,offsetX,angle,y){
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(length,.75,26),bridgeMat);
+    mesh.position.set(bridge.x+offsetX,y,bridge.z);mesh.rotation.z=angle;mesh.castShadow=false;mesh.receiveShadow=true;root.add(mesh);
+  }
+  bridgePart(105,0,0,deckY);
+  bridgePart(132,-118,.055,baseY+4);
+  bridgePart(132,118,-.055,baseY+4);
+  for(const side of [-1,1]){
+    const rail=new THREE.Mesh(new THREE.BoxGeometry(108,1.1,.36),railMat);
+    rail.position.set(bridge.x,deckY+.8,bridge.z+side*13);root.add(rail);
+    for(const offset of [-37,37]){
+      const pier=new THREE.Mesh(new THREE.CylinderGeometry(.9,1.25,7,8),concrete);
+      pier.position.set(bridge.x+offset,baseY+3.5,bridge.z+side*8);root.add(pier);
+    }
+  }
+  root.userData.semanticGroups=['ROADS','SIDEWALKS','CURBS','OVERPASSES'];
+  root.userData.routeCount=network.routes.length;root.userData.surfaceCount=surfaces.length;
   game.scene.add(root);
+}
+
+function installVegasLandmarks(network=vegasStreetNetwork) {
+  const existing=game.scene.getObjectByName('JC Vegas landmarks and palms');
+  if(existing)return worldLandmarks;
+  const root=new THREE.Group();root.name='JC Vegas landmarks and palms';
+  const steel=new THREE.MeshStandardMaterial({color:0xb8c5cc,roughness:.42,metalness:.68});
+  const cabinMaterial=new THREE.MeshStandardMaterial({color:0x26384a,roughness:.38,metalness:.22,emissive:0x102338,emissiveIntensity:.28});
+  const wheelPoint=network.project(-115.1684,36.1175),wheelGround=groundAt(wheelPoint.x,wheelPoint.z),wheelCenterY=wheelGround+91;
+  const wheel=new THREE.Group();wheel.name='High Roller observation wheel';wheel.position.set(wheelPoint.x,wheelCenterY,wheelPoint.z);root.add(wheel);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(82,2.2,8,96),steel);wheel.add(ring);
+  const hub=new THREE.Mesh(new THREE.CylinderGeometry(4,4,11,12),steel);hub.rotation.x=Math.PI/2;wheel.add(hub);
+  const spokeGeometry=new THREE.CylinderGeometry(.32,.32,82,5);
+  for(let i=0;i<16;i++){
+    const angle=i*Math.PI/8,spoke=new THREE.Mesh(spokeGeometry,steel);
+    spoke.position.set(Math.sin(angle)*41,Math.cos(angle)*41,0);spoke.rotation.z=-angle;wheel.add(spoke);
+  }
+  const cabinGeometry=new THREE.BoxGeometry(5.4,6.4,4.4);
+  for(let i=0;i<28;i++){
+    const angle=i*Math.PI*2/28,cabin=new THREE.Mesh(cabinGeometry,cabinMaterial);
+    cabin.position.set(Math.sin(angle)*82,Math.cos(angle)*82,0);wheel.add(cabin);
+  }
+  for(const side of [-1,1]){
+    const support=new THREE.Mesh(new THREE.BoxGeometry(3,98,3),steel);
+    support.position.set(wheelPoint.x+side*22,wheelGround+45,wheelPoint.z);support.rotation.z=side<0?-.22:.22;root.add(support);
+  }
+  const spherePoint=network.project(-115.1612,36.1208),sphereGround=groundAt(spherePoint.x,spherePoint.z);
+  const ledTexture=canvasTexture((ctx,w,h)=>{
+    const gradient=ctx.createLinearGradient(0,0,w,h);gradient.addColorStop(0,'#08152d');gradient.addColorStop(.45,'#102f53');gradient.addColorStop(1,'#180f30');
+    ctx.fillStyle=gradient;ctx.fillRect(0,0,w,h);
+    for(let y=0;y<h;y+=8){ctx.strokeStyle='rgba(104,213,255,.2)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+    for(let x=0;x<w;x+=10){ctx.strokeStyle='rgba(116,199,255,.15)';ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+    ctx.strokeStyle='rgba(255,190,93,.85)';ctx.lineWidth=7;ctx.beginPath();ctx.ellipse(w*.52,h*.49,w*.18,h*.34,-.15,0,Math.PI*2);ctx.stroke();
+    ctx.strokeStyle='rgba(107,237,255,.9)';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(w*.52,h*.49,w*.31,h*.2,.18,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle='rgba(255,235,171,.95)';ctx.beginPath();ctx.arc(w*.52,h*.49,13,0,Math.PI*2);ctx.fill();
+  },512,256);
+  ledTexture.wrapS=THREE.RepeatWrapping;ledTexture.colorSpace=THREE.SRGBColorSpace;
+  const sphereMaterial=new THREE.MeshStandardMaterial({map:ledTexture,emissiveMap:ledTexture,emissive:0x3268a3,emissiveIntensity:.52,roughness:.3,metalness:.18});
+  const sphere=new THREE.Mesh(new THREE.SphereGeometry(74,48,32),sphereMaterial);
+  sphere.name='Sphere LED dome landmark';sphere.position.set(spherePoint.x,sphereGround+62,spherePoint.z);sphere.scale.y=.8;root.add(sphere);
+  const sphereBase=new THREE.Mesh(new THREE.TorusGeometry(76,1.5,8,80),steel);sphereBase.rotation.x=Math.PI/2;sphereBase.position.set(spherePoint.x,sphereGround+2,spherePoint.z);root.add(sphereBase);
+
+  // Two instanced meshes keep 200 palms and 1,000 fronds to two draw calls.
+  const treeRoutes=network.routes.filter(route=>route.kind==='arterial'&&route.width>=16&&route.name!=='Airport Connector');
+  const palms=[];
+  for(let i=0;i<200;i++){
+    const route=treeRoutes[i%treeRoutes.length],segmentIndex=Math.floor(i/treeRoutes.length)%(route.points.length-1);
+    const a=route.points[segmentIndex],b=route.points[segmentIndex+1],dx=b[0]-a[0],dz=b[1]-a[1],length=Math.hypot(dx,dz)||1;
+    const t=.12+((i*37)%76)/100,side=i%2?1:-1,offset=route.width/2+8,nx=-dz/length,nz=dx/length;
+    let x=a[0]+dx*t+nx*offset*side,z=a[1]+dz*t+nz*offset*side;
+    if(!openSpace(x,z,1.8)){
+      const otherX=a[0]+dx*t-nx*offset*side,otherZ=a[1]+dz*t-nz*offset*side;
+      if(openSpace(otherX,otherZ,1.8)){x=otherX;z=otherZ;}
+      else [x,z]=clearSpot(x,z);
+    }
+    palms.push({x,z,y:groundAt(x,z),angle:(i*2.3999632297)%(Math.PI*2)});
+  }
+  const trunkGeometry=new THREE.CylinderGeometry(.22,.42,7,7,1),frondGeometry=new THREE.ConeGeometry(.18,4.5,5);
+  const trunkMaterial=new THREE.MeshStandardMaterial({color:0x72523a,roughness:.94}),frondMaterial=new THREE.MeshStandardMaterial({color:0x397b4a,roughness:.82,side:THREE.DoubleSide});
+  const trunks=new THREE.InstancedMesh(trunkGeometry,trunkMaterial,palms.length),fronds=new THREE.InstancedMesh(frondGeometry,frondMaterial,palms.length*5);
+  trunks.frustumCulled=false;fronds.frustumCulled=false;
+  const dummy=new THREE.Object3D(),up=new THREE.Vector3(0,1,0);
+  palms.forEach((p,i)=>{
+    dummy.position.set(p.x,p.y+3.5,p.z);dummy.rotation.set(0,p.angle,0);dummy.scale.set(1,1,1);dummy.updateMatrix();trunks.setMatrixAt(i,dummy.matrix);
+    for(let leaf=0;leaf<5;leaf++){
+      const angle=p.angle+leaf*Math.PI*2/5,direction=new THREE.Vector3(Math.cos(angle),-.38,Math.sin(angle)).normalize();
+      dummy.position.set(p.x+direction.x*1.35,p.y+7.1+direction.y*1.35,p.z+direction.z*1.35);
+      dummy.quaternion.setFromUnitVectors(up,direction);dummy.scale.set(1,1,1);dummy.updateMatrix();fronds.setMatrixAt(i*5+leaf,dummy.matrix);
+    }
+  });
+  trunks.instanceMatrix.needsUpdate=true;fronds.instanceMatrix.needsUpdate=true;root.add(trunks,fronds);
+  root.userData.palmCount=palms.length;root.userData.landmarks=['HIGH ROLLER','SPHERE'];
+  game.scene.add(root);
+  return worldLandmarks={root,sphere,wheel,palmCount:palms.length,update(dt){sphere.rotation.y+=dt*.018;}};
 }
 
 function clearSpot(x, z) {
