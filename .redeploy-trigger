@@ -1,5 +1,5 @@
 JC THE HOLY OG redeploy trigger
 branch: main
-source_commit: 2b597a89279a185d168eb19db1a074891061f316
-requested_at: 2026-09-21
-reason: make JC unmistakably visible with larger hoodie fallback, tighter third-person camera, and automatic jc.glb replacement hook
+source_commit: 88e3f8b7755c2cc06302c884ffbb6cd41805bc2c
+requested_at: 2026-10-02
+reason: publish latest JC audio, sprite cleanup, NPC contact tracking, world map, street labels, regional travel, Vegas roads, traffic, crowd, Sphere, High Roller and palm landmarks
