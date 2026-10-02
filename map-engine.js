@@ -1,11 +1,13 @@
 import {loadPhotoFacades} from './photo-facades.js';
 import {loadPhysicalMaterials,buildingSurface,classifyBuilding,wallUV} from './physical-building-materials.js';
 import * as THREE from './three.module.js';
+import {createPhotorealDetailMaps,applyPhotorealMaterial} from './photorealism-pbr.js';
 import { OrbitControls } from './map-controls.js';
 import {createBuildingImpostors} from './building-impostors.js';
 import {decodeGlbAttribute} from './ground-sampling.js';
 import {predictTravel,createPrefetchCache} from './predictive-streaming.js';
 const $=id=>document.getElementById(id);
+const photorealDetailMaps=createPhotorealDetailMaps(THREE);
 const statusText=message=>{$('loading').textContent=message;};
 statusText('Opening the city…');
 async function fetchBytes(url){
@@ -25,7 +27,12 @@ const mobileMap=matchMedia('(pointer:coarse), (max-width:800px)').matches || nav
 const startInPlay=new URLSearchParams(location.search).get('play')==='1';
 let renderer;
 try{
- renderer=new THREE.WebGLRenderer({canvas:$('scene'),antialias:false,alpha:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'low-power',failIfMajorPerformanceCaveat:false});
+ const canvas=$('scene'),contextOptions={alpha:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'low-power',failIfMajorPerformanceCaveat:false};
+ let context=null;
+ try{context=canvas.getContext('webgl2',contextOptions);}catch{}
+ if(!context){try{context=canvas.getContext('webgl',contextOptions)||canvas.getContext('experimental-webgl',contextOptions);}catch{}}
+ if(!context)throw Error('WebGL 2 and WebGL 1 are unavailable.');
+ renderer=new THREE.WebGLRenderer({canvas,context,antialias:false,alpha:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'low-power',failIfMajorPerformanceCaveat:false});
 }catch(error){
  window.jcLoadingRecovery('This browser could not open its 3D graphics connection. Close other game tabs and retry.');
  throw error;
@@ -83,6 +90,7 @@ async function parseGLB(raw,name){const dv=new DataView(raw.buffer,raw.byteOffse
   const p=m.pbrMetallicRoughness||{},f=p.baseColorFactor||[1,1,1,1],isWall=m.name.endsWith('_walls');
   const id=m.name.replace(/_(walls|roof)$/,''),surface=isWall?buildingSurface(id,buildingMeta.get(id)||{},facadeMaps,physicalMaps):null;
   const ma=new THREE.MeshStandardMaterial({name:m.name,color:surface?.map?new THREE.Color(surface.color):new THREE.Color(f[0],f[1],f[2]),map:surface?.map||textures[p.baseColorTexture?.index]||null,roughness:surface?.roughness??.94,metalness:surface?.metalness??0,side:m.doubleSided?THREE.DoubleSide:THREE.FrontSide});
+  applyPhotorealMaterial(THREE,ma,photorealDetailMaps,{casino:surface?.identity?.type==='casino',buildingHeight:Number(buildingMeta.get(id)?.heightMetres)||12});
   if(!isWall&&!mobileMap&&physicalMaps[4]){ma.bumpMap=physicalMaps[4];ma.bumpScale=.025;}
   ma.userData.original={color:ma.color.clone(),map:ma.map,bumpMap:ma.bumpMap,roughness:ma.roughness,metalness:ma.metalness};
   ma.userData.wallpapered=!!surface?.map;
@@ -143,7 +151,7 @@ function focus(){if(!selected)return;const p=selected.getWorldPosition(new THREE
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let down=null;renderer.domElement.addEventListener('pointerdown',e=>{down=[e.clientX,e.clientY];});renderer.domElement.addEventListener('pointerup',e=>{if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>4)return;const r=renderer.domElement.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mouse,camera);const meshes=[...buildings.values()].filter(o=>!chunks.has(o.userData.buildingId)).flatMap(o=>o.children);const hit=ray.intersectObjects(meshes,false)[0];if(hit)select(hit.object.userData.owner);});
 for(const e of document.querySelectorAll('[data-view]'))e.onclick=()=>view(e.dataset.view);$('focus').onclick=focus;for(const id of ['wallColor','roofColor','roughness','glow','materialMode'])$(id).addEventListener('input',updateEdit);$('crumble').onclick=()=>destroy(selected,'crumble');$('explode').onclick=()=>destroy(selected,'explode');$('rebuild').onclick=()=>rebuild(selected);$('resetLook').onclick=()=>{if(!selected)return;const id=selected.userData.buildingId,state=edits.get(id)?.state;edits.set(id,state?{state}:{});setAppearance(selected,edits.get(id));persist();select(selected);};$('buildingList').onchange=e=>select(buildings.get(e.target.value));
 for(const s of [...sections].sort((a,b)=>a.id.localeCompare(b.id)))$('tile').add(new Option(`${s.id} · ${s.buildings.toLocaleString()} objects`,s.id));$('loadTile').onclick=()=>loadArea($('tile').value,streamRadius);$('neighbors').onclick=()=>loadArea($('tile').value,2);
-const places={strip:'C15_R14',downtown:'C15_R21',houses:'C21_R21'};for(const b of document.querySelectorAll('[data-place]'))b.onclick=()=>loadArea(places[b.dataset.place]);
+const places={strip:[-115.173,36.108],psalms:[-115.196,36.116],airport:[-115.152,36.083],sphere:[-115.163,36.1208],downtown:[-115.142,36.168],houses:[-115.196,36.132]};for(const b of document.querySelectorAll('[data-place]'))b.onclick=()=>{const point=places[b.dataset.place];if(!point)return;try{loadArea(nearestGeo(point[0],point[1]));}catch(error){status(error.message);}};
 function nearestGeo(lon,lat){let best=null,d=Infinity;for(const s of sections){const corners=s.cornersLonLat,l=corners.reduce((a,p)=>a+p[0],0)/4,la=corners.reduce((a,p)=>a+p[1],0)/4,n=((l-lon)*Math.cos(lat*Math.PI/180))**2+(la-lat)**2;if(n<d){d=n;best=s;}}if(Math.sqrt(d)>.012)throw Error('Coordinates are outside the project.');return best.id;}
 $('goGeo').onclick=()=>{try{const a=$('geo').value.trim().split(/[,\s]+/).map(Number);if(a.length!==2||!a.every(Number.isFinite))throw Error('Enter longitude, latitude.');loadArea(nearestGeo(...a));}catch(e){status(e.message);}};
 $('map').src=payload.resources['assets/overview.jpg'];$('map').onclick=e=>{const r=e.target.getBoundingClientRect(),c=Math.min(34,Math.max(0,Math.floor((e.clientX-r.left)/r.width*35))),y=Math.min(34,Math.max(0,34-Math.floor((e.clientY-r.top)/r.height*35)));loadArea(`C${String(c).padStart(2,'0')}_R${String(y).padStart(2,'0')}`);};
@@ -152,7 +160,7 @@ function exportEdits(){return {format:'illco-vegas-building-edits',version:1,sou
 $('save').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(exportEdits(),null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='Vegas_Building_Edits.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);};$('loadEdits').onclick=()=>$('editsFile').click();$('editsFile').onchange=async e=>{try{importEdits(JSON.parse(await e.target.files[0].text()));}catch(err){status(err.message);}};
 function resize(){const r=$('viewport').getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}new ResizeObserver(resize).observe($('viewport'));resize();if(mobileMap) $('streamRange').value='0';
 function animate(t){requestAnimationFrame(animate);const dt=Math.min((t-last)/1000,.04);last=t;if(!window.studio?.paused){tick(dt*Math.max(0,Math.min(1,window.JC_WORLD_SCALE??1)));streamingTick(t,dt);}if(!window.JC_MAP_PLAYING)controls.update();window.studio?.buildingViews?.update(t,dt,document.body.classList.contains('jc-playing'));if(!mobileMap||!startInPlay||window.JC_PLAYER_READY){if(window.studio?.renderFrame)window.studio.renderFrame();else renderer.render(scene,camera);}}requestAnimationFrame(animate);
-window.studio={mobileMap,scene,camera,renderer,controls,buildings,chunks,edits,loaded,origin,centerSection,ensureContext,streamingTick,streamInfo:()=>({enabled:streamEnabled,radius:streamRadius,loading,current,lastWanted,context:!!contextGround,availableFiles:files.size}),tileRevision:()=>tileRevision,prefetchInfo:()=>prefetchedBytes.stats(),loadArea,select,focus,view,destroy,rebuild,updateEdit,exportEdits,importEdits,tick,stats:()=>({buildings:buildings.size,tiles:loaded.size,chunks:particles.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),proof:()=>{document.body.classList.add('proof');resize();}};
+window.studio={mobileMap,scene,camera,renderer,controls,buildings,chunks,edits,loaded,origin,sections,centerSection,sectionAt,availableTile:id=>{const section=byId.get(id);return !!section&&available(section.uri);},nearestGeo,ensureContext,streamingTick,streamInfo:()=>({enabled:streamEnabled,radius:streamRadius,loading,current,lastWanted,context:!!contextGround,availableFiles:files.size}),tileRevision:()=>tileRevision,prefetchInfo:()=>prefetchedBytes.stats(),loadArea,select,focus,view,destroy,rebuild,updateEdit,exportEdits,importEdits,tick,stats:()=>({buildings:buildings.size,tiles:loaded.size,chunks:particles.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),proof:()=>{document.body.classList.add('proof');resize();}};
 window.studio.buildingViews=createBuildingImpostors(window.studio,{mobile:mobileMap,enabled:new URLSearchParams(location.search).get('buildingViews')!=='off'});
 $('fullCityProof').src=payload.fullCityProof;
 window.studio.ready=loadArea('C15_R14',0);

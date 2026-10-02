@@ -1,5 +1,6 @@
 import * as THREE from './three.module.js';
 import {createCharacter3D} from './jc-character3d.js';
+import {createAmbientCrowd} from './jc-crowd.js';
 
 const AVATARS = [
   ['civilian-01','civilian'],['civilian-02','civilian'],['civilian-03','civilian'],['civilian-04','civilian'],
@@ -17,15 +18,23 @@ function chooseOpen(x,z,isSafe) {
   return [x,z];
 }
 
-export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8}) {
+export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8,crowdCount=500,mobile=false}) {
   const root=new THREE.Group();root.name='JC responsive NPC crowd';scene.add(root);
   root.visible=false;
   const npcs=[];
   const size=Math.max(6,Math.min(16,Math.round(count||8)));
+  let trackedId=null;
+  const crowd=createAmbientCrowd({scene,player,groundAt,isSafe,count:crowdCount,mobile});
   let lastReport=0;
   const restorative=new Set(['heal','shield','cleanse','sunrise','sanctuary','restore','grace-surge','rain','rebuild','bless','redemption-wave']);
   const travel=new Set(['flight','hypersonic','hover','glide','sky-lift','leap','teleport','beam-down','recall','phase-step']);
   const labels={civilian:'CIVILIANS',authority:'RESPONDERS',angel:'ANGELS',demon:'DEMONS'};
+  const characterProfiles={
+    civilian:{role:'local resident',personality:'observant, independent, and grounded',goals:'stay safe, understand what is happening, and protect people they care about',speechStyle:'plain, conversational, occasionally skeptical'},
+    authority:{role:'local responder',personality:'alert, procedural, and protective',goals:'protect civilians, assess danger, and restore order',speechStyle:'direct, concise, situational'},
+    angel:{role:'heavenly observer',personality:'calm, perceptive, compassionate, and serious',goals:'guide people away from harm and respond to spiritual events',speechStyle:'measured, vivid, and reassuring'},
+    demon:{role:'adversarial supernatural presence',personality:'provocative, cunning, watchful, and self-interested',goals:'advance its own agenda and exploit opportunities',speechStyle:'taunting, confident, and sharp'}
+  };
 
   for(let i=0;i<size;i++) {
     const [avatar,faction]=AVATARS[(i%4)*4+Math.floor(i/4)];
@@ -33,11 +42,14 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8})
     const ring=18+Math.floor(i/4)*13;
     const [x,z]=chooseOpen(player.position.x+Math.cos(angle)*ring,player.position.z+Math.sin(angle)*ring,isSafe);
     const given=['Mara','Darius','Sol','Nia','Ezra','Vale','Imani','Theo','Rae','Jonah','Ash','Micah','Zuri','Cal','Noor','Eli'];
-    const npc={faction,avatar,name:given[i%given.length],sprite:null,position:new THREE.Vector3(x,groundAt(x,z)+1.55,z),target:new THREE.Vector3(x,0,z),event:null,state:'idle',nextWander:0,emotionUntil:0,gait:Math.random()*Math.PI*2,stepDistance:0};
+    const name=given[i%given.length],id=[faction,avatar,name].join(':');
+    const npc={id,faction,avatar,name,sprite:null,trackerRing:null,position:new THREE.Vector3(x,groundAt(x,z)+1.55,z),target:new THREE.Vector3(x,0,z),event:null,state:'idle',nextWander:0,emotionUntil:0,gait:Math.random()*Math.PI*2,stepDistance:0};
     npcs.push(npc);
     const sprite=createCharacter3D({faction});
     sprite.position.set(x,groundAt(x,z),z);
-    Object.assign(sprite.userData,{faction,avatar,name:npc.name,emotion:'calm'});
+    Object.assign(sprite.userData,{faction,avatar,name:npc.name,emotion:'calm',npcRef:npc});
+    const trackerRingMesh=new THREE.Mesh(new THREE.TorusGeometry(1.15,.065,6,20),new THREE.MeshBasicMaterial({color:0xffd45a,transparent:true,opacity:.9,depthWrite:false}));
+    trackerRingMesh.name='NPC contact tracking ring';trackerRingMesh.rotation.x=Math.PI/2;trackerRingMesh.position.y=.07;trackerRingMesh.visible=false;sprite.add(trackerRingMesh);npc.trackerRing=trackerRingMesh;
     root.add(sprite);npc.sprite=sprite;
   }
 
@@ -64,6 +76,7 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8})
       else setDestination(npc,player.position,34);
       npc.sprite?.userData && (npc.sprite.userData.emotion=npc.state);
     }
+    crowd.signal(type,center,radius);
     report(now);
   }
 
@@ -80,7 +93,7 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8})
     for(const npc of npcs) {
       if(!npc.sprite)continue;
       let distance=npc.position.distanceTo(playerPosition);
-      if(distance>180&&now>npc.emotionUntil&&now>npc.nextWander){
+      if(distance>180&&npc.id!==trackedId&&now>npc.emotionUntil&&now>npc.nextWander){
         const i=npcs.indexOf(npc),angle=i*2.3999632297,radius=18+(i%4)*11;
         const [x,z]=chooseOpen(playerPosition.x+Math.cos(angle)*radius,playerPosition.z+Math.sin(angle)*radius,isSafe);
         npc.position.set(x,groundAt(x,z)+1.55,z);npc.target.copy(npc.position);npc.event=null;npc.state='idle';npc.nextWander=now+1800;distance=npc.position.distanceTo(playerPosition);
@@ -120,9 +133,26 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8})
       if(len>.12)npc.sprite.rotation.y=Math.atan2(dx,dz);
       const pose=npc.moving?(running?31+Math.floor(npc.gait/.45)%8:23+Math.floor(npc.gait/.6)%8):npc.state==='respond'?6:npc.state==='awe'?11:0;
       npc.sprite.userData.character.setPose(pose,npc.gait,npc.moving?speed:0,now,false);
+      if(npc.trackerRing?.visible)npc.trackerRing.material.opacity=.68+Math.sin(now*.006)*.22;
     }
+    crowd.update(dt,now);
     report(now);
   }
 
-  return {npcs,signal,update,setVisible(value){root.visible=!!value;},dispose(){scene.remove(root);for(const npc of npcs)npc.sprite?.userData.dispose?.();const materials=new Set();root.traverse(o=>{if(o.material)materials.add(o.material);});for(const material of materials){material.map?.dispose();material.dispose();}}};
+  function setTracked(id) {
+    trackedId=id||null;
+    for(const npc of npcs){if(npc.trackerRing)npc.trackerRing.visible=npc.id===trackedId;}
+    return !trackedId||npcs.some(npc=>npc.id===trackedId);
+  }
+
+  function trafficImpact(npc,car) {
+    if(!npc)return;
+    const now=performance.now(),center=new THREE.Vector3(car.x,groundAt(car.x,car.z)+1.55,car.z);
+    npc.event={type:'traffic-impact',position:center.clone(),time:now};npc.memory={type:'traffic-impact',time:now};npc.state='fear';npc.emotionUntil=now+4500;setDestination(npc,center,22);
+    if(npc.sprite?.userData)npc.sprite.userData.emotion='fear';
+  }
+
+  return {npcs,signal,update,setTracked,trafficImpact,get trackedId(){return trackedId;},totalPopulation:npcs.length+crowd.count,crowd,
+    setVisible(value){root.visible=!!value;crowd.setVisible(value);},
+    dispose(){scene.remove(root);crowd.dispose();for(const npc of npcs)npc.sprite?.userData.dispose?.();const materials=new Set();root.traverse(o=>{if(o.material)materials.add(o.material);});for(const material of materials){material.map?.dispose();material.dispose();}}};
 }

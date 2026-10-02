@@ -31,3 +31,9 @@ node scripts/validate-worker.mjs
 ```
 
 Checks cover flight, teleport selection, blocked casts, cooldowns, bounded effects, NPC movement and dialogue request cancellation. Device FPS and visual quality still require testing on real hardware.
+
+## Accessibility and controls
+
+The in-game HUD honors the operating system's `prefers-reduced-motion` setting. When enabled, decorative HUD transitions and animations are minimized while gameplay feedback, status messages, and controls remain available.
+
+For keyboard play, use the controls shown in the HUD. On touch devices, the left stick moves, the right stick looks and steers flight pitch, and the action buttons can be expanded with **MORE**. Sound settings are available from **SOUND** and persist on the device.
