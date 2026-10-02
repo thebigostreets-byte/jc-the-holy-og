@@ -1524,18 +1524,19 @@ for(const texture of generatedFacades){
 // Tile groups and wall materials are built asynchronously by the city loader.
 function wallpaperStrip() {
   for (const [id, group] of game.loaded) {
-    if (group.userData.jcThemeApplied) continue;
-    let buildingIndex = 0;
-    group.traverse(ob => {
-      if (!ob.isMesh || !ob.material?.name?.endsWith('_walls')) return;
-      const ownerId = resolvedBuildingId(ob, `${id}:vegas-tower-${buildingIndex++}`);
-      applyBuildingTheme(ob, ownerId, redeemedBuildings.has(ownerId));
-    });
-    group.userData.jcThemeApplied = true;
-  }
-  if(!group.userData.jcRooftopDetails){
-    const details=decorateBuildingRooftops(THREE,group,game.buildings);
-    if(details)group.userData.jcRooftopDetails=details;
+    if (!group.userData.jcThemeApplied) {
+      let buildingIndex = 0;
+      group.traverse(ob => {
+        if (!ob.isMesh || !ob.material?.name?.endsWith('_walls')) return;
+        const ownerId = resolvedBuildingId(ob, `${id}:vegas-tower-${buildingIndex++}`);
+        applyBuildingTheme(ob, ownerId, redeemedBuildings.has(ownerId));
+      });
+      group.userData.jcThemeApplied = true;
+    }
+    if(!group.userData.jcRooftopDetails){
+      const details=decorateBuildingRooftops(THREE,group,game.buildings);
+      if(details)group.userData.jcRooftopDetails=details;
+    }
   }
 }
 setInterval(wallpaperStrip, 500);
