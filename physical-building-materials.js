@@ -35,7 +35,8 @@ export function classifyBuilding(meta={}){
     let best=null;
     for(const [name,lon,lat,radius] of CASINO_PROPERTIES){
       const distance=distanceMetres(longitude,latitude,lon,lat);
-      if(distance<=radius&&(!best||distance<best.distance))best={type:'casino',name,confidence:'landmark-proximity',distance};
+      const centralCasinoStructure=distance<=Math.min(135,radius*.55),likelyHotelTower=height>=18&&distance<=radius;
+      if((centralCasinoStructure||likelyHotelTower)&&(!best||distance<best.distance))best={type:'casino',name,confidence:'landmark-proximity',distance};
     }
     if(best)return best;
   }
