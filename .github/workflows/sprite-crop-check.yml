@@ -1,0 +1,24 @@
+name: Sprite frame crop regression
+on:
+  push:
+    branches: [fix/sprite-frame-crop]
+permissions:
+  contents: read
+jobs:
+  sprite-crop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check changed JavaScript
+        run: |
+          node --check pose-cleanup.js
+          node --check rear-walk.js
+          node --check jc-map-game.js
+          node --check tests/pose-cleanup.mjs
+      - name: Test sprite isolation and baseline
+        run: node tests/pose-cleanup.mjs
+      - name: Test flight state regression
+        run: node tests/flight-state.mjs
