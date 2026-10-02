@@ -63,7 +63,7 @@ document.head.append(style);
 
 const hud = document.createElement('div');
 hud.id = 'jcHud';
-hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q answer prayer / cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Left joystick: move"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: look and steer flight pitch"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="wheel" type="button">43 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>43 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div>`;
+hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · E enter/exit · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q answer prayer / cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Left joystick: move"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: look and steer flight pitch"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="enter" type="button">ENTER</button><button data-action="wheel" type="button">43 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>43 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div>`;
 document.body.append(hud);
 const sinState=document.createElement('section');
 sinState.id='jcSinState';sinState.setAttribute('aria-label','Sin City good and evil state');
@@ -299,6 +299,7 @@ function cycleTarget(){
   feedback(lockedSoul?'Light tracked · Q pulse within 18 m':'All lights restored');
 }
 function resetRun(){
+  if(interiorState)exitInterior(false);
   miracleEffects?.clear();phaseUntil=timeScaleUntil=shieldUntil=graceSurgeUntil=sanctuaryUntil=stasisUntil=revealUntil=sunriseUntil=poseOverrideUntil=castingUntil=0;poseOverride=-1;lockedBuilding=null;
   clearTeleportMarker();teleportAim=false;teleportTarget=null;
   redeemed=0;runTime=0;runActive=false;runFinished=false;chain={count:0,last:0,points:0};lockedSoul=null;
@@ -777,6 +778,70 @@ function nearbyBuildings(radius, count = 1) {
     .sort((a,b) => a.d - b.d).slice(0,count).map(({ob}) => ob);
 }
 
+let interiorState=null;
+function nearestEnterableBuilding(radius=7){
+  let best=null,bestDistance=radius;
+  for(const item of footprints){
+    const {box,ob}=item;if(!ob?.userData?.buildingId)continue;
+    const nearestX=THREE.MathUtils.clamp(player.position.x,box.min.x,box.max.x),nearestZ=THREE.MathUtils.clamp(player.position.z,box.min.z,box.max.z);
+    const distance=Math.hypot(player.position.x-nearestX,player.position.z-nearestZ);
+    if(distance<bestDistance){best={box,ob};bestDistance=distance;}
+  }
+  return best;
+}
+function interiorMesh(group,geometry,material,position){
+  const mesh=new THREE.Mesh(geometry,material);mesh.position.set(...position);mesh.castShadow=false;mesh.receiveShadow=true;group.add(mesh);return mesh;
+}
+function createProceduralInterior(ob,box){
+  const center=box.getCenter(new THREE.Vector3()),sourceWidth=Math.max(1,box.max.x-box.min.x),sourceDepth=Math.max(1,box.max.z-box.min.z);
+  const width=THREE.MathUtils.clamp(sourceWidth-1,8,28),depth=THREE.MathUtils.clamp(sourceDepth-1,8,24),height=3.4,floorY=box.min.y+.12;
+  const identity=ob.userData.identity||{type:'commercial',name:'Building'},type=identity.type;
+  const group=new THREE.Group();group.name='JC procedural interior · '+ob.userData.buildingId;group.position.set(center.x,floorY,center.z);
+  const isHome=type==='residential',isCasino=type==='casino';
+  const wall=new THREE.MeshStandardMaterial({color:isHome?0xd9c6ae:isCasino?0x3a2922:0xc8c4bc,roughness:isCasino?.48:.92,metalness:isCasino?.08:0});
+  const floor=new THREE.MeshStandardMaterial({color:isHome?0x7a5b43:isCasino?0x332920:0x767676,roughness:isCasino?.55:.88,metalness:0});
+  const trim=new THREE.MeshStandardMaterial({color:isCasino?0xc9a85d:0x6f6256,roughness:isCasino?.42:.82,metalness:isCasino?.18:0});
+  const accent=new THREE.MeshStandardMaterial({color:isHome?0x76695d:isCasino?0x7b2630:0x4b5960,roughness:.75,metalness:0});
+  interiorMesh(group,new THREE.BoxGeometry(width,.18,depth),floor,[0,-.09,0]);
+  interiorMesh(group,new THREE.BoxGeometry(width,.16,depth),wall,[0,height+.08,0]);
+  interiorMesh(group,new THREE.BoxGeometry(width,.2,height),wall,[0,height/2,-depth/2]);
+  interiorMesh(group,new THREE.BoxGeometry(width,.2,height),wall,[0,height/2,depth/2]);
+  interiorMesh(group,new THREE.BoxGeometry(.2,height,depth),wall,[-width/2,height/2,0]);
+  interiorMesh(group,new THREE.BoxGeometry(.2,height,depth),wall,[width/2,height/2,0]);
+  if(isHome){
+    interiorMesh(group,new THREE.BoxGeometry(Math.min(3.4,width*.35),.75,1.05),accent,[-width*.19,.42,-depth*.22]);
+    interiorMesh(group,new THREE.BoxGeometry(1.4,.45,.85),trim,[.4,.24,-depth*.05]);
+    interiorMesh(group,new THREE.BoxGeometry(Math.min(2.6,width*.3),.55,1.6),new THREE.MeshStandardMaterial({color:0xd7d0c4,roughness:.95}),[width*.18,.29,depth*.22]);
+  }else if(isCasino){
+    for(let i=-2;i<=2;i++){const machine=interiorMesh(group,new THREE.BoxGeometry(.72,1.7,.72),trim,[i*1.15,.86,-depth*.2]);const panel=new THREE.MeshStandardMaterial({color:0xffd96b,emissive:0xff9b2f,emissiveIntensity:.35,roughness:.45});interiorMesh(group,new THREE.BoxGeometry(.48,.52,.04),panel,[i*1.15,1.08,-depth*.2-.38]);}
+    interiorMesh(group,new THREE.BoxGeometry(Math.min(5.5,width*.45),1.05,1.15),accent,[0,.53,depth*.2]);
+  }else{
+    interiorMesh(group,new THREE.BoxGeometry(Math.min(5,width*.5),1.05,.85),trim,[0,.53,-depth*.22]);
+    for(let i=-1;i<=1;i++)interiorMesh(group,new THREE.BoxGeometry(1.3,.72,.75),accent,[i*2,.37,depth*.18]);
+  }
+  const light=new THREE.PointLight(isCasino?0xffd28c:0xffedd0,isCasino?35:22,Math.max(width,depth)*1.5,2);light.position.set(0,height-0.35,0);group.add(light);
+  game.scene.add(group);
+  return {group,ob,returnPosition:player.position.clone(),floorY,minX:center.x-width/2+.7,maxX:center.x+width/2-.7,minZ:center.z-depth/2+.7,maxZ:center.z+depth/2-.7,identity};
+}
+function enterInterior(){
+  if(interiorState)return true;if(flying||flightHeight>0){feedback('Land before entering a building');return false;}
+  const target=nearestEnterableBuilding(7);if(!target){feedback('Move closer to a building entrance');return false;}
+  interiorState=createProceduralInterior(target.ob,target.box);target.ob.visible=false;velocity.set(0,0,0);
+  player.position.set((interiorState.minX+interiorState.maxX)/2,interiorState.floorY,(interiorState.minZ+interiorState.maxZ)/2);terrainY=interiorState.floorY;
+  nearNpc=null;conversation.close({restoreFocus:false});resetInput();
+  const enterButton=hud.querySelector('[data-action="enter"]');if(enterButton)enterButton.textContent='EXIT';
+  feedback('ENTERED · '+(interiorState.identity.name||interiorState.identity.type)+' · E TO EXIT');return true;
+}
+function exitInterior(showMessage=true){
+  if(!interiorState)return false;const state=interiorState;interiorState=null;
+  if(state.ob?.parent)state.ob.visible=true;
+  state.group.traverse(node=>{if(!node.isMesh)return;node.geometry?.dispose();const materials=Array.isArray(node.material)?node.material:[node.material];for(const material of materials){if(material&&!material.userData?.shared)material.dispose?.();}});
+  game.scene.remove(state.group);player.position.copy(state.returnPosition);terrainY=groundAt(player.position.x,player.position.z);player.position.y=terrainY;velocity.set(0,0,0);
+  const enterButton=hud.querySelector('[data-action="enter"]');if(enterButton)enterButton.textContent='ENTER';
+  resetInput();if(showMessage)feedback('BACK OUTSIDE · '+(state.identity.name||'BUILDING'));return true;
+}
+function toggleInterior(){return interiorState?exitInterior():enterInterior();}
+
 function redeem(ob) {
   if (!ob) return false;
   const firstRedemption=!redeemedBuildings.has(ob.userData.buildingId);
@@ -865,6 +930,7 @@ function teleport(distance = 75) {
 
 function cast(id = selectedAbility) {
   if (!playing || wheel.classList.contains('open')) return;
+  if(interiorState){feedback('Exit the building to use miracles');return;}
   const ability = abilities.find(a=>a.id===id);
   if (!ability) return;
   if(id==='teleport'&&!teleportTarget){beginTeleportTarget();return;}
@@ -955,7 +1021,7 @@ function setMode(play) {
     playReturn.textContent = 'LOADING JC...';
     return;
   }
-  if (!play) {conversation.close({restoreFocus:false});miracleEffects?.clear();}
+  if (!play) {if(interiorState)exitInterior(false);conversation.close({restoreFocus:false});miracleEffects?.clear();}
   playing = play;window.JC_WORLD_SCALE=1;
   if(player)cinematicLook?.update(0,performance.now(),player.position,velocity,false,false,play);
   npcSystem?.setVisible(play);
@@ -1035,6 +1101,27 @@ function frameStep(now) {
   const dropHeld=keys.has('c')||keys.has('Control')||padKeys.has('Control');
   if(flying){if(riseHeld)desired.y+=1;if(dropHeld)desired.y-=1;}else desired.y=0;
   if (desired.lengthSq()>1) desired.normalize();
+  if(interiorState){
+    window.JC_WORLD_SCALE=0;const move=desired.clone().setY(0);if(move.lengthSq()>1)move.normalize();
+    const indoorSpeed=(keys.has('Shift')||padKeys.has('Shift'))?5.2:3.8;
+    player.position.x=THREE.MathUtils.clamp(player.position.x+move.x*indoorSpeed*dt,interiorState.minX,interiorState.maxX);
+    player.position.z=THREE.MathUtils.clamp(player.position.z+move.z*indoorSpeed*dt,interiorState.minZ,interiorState.maxZ);player.position.y=interiorState.floorY;terrainY=interiorState.floorY;
+    velocity.set(move.x*indoorSpeed,0,move.z*indoorSpeed);const indoorVelocity=Math.hypot(velocity.x,velocity.z);
+    if(indoorVelocity>.15)playerStepPhase=advanceGait(playerStepPhase,indoorVelocity,dt,indoorVelocity>4.5);
+    const indoorPose=indoorVelocity>1.1?(indoorVelocity>4.5?runPoseSet:walkPoseSet)[Math.floor(playerStepPhase)]:0;
+    portrait.userData.character.setPose(indoorPose,playerStepPhase,indoorVelocity,now,false);applyCharacterFrame(indoorPose);portrait.rotation.y=Math.PI+yaw;
+    if(realisticAvatar){realisticAvatar.material.rotation=0;realisticAvatar.position.y=realisticAvatar.scale.y*.5;}
+    const focus=player.position.clone().add(new THREE.Vector3(0,2.05,0));
+    const cameraPoint=focus.clone().add(new THREE.Vector3(-Math.sin(yaw)*4.2,1.05,Math.cos(yaw)*4.2));
+    cameraPoint.x=THREE.MathUtils.clamp(cameraPoint.x,interiorState.minX+.2,interiorState.maxX-.2);cameraPoint.z=THREE.MathUtils.clamp(cameraPoint.z,interiorState.minZ+.2,interiorState.maxZ-.2);cameraPoint.y=interiorState.floorY+2.65;
+    game.camera.position.copy(cameraPoint);game.camera.lookAt(focus);game.controls?.target?.copy(focus);
+    grace=THREE.MathUtils.clamp(grace+12*dt,0,100);graceLabel.textContent=Math.round(grace);
+    nearNpc=null;npcTalkButton.classList.remove('available');prayerButton.classList.remove('available');
+    stateLabel.textContent='INSIDE · '+(interiorState.identity.type||'BUILDING').toUpperCase();flightLabel.textContent=interiorState.identity.name||'BUILDING INTERIOR';targetLabel.textContent='';
+    feedbackLabel.style.opacity=now<feedbackUntil?'1':'0';const indoorAbility=abilities.find(a=>a.id===selectedAbility);hud.querySelector('#jcAbilityReady').textContent='Exit building to cast · E';
+    runLabel.textContent='INTERIOR · '+(interiorState.identity.name||interiorState.identity.type||'BUILDING');
+    return;
+  }
   if(!runActive&&!runFinished&&(desired.lengthSq()>.02||flightHeight>0)){runActive=true;}
   const braking=keys.has('b')||padKeys.has('b');
   const sprint = !flying && (keys.has('Shift')||padKeys.has('Shift')) && grace > 0 && desired.lengthSq() > 0;
@@ -1221,6 +1308,7 @@ const group = game.loaded.get('C15_R14');
     if (['w','a','s','d','e','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Shift','b'].includes(key)) keys.add(key);
     if(e.code==='Space'||e.code.startsWith('Control')){keys.add(e.code==='Space'?'Space':'Control');e.preventDefault();}
     if(e.code==='KeyC'&&!e.repeat){e.preventDefault();if(conversation.isOpen)conversation.close();else openNpcTalk();return;}
+    if(e.code==='KeyE'&&!e.repeat&&!flying){e.preventDefault();toggleInterior();return;}
     if(e.code==='KeyL'&&!e.repeat)cycleTarget();
     if(e.code==='KeyK'&&!e.repeat)cycleBuildingTarget();
     if (e.code === 'Space' && !e.repeat && !flying) dash();
@@ -1282,7 +1370,8 @@ const group = game.loaded.get('C15_R14');
   hud.querySelector('[data-action="fly"]').onclick=()=>cast('flight');
   hud.querySelector('[data-action="land"]').onclick=()=>cast('beam-down');
   hud.querySelector('[data-action="teleport"]').onclick=()=>{cast('teleport');};
-  hud.querySelector('[data-action="cast"]').onclick=()=>cast();
+  hud.querySelector('[data-action="cast"]').onclick=()=>{if(!answerPrayer())cast();};
+  hud.querySelector('[data-action="enter"]').onclick=()=>toggleInterior();
   hud.querySelector('[data-action="wheel"]').onclick=()=>toggleWheel();
   const moreButton=hud.querySelector('[data-action="more"]'),extras=hud.querySelector('.jc-extras');
   moreButton.onclick=()=>{const open=extras.classList.toggle('open');moreButton.setAttribute('aria-expanded',String(open));moreButton.textContent=open?'LESS':'MORE';};
