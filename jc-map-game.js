@@ -11,7 +11,7 @@ import {cachedGroundSample} from './ground-sampling.js';
 import {createNpcSystem} from './jc-npcs.js';
 import {createNpcConversation} from './npc-conversation.js';
 import {createCharacter3D} from './jc-character3d.js';
-import {cleanPoseImage} from './pose-cleanup.js';
+import {cleanPoseImage,POSE_FRAME_HEIGHT,POSE_FRAME_BOTTOM_PADDING} from './pose-cleanup.js';
 
 const style = document.createElement('style');
 style.textContent = `
@@ -210,7 +210,9 @@ function applyCharacterFrame(index){
   if(material.map!==frame.texture){material.map=frame.texture;material.needsUpdate=true;}
   const height=index>=14&&index<=22?3.05:3.63;
   realisticAvatar.scale.set(height*frame.aspect,height,1);
-  realisticAvatar.position.y=height*.5;
+  // The transparent bottom gutter keeps shoe pixels safe; offset the plane so
+  // the visible shoe baseline still meets the ground instead of floating.
+  realisticAvatar.position.y=height*(.5-POSE_FRAME_BOTTOM_PADDING/POSE_FRAME_HEIGHT);
 }
 function horizontalFlightPose(){return velocity.lengthSq()>16?20:14;}
 function setFlight(action){
@@ -1113,7 +1115,7 @@ function frameStep(now) {
     if(indoorVelocity>.15)playerStepPhase=advanceGait(playerStepPhase,indoorVelocity,dt,indoorVelocity>4.5);
     const indoorPose=indoorVelocity>1.1?(indoorVelocity>4.5?runPoseSet:walkPoseSet)[Math.floor(playerStepPhase)]:0;
     portrait.userData.character.setPose(indoorPose,playerStepPhase,indoorVelocity,now,false);applyCharacterFrame(indoorPose);portrait.rotation.y=Math.PI+yaw;
-    if(realisticAvatar){realisticAvatar.material.rotation=0;realisticAvatar.position.y=realisticAvatar.scale.y*.5;}
+    if(realisticAvatar){realisticAvatar.material.rotation=0;realisticAvatar.position.y=realisticAvatar.scale.y*(.5-POSE_FRAME_BOTTOM_PADDING/POSE_FRAME_HEIGHT);}
     const focus=player.position.clone().add(new THREE.Vector3(0,2.05,0));
     const cameraPoint=focus.clone().add(new THREE.Vector3(-Math.sin(yaw)*4.2,1.05,Math.cos(yaw)*4.2));
     cameraPoint.x=THREE.MathUtils.clamp(cameraPoint.x,interiorState.minX+.2,interiorState.maxX-.2);cameraPoint.z=THREE.MathUtils.clamp(cameraPoint.z,interiorState.minZ+.2,interiorState.maxZ-.2);cameraPoint.y=interiorState.floorY+2.65;
@@ -1168,7 +1170,7 @@ function frameStep(now) {
   if(realisticAvatar){
     const bank=flying?THREE.MathUtils.clamp(-lateral*.16,-.16,.16):0;
     realisticAvatar.material.rotation=THREE.MathUtils.lerp(realisticAvatar.material.rotation,bank,response(8,dt));
-    realisticAvatar.position.y=realisticAvatar.scale.y*.5+(flying?Math.sin(now*.004)*.06:0);
+    realisticAvatar.position.y=realisticAvatar.scale.y*(.5-POSE_FRAME_BOTTOM_PADDING/POSE_FRAME_HEIGHT)+(flying?Math.sin(now*.004)*.06:0);
   }
   portrait.rotation.y=Math.PI+yaw;
   portrait.position.y = velocity.lengthSq() > 1 && !flying ? Math.sin(now * .014) * .035 : 0;
