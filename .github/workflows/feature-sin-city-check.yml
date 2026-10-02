@@ -1,0 +1,28 @@
+name: Temporary Sin City feature checks
+on:
+  push:
+    branches: [feature/sin-city-state-realism]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Restore checked game assets
+        run: npm run hydrate
+      - name: Build client
+        run: npm run build
+      - name: Regression checks
+        run: |
+          npm run verify:assets
+          node tests/gameplay-regressions.mjs
+          node tests/flight-state.mjs
+          node tests/control-upgrade.mjs
+          node tests/npc-reactions.mjs
+          node tests/performance-guardrails.mjs
+          node tests/sin-city-state.mjs
