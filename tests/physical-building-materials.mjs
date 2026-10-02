@@ -3,6 +3,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import * as THREE from '../three.module.js';
 import {buildingSurface,wallUV} from '../physical-building-materials.js';
+
 const photos=Array.from({length:4},()=>new THREE.Texture());
 const physical=Array.from({length:6},()=>new THREE.Texture());
 const kinds=new Set();
