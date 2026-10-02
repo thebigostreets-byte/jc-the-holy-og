@@ -71,8 +71,10 @@ sinState.innerHTML='<div class="jc-sin-labels"><b>EVIL</b><strong>SIN CITY STATE
 hud.append(sinState);
 style.textContent += '#jcSinState{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:min(360px,42vw);padding:8px 10px;background:#071018e6;border:1px solid #d2b86b77;border-radius:7px;text-shadow:0 2px 5px #000;pointer-events:none}.jc-sin-labels,.jc-sin-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:9px;letter-spacing:.12em}.jc-sin-labels>b:first-child{color:#ff684d}.jc-sin-labels>b:last-child{color:#9effc2}.jc-sin-labels strong{color:#f4df9e}.jc-sin-track{position:relative;height:8px;margin:6px 0;background:linear-gradient(90deg,#8e1e1e 0%,#431d27 35%,#777 50%,#23553e 65%,#4fbf78 100%);border:1px solid #ffffff30;border-radius:8px}.jc-sin-track i{position:absolute;top:50%;left:50%;width:4px;height:18px;transform:translate(-50%,-50%);background:#fff7cf;box-shadow:0 0 8px #fff;transition:left .35s ease}.jc-sin-footer span{font-weight:900}.jc-sin-footer small{color:#cbd1d6}@media(max-width:800px),(pointer:coarse){#jcSinState{top:8px;width:min(300px,55vw);padding:6px 8px}.jc-sin-labels strong{font-size:8px}.jc-sin-footer{font-size:8px}}';
 let sinBalance=0,prayersAnswered=0;
+try{sinBalance=THREE.MathUtils.clamp(Number(localStorage.getItem('jc-sin-city-balance'))||0,-100,100);}catch{}
 function updateSinState(delta=0,reason=''){
   sinBalance=THREE.MathUtils.clamp(sinBalance+delta,-100,100);
+  try{localStorage.setItem('jc-sin-city-balance',String(Math.round(sinBalance)));}catch{}
   const marker=hud.querySelector('#jcSinMarker'),verdict=hud.querySelector('#jcSinVerdict'),scoreLabel=hud.querySelector('#jcSinScore');
   if(marker)marker.style.left=((sinBalance+100)/2)+'%';
   const state=sinBalance>=55?'REDEEMED':sinBalance>=20?'GOOD RISING':sinBalance<=-55?'OVERRUN':sinBalance<=-20?'EVIL RISING':'CONTESTED';
@@ -304,7 +306,7 @@ function resetRun(){
   miracleEffects?.clear();phaseUntil=timeScaleUntil=shieldUntil=graceSurgeUntil=sanctuaryUntil=stasisUntil=revealUntil=sunriseUntil=poseOverrideUntil=castingUntil=0;poseOverride=-1;lockedBuilding=null;
   clearTeleportMarker();teleportAim=false;teleportTarget=null;
   redeemed=0;runTime=0;runActive=false;runFinished=false;chain={count:0,last:0,points:0};lockedSoul=null;
-  sinBalance=0;prayersAnswered=0;updateSinState();npcSystem?.npcs?.forEach((npc,index)=>assignNpcPrayer(npc,index));
+  prayersAnswered=0;updateSinState();npcSystem?.npcs?.forEach((npc,index)=>assignNpcPrayer(npc,index));
   grace=100;cooldowns.clear();dashCooldown=pulseCooldown=0;flightHeight=0;flying=hypersonic=glide=diving=false;
   descending=0;velocity.set(0,0,0);player.position.copy(spawnPoint);terrainY=spawnPoint.y;
   for(const soul of souls){soul.position.copy(soul.userData.home);soul.userData.baseY=soul.position.y;soul.userData.collected=false;soul.visible=playing;}
@@ -750,7 +752,7 @@ function resolveDiveImpact() {
   const hit=nearbyBuildings(30,3);
   let broken=0;
   for(const ob of hit)if(ob?.userData?.buildingId){game.destroy(ob,'crumble');broken++;}
-  if(broken)refreshFootprints();
+  if(broken){updateSinState(-6*broken,'Dive impact destroyed '+broken+' building'+(broken===1?'':'s'));refreshFootprints();}
   for(const soul of souls)if(soul.visible&&soul.position.distanceTo(impact)<20)collect(soul);
   ringAt(impact,0xffc986,broken?36:24);
   npcSystem?.signal('dive-impact',impact,100);
