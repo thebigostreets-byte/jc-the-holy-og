@@ -54,7 +54,7 @@ export function createTrafficSystem({scene,network,groundAt,mobile=false,count}=
       dummy.position.set(car.x,car.y,car.z);dummy.rotation.set(0,car.yaw,0);dummy.scale.set(1,1,1);dummy.updateMatrix();bodies.setMatrixAt(car.index,dummy.matrix);
       dummy.position.y=car.y+.92;dummy.updateMatrix();roofs.setMatrixAt(car.index,dummy.matrix);
       const pd=Math.hypot(car.x-player.position.x,car.z-player.position.z);
-      if(pd<3.6&&now>=car.playerCooldown){car.playerCooldown=now+1700;onPlayerImpact(car);}
+      if(pd<3.6&&Math.abs((player.position.y||0)-car.y)<3.2&&now>=car.playerCooldown){car.playerCooldown=now+1700;onPlayerImpact(car);}
       for(const npc of npcs){
         if(!npc?.position||now<(npc.trafficCooldownUntil||0))continue;
         if(Math.hypot(car.x-npc.position.x,car.z-npc.position.z)<2.4){npc.trafficCooldownUntil=now+4000;onNpcImpact(npc,car);break;}
