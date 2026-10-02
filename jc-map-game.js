@@ -16,9 +16,11 @@ import {createJcAudio} from './jc-audio.js';
 import {createNpcContactStore} from './npc-contacts.js';
 import {createVegasStreetNetwork,resolveStreetLocation,VEGAS_LOCATIONS} from './vegas-streets.js';
 import {createTrafficSystem} from './jc-traffic.js';
+import {createMissionTracker} from './jc-missions.js';
 
 const jcAudio=createJcAudio();
 const npcContacts=createNpcContactStore();
+const missionTracker=createMissionTracker();
 
 const style = document.createElement('style');
 style.textContent = `
@@ -227,6 +229,7 @@ function travelToRegion(key){
     flying=false;hypersonic=false;glide=false;diving=false;flightHeight=0;descending=0;
     game.controls?.target?.copy(player.position);snapCameraBehindPlayer();
     feedback('ARRIVED · '+location.label);
+    missionTracker.visit(key);
     hud.querySelector('#jcWorldPanel').hidden=true;hud.querySelector('#jcWorldToggle').setAttribute('aria-expanded','false');
   });
 }
@@ -252,7 +255,7 @@ function answerPrayer(npc=pendingPrayerNpc()){
   else if(prayer.kind==='sanctuary')sanctuaryUntil=Math.max(sanctuaryUntil,now+6500);
   else if(prayer.kind==='restore')nearbyBuildings(36,1).forEach(redeem);
   else if(prayer.kind==='cleanse')nearbyBuildings(42,2).forEach(redeem);
-  prayersAnswered++;updateSinState(8,'Prayer answered for '+npc.name);
+  prayersAnswered++;missionTracker.add('prayers');updateSinState(8,'Prayer answered for '+npc.name);
   npcSystem?.signal('bless',npc.position,20);ringAt(npc.position.clone().add(new THREE.Vector3(0,1,0)),0xc8ffd9,10);showPose(9,900);
   feedback('PRAYER ANSWERED · '+npc.name.toUpperCase()+' · GOOD RISING');
   prayerButton.classList.remove('available');return true;
@@ -260,6 +263,14 @@ function answerPrayer(npc=pendingPrayerNpc()){
 npcTalkButton.addEventListener('click',()=>{if(conversation.isOpen)conversation.close();else openNpcTalk();});
 prayerButton.addEventListener('click',()=>answerPrayer());
 hud.addEventListener('click',e=>{if(e.target.closest('button')&&!wheel.classList.contains('open'))e.target.closest('button').blur();});
+const missionPanel=document.createElement('section');
+missionPanel.id='jcMissionPanel';missionPanel.setAttribute('aria-label','Campaign missions');missionPanel.innerHTML='<div class="jc-mission-head"><strong>JC CAMPAIGN</strong><button type="button" id="jcMissionToggle">MISSIONS</button></div><div id="jcMissionList"></div>';
+hud.append(missionPanel);
+const missionList=missionPanel.querySelector('#jcMissionList');
+style.textContent += '#jcMissionPanel{position:absolute;top:116px;left:12px;width:min(300px,calc(100vw - 24px));padding:10px;background:#091018e8;border:1px solid #f9d87877;border-radius:7px;pointer-events:auto;box-sizing:border-box;box-shadow:0 10px 28px #0008}#jcMissionPanel[hidden]{display:none}.jc-mission-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}.jc-mission-head button{padding:6px 8px}.jc-mission{display:grid;grid-template-columns:1fr auto;gap:3px 8px;font-size:12px;padding:5px 0;border-top:1px solid #ffffff14}.jc-mission small{grid-column:1/-1;color:#b9c0c8}.jc-mission.done{opacity:.55}.jc-mission.done small{color:#b8eddf}@media(max-width:800px),(pointer:coarse){#jcMissionPanel{top:104px;left:8px;width:min(270px,calc(100vw - 16px));font-size:11px}}';
+const renderMissions=()=>{const s=missionTracker.getSnapshot();missionList.innerHTML=s.missions.map(m=>'<div class="jc-mission '+(m.complete?'done':'')+'"><span>'+m.label+'</span><b>'+m.value+'/'+m.target+'</b><small>'+m.unit+(m.complete?' · COMPLETE':' remaining')+'</small></div>').join('')+(s.allComplete?'<div class="jc-mission done"><span>CAMPAIGN</span><b>100%</b><small>Sin City restored</small></div>':'');};
+renderMissions();missionTracker.onChange(renderMissions);missionPanel.hidden=false;
+missionPanel.querySelector('#jcMissionToggle').addEventListener('click',()=>{missionPanel.querySelector('#jcMissionList').hidden=!missionPanel.querySelector('#jcMissionList').hidden;});
 const playReturn = document.createElement('button');
 playReturn.id = 'jcPlayReturn';
 playReturn.textContent = 'PLAY AS JC';
@@ -922,7 +933,7 @@ function collect(soul) {
   soul.visible = false;
   soul.userData.collected = true;
   if(!runActive&&!runFinished)runActive=true;
-  redeemed++;
+  redeemed++;missionTracker.add('lights');
   updateSinState(8,'Lost light restored');
   grace = Math.min(100, grace + 15);
   score.textContent = `${redeemed} / ${souls.length}`;
@@ -1060,7 +1071,7 @@ function redeem(ob) {
   if (!ob) return false;
   const firstRedemption=!redeemedBuildings.has(ob.userData.buildingId);
   redeemedBuildings.add(ob.userData.buildingId);
-  if(firstRedemption)updateSinState(3,'Building restored');
+  if(firstRedemption){missionTracker.add('buildings');updateSinState(3,'Building restored');}
   ob.traverse(mesh => {
     if (!mesh.isMesh || !mesh.material?.name?.endsWith('_walls')) return;
     applyBuildingTheme(mesh, ob.userData.buildingId, true);
