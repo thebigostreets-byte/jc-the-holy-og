@@ -63,11 +63,29 @@ document.head.append(style);
 
 const hud = document.createElement('div');
 hud.id = 'jcHud';
-hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Left joystick: move"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: look and steer flight pitch"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="wheel" type="button">43 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>43 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div>`;
+hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q answer prayer / cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Left joystick: move"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: look and steer flight pitch"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="wheel" type="button">43 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>43 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div>`;
 document.body.append(hud);
+const sinState=document.createElement('section');
+sinState.id='jcSinState';sinState.setAttribute('aria-label','Sin City good and evil state');
+sinState.innerHTML='<div class="jc-sin-labels"><b>EVIL</b><strong>SIN CITY STATE</strong><b>GOOD</b></div><div class="jc-sin-track"><i id="jcSinMarker"></i></div><div class="jc-sin-footer"><span id="jcSinVerdict">CONTESTED</span><small id="jcSinScore">BALANCE 0</small></div>';
+hud.append(sinState);
+style.textContent += '#jcSinState{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:min(360px,42vw);padding:8px 10px;background:#071018e6;border:1px solid #d2b86b77;border-radius:7px;text-shadow:0 2px 5px #000;pointer-events:none}.jc-sin-labels,.jc-sin-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:9px;letter-spacing:.12em}.jc-sin-labels>b:first-child{color:#ff684d}.jc-sin-labels>b:last-child{color:#9effc2}.jc-sin-labels strong{color:#f4df9e}.jc-sin-track{position:relative;height:8px;margin:6px 0;background:linear-gradient(90deg,#8e1e1e 0%,#431d27 35%,#777 50%,#23553e 65%,#4fbf78 100%);border:1px solid #ffffff30;border-radius:8px}.jc-sin-track i{position:absolute;top:50%;left:50%;width:4px;height:18px;transform:translate(-50%,-50%);background:#fff7cf;box-shadow:0 0 8px #fff;transition:left .35s ease}.jc-sin-footer span{font-weight:900}.jc-sin-footer small{color:#cbd1d6}@media(max-width:800px),(pointer:coarse){#jcSinState{top:8px;width:min(300px,55vw);padding:6px 8px}.jc-sin-labels strong{font-size:8px}.jc-sin-footer{font-size:8px}}';
+let sinBalance=0,prayersAnswered=0;
+function updateSinState(delta=0,reason=''){
+  sinBalance=THREE.MathUtils.clamp(sinBalance+delta,-100,100);
+  const marker=hud.querySelector('#jcSinMarker'),verdict=hud.querySelector('#jcSinVerdict'),scoreLabel=hud.querySelector('#jcSinScore');
+  if(marker)marker.style.left=((sinBalance+100)/2)+'%';
+  const state=sinBalance>=55?'REDEEMED':sinBalance>=20?'GOOD RISING':sinBalance<=-55?'OVERRUN':sinBalance<=-20?'EVIL RISING':'CONTESTED';
+  if(verdict)verdict.textContent=state;
+  if(scoreLabel)scoreLabel.textContent=sinBalance===0?'BALANCE 0':(sinBalance>0?'GOOD +'+Math.round(sinBalance):'EVIL +'+Math.round(Math.abs(sinBalance)));
+  sinState.dataset.balance=String(Math.round(sinBalance));if(reason)sinState.title=reason;
+}
+updateSinState();
 style.textContent += '#jcNpcReadout{position:absolute;left:12px;bottom:144px;max-width:min(390px,78vw);padding:7px 10px;background:#091018d9;border-left:2px solid #c4ffee;color:#c4ffee;font-size:11px;letter-spacing:.4px;pointer-events:auto}#jcNpcTalkButton{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 178px);transform:translateX(-50%);display:none;pointer-events:auto;padding:11px 16px;border:1px solid #f1d17e;border-radius:8px;background:#111b2aee;color:#ffe6a4;font-weight:900;box-shadow:0 6px 18px #0009;z-index:2}#jcNpcTalkButton.available{display:block}@media(pointer:fine){#jcNpcTalkButton{display:none!important}}';
 const npcReadout=document.createElement('div');npcReadout.id='jcNpcReadout';npcReadout.textContent='CITY FOLKS · OBSERVING';hud.append(npcReadout);
 const npcTalkButton=document.createElement('button');npcTalkButton.id='jcNpcTalkButton';npcTalkButton.type='button';npcTalkButton.textContent='TALK';npcTalkButton.setAttribute('aria-label','Talk to nearby character');hud.append(npcTalkButton);
+const prayerButton=document.createElement('button');prayerButton.id='jcPrayerButton';prayerButton.type='button';prayerButton.textContent='ANSWER PRAYER';prayerButton.setAttribute('aria-label','Answer nearby NPC prayer');hud.append(prayerButton);
+style.textContent += '#jcPrayerButton{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 226px);transform:translateX(-50%);display:none;pointer-events:auto;padding:11px 16px;border:1px solid #b9f3cf;border-radius:8px;background:#10251eee;color:#d8ffe5;font-weight:900;box-shadow:0 6px 18px #0009;z-index:3}#jcPrayerButton.available{display:block}@media(pointer:fine){#jcPrayerButton{bottom:86px}}';
 style.textContent += '@media(max-width:800px),(pointer:coarse){#jcTalk{bottom:calc(env(safe-area-inset-bottom) + 170px)}}#jcTalk{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);width:min(420px,90vw);padding:12px;background:#08111eF2;border:1px solid #e0bf75;border-radius:10px;color:#f5f0df;display:none;pointer-events:auto;box-shadow:0 10px 35px #000b}#jcTalk.open{display:block}#jcTalkHead{display:flex;align-items:center;gap:10px}#jcTalk img{width:48px;height:58px;object-fit:contain;background:#111a28;border-radius:6px}#jcTalk strong{color:#ffdf94}#jcTalk small{display:block;color:#aebaca;margin-top:4px}#jcTalkLog{max-height:108px;overflow:auto;font-size:12px;line-height:1.45;padding:8px 0}#jcTalk form{display:flex;gap:6px}#jcTalk [data-voice]{min-width:42px;font-size:17px}#jcTalk input{min-width:0;flex:1;background:#111a28;color:white;border:1px solid #566273;border-radius:5px;padding:9px}#jcTalk button{background:#94702e;color:white;border:1px solid #efcf81;border-radius:5px;padding:8px 10px}#jcTalk button.close{margin-left:auto;background:#18212c}';
 const talk=document.createElement('section');talk.id='jcTalk';talk.setAttribute('aria-label','Talk to nearby character');talk.innerHTML='<div id=jcTalkHead><img alt=""><div><strong></strong><small></small></div><button class=close type=button aria-label="Close conversation">×</button></div><div id=jcTalkLog role=log aria-live=polite></div><form><input maxlength=180 aria-label="Message to character" placeholder="Say something…"><button data-voice type=button aria-label="Speak your message" title="Speak your message">🎙</button><button type=submit>Send</button></form>';hud.append(talk);
 let nearNpc=null;
@@ -83,7 +101,35 @@ function closestNpc(){
   return nearest;
 }
 function openNpcTalk(npc=nearNpc){if(npc&&playing)conversation.open(npc);}
+const prayerTemplates=[
+  {kind:'heal',text:'Please give me strength and healing.'},
+  {kind:'shield',text:'Please protect me and my family tonight.'},
+  {kind:'sanctuary',text:'Please bring peace to this block.'},
+  {kind:'restore',text:'Please restore something broken near us.'},
+  {kind:'cleanse',text:'Please clear the darkness around here.'}
+];
+function assignNpcPrayer(npc,index=0,now=performance.now()){
+  if(!npc||npc.faction==='demon'||npc.faction==='angel'){if(npc)npc.prayer=null;return;}
+  const template=prayerTemplates[Math.abs(index)%prayerTemplates.length];
+  npc.prayer={...template,answered:false,createdAt:now,nextAt:0};
+}
+function pendingPrayerNpc(){return nearNpc?.prayer&&!nearNpc.prayer.answered?nearNpc:null;}
+function answerPrayer(npc=pendingPrayerNpc()){
+  if(!npc?.prayer||npc.prayer.answered||!playing)return false;
+  const prayer=npc.prayer,now=performance.now();prayer.answered=true;prayer.answeredAt=now;prayer.nextAt=now+45000+(npc.name.length%6)*5000;
+  npc.state='awe';npc.event={type:'prayer-answered',position:npc.position.clone(),time:now};npc.memory={type:'prayer-answered',prayer:prayer.text,time:now};npc.emotionUntil=now+6500;
+  if(prayer.kind==='heal')grace=Math.min(100,grace+18);
+  else if(prayer.kind==='shield')shieldUntil=Math.max(shieldUntil,now+5000);
+  else if(prayer.kind==='sanctuary')sanctuaryUntil=Math.max(sanctuaryUntil,now+6500);
+  else if(prayer.kind==='restore')nearbyBuildings(36,1).forEach(redeem);
+  else if(prayer.kind==='cleanse')nearbyBuildings(42,2).forEach(redeem);
+  prayersAnswered++;updateSinState(8,'Prayer answered for '+npc.name);
+  npcSystem?.signal('bless',npc.position,20);ringAt(npc.position.clone().add(new THREE.Vector3(0,1,0)),0xc8ffd9,10);showPose(9,900);
+  feedback('PRAYER ANSWERED · '+npc.name.toUpperCase()+' · GOOD RISING');
+  prayerButton.classList.remove('available');return true;
+}
 npcTalkButton.addEventListener('click',()=>{if(conversation.isOpen)conversation.close();else openNpcTalk();});
+prayerButton.addEventListener('click',()=>answerPrayer());
 hud.addEventListener('click',e=>{if(e.target.closest('button')&&!wheel.classList.contains('open'))e.target.closest('button').blur();});
 const playReturn = document.createElement('button');
 playReturn.id = 'jcPlayReturn';
@@ -256,6 +302,7 @@ function resetRun(){
   miracleEffects?.clear();phaseUntil=timeScaleUntil=shieldUntil=graceSurgeUntil=sanctuaryUntil=stasisUntil=revealUntil=sunriseUntil=poseOverrideUntil=castingUntil=0;poseOverride=-1;lockedBuilding=null;
   clearTeleportMarker();teleportAim=false;teleportTarget=null;
   redeemed=0;runTime=0;runActive=false;runFinished=false;chain={count:0,last:0,points:0};lockedSoul=null;
+  sinBalance=0;prayersAnswered=0;updateSinState();npcSystem?.npcs?.forEach((npc,index)=>assignNpcPrayer(npc,index));
   grace=100;cooldowns.clear();dashCooldown=pulseCooldown=0;flightHeight=0;flying=hypersonic=glide=diving=false;
   descending=0;velocity.set(0,0,0);player.position.copy(spawnPoint);terrainY=spawnPoint.y;
   for(const soul of souls){soul.position.copy(soul.userData.home);soul.userData.baseY=soul.position.y;soul.userData.collected=false;soul.visible=playing;}
@@ -648,6 +695,7 @@ function collect(soul) {
   soul.userData.collected = true;
   if(!runActive&&!runFinished)runActive=true;
   redeemed++;
+  updateSinState(8,'Lost light restored');
   grace = Math.min(100, grace + 15);
   score.textContent = `${redeemed} / ${souls.length}`;
   chain=advanceChain(chain,runTime);
@@ -717,7 +765,9 @@ function nearbyBuildings(radius, count = 1) {
 
 function redeem(ob) {
   if (!ob) return false;
+  const firstRedemption=!redeemedBuildings.has(ob.userData.buildingId);
   redeemedBuildings.add(ob.userData.buildingId);
+  if(firstRedemption)updateSinState(3,'Building restored');
   ob.traverse(mesh => {
     if (!mesh.isMesh || !mesh.material?.name?.endsWith('_walls')) return;
     applyBuildingTheme(mesh, ob.userData.buildingId, true);
@@ -855,7 +905,7 @@ function cast(id = selectedAbility) {
     case 'rain':rainEffect();break;
     case 'lightning':strike(130,3);ringAt(player.position,0xaed8ff,24);cinematicLook?.impact(player.position);break;
     case 'telekinesis':{const ob=near(40)[0];if(ob){const p=ob.getWorldPosition(new THREE.Vector3());beamTo(p,0x9bdcff);ringAt(p,0x9bdcff,16);const original=ob.position.y;ob.position.y+=5;refreshFootprints();setTimeout(()=>{ob.position.y=original;refreshFootprints();},900);}break;}
-    case 'crumble':{const ob=lockedBuilding||near(55)[0];if(!ob){feedback('No building in range');break;}const point=ob.getWorldPosition(new THREE.Vector3());game.destroy(ob,'crumble');cinematicLook?.impact(point);refreshFootprints();ringAt(point,0xffc38e,26);feedback(`${ob.userData.buildingId} CRUMBLED · debris falling`);lockedBuilding=null;break;}
+    case 'crumble':{const ob=lockedBuilding||near(55)[0];if(!ob){feedback('No building in range');break;}const point=ob.getWorldPosition(new THREE.Vector3());game.destroy(ob,'crumble');updateSinState(-8,'Building destroyed');cinematicLook?.impact(point);refreshFootprints();ringAt(point,0xffc38e,26);feedback(`${ob.userData.buildingId} CRUMBLED · debris falling`);lockedBuilding=null;break;}
     case 'rebuild':{const ob=nearbyRuins();if(ob){game.rebuild(ob);refreshFootprints();redeem(ob);feedback(`${ob.userData.buildingId} REBUILT`);lockedBuilding=null;}break;}
     case 'bless':near(45).forEach(redeem);break;
     case 'exorcise':near(65,5).forEach(redeem);break;
@@ -865,8 +915,8 @@ function cast(id = selectedAbility) {
     case 'attract':moveSouls('attract',55);ringAt(player.position,0xffe6b0,40);break;
     case 'slow-time':timeScaleUntil=performance.now()+7000;ringAt(player.position,0xb9d8ff,30);break;
     case 'redemption-wave':near(105,8).forEach(redeem);ringAt(player.position,0xffe7b1,105);cinematicLook?.impact(player.position);break;
-    case 'heavenly-spear':{const ob=lockedBuilding||near(105)[0];if(!ob){feedback('No building in range');break;}const point=ob.getWorldPosition(new THREE.Vector3());point.y+=Math.max(5,ob.userData.heightMetres*.55);beamTo(point,0xffe6a5);game.destroy(ob,'explode');refreshFootprints();cinematicLook?.impact(point);ringAt(point,0xffe6a5,34);ringAt(player.position,0xfff4ce,17);feedback(`${ob.userData.buildingId} · HEAVENLY SPEAR`);lockedBuilding=null;break;}
-    case 'judgment-storm':{const targets=near(140,3);if(!targets.length){feedback('No buildings in range');break;}for(const ob of targets){const point=ob.getWorldPosition(new THREE.Vector3());point.y+=Math.max(5,ob.userData.heightMetres*.45);beamTo(point,0xb6dcff);game.destroy(ob,'crumble');ringAt(point,0xc4e6ff,24);}refreshFootprints();cinematicLook?.impact(player.position);ringAt(player.position,0xaed8ff,55);feedback(`JUDGMENT STORM · ${targets.length} IMPACTS`);break;}
+    case 'heavenly-spear':{const ob=lockedBuilding||near(105)[0];if(!ob){feedback('No building in range');break;}const point=ob.getWorldPosition(new THREE.Vector3());point.y+=Math.max(5,ob.userData.heightMetres*.55);beamTo(point,0xffe6a5);game.destroy(ob,'explode');updateSinState(-10,'Building destroyed');refreshFootprints();cinematicLook?.impact(point);ringAt(point,0xffe6a5,34);ringAt(player.position,0xfff4ce,17);feedback(`${ob.userData.buildingId} · HEAVENLY SPEAR`);lockedBuilding=null;break;}
+    case 'judgment-storm':{const targets=near(140,3);if(!targets.length){feedback('No buildings in range');break;}for(const ob of targets){const point=ob.getWorldPosition(new THREE.Vector3());point.y+=Math.max(5,ob.userData.heightMetres*.45);beamTo(point,0xb6dcff);game.destroy(ob,'crumble');ringAt(point,0xc4e6ff,24);}updateSinState(-4*targets.length,'Multiple buildings destroyed');refreshFootprints();cinematicLook?.impact(player.position);ringAt(player.position,0xaed8ff,55);feedback(`JUDGMENT STORM · ${targets.length} IMPACTS`);break;}
     case 'singularity':moveSouls('vortex',85);timeScaleUntil=performance.now()+1800;ringAt(player.position,0x9bdcff,72);feedback('SINGULARITY · nearby lights pulled inward');break;
     case 'sonic-boom':{setFlight('surge');const direction=desired.lengthSq()?desired.clone().normalize():forward.clone();moveSafely(direction.x*22,direction.z*22,performance.now()<phaseUntil);velocity.addScaledVector(direction,24);const point=player.position.clone();cinematicLook?.impact(point);ringAt(point,0xbceaff,36);npcSystem?.signal('sonic-boom',point,110);feedback('SONIC BOOM · HYPERFLIGHT');break;}
   }
@@ -1024,7 +1074,12 @@ function frameStep(now) {
     if (s.position.distanceTo(player.position.clone().add(new THREE.Vector3(0,1.6,0))) < 3.4) collect(s);
   }
   if(worldDt>0)npcSystem?.update(worldDt,now);
-  nearNpc=closestNpc();npcTalkButton.classList.toggle('available',coarseDevice&&!!nearNpc&&!talk.classList.contains('open'));npcTalkButton.textContent=nearNpc?`TALK TO ${nearNpc.name.toUpperCase()}`:'TALK';npcReadout.textContent=talk.classList.contains('open')?npcReadout.textContent:(nearNpc?`NEAR ${nearNpc.name.toUpperCase()} · ${nearNpc.faction.toUpperCase()} · PRESS C TO TALK`:`${npcSystem?.npcs.length||0} LIVING NPCS · MOVE CLOSE TO TALK`);
+  nearNpc=closestNpc();
+  if(nearNpc?.prayer?.answered&&now>=nearNpc.prayer.nextAt)assignNpcPrayer(nearNpc,nearNpc.name.charCodeAt(0)+prayersAnswered,now);
+  const prayerNpc=pendingPrayerNpc();
+  npcTalkButton.classList.toggle('available',coarseDevice&&!!nearNpc&&!talk.classList.contains('open'));npcTalkButton.textContent=nearNpc?`TALK TO ${nearNpc.name.toUpperCase()}`:'TALK';
+  prayerButton.classList.toggle('available',!!prayerNpc&&!talk.classList.contains('open'));prayerButton.textContent=prayerNpc?`ANSWER ${prayerNpc.name.toUpperCase()}'S PRAYER`:'ANSWER PRAYER';
+  npcReadout.textContent=talk.classList.contains('open')?npcReadout.textContent:(prayerNpc?`${prayerNpc.name.toUpperCase()} PRAYS: ${prayerNpc.prayer.text} · Q TO ANSWER`:nearNpc?`NEAR ${nearNpc.name.toUpperCase()} · ${nearNpc.faction.toUpperCase()} · PRESS C TO TALK`:`${npcSystem?.npcs.length||0} LIVING NPCS · MOVE CLOSE TO TALK`);
   graceLabel.textContent = Math.round(grace);
   stateLabel.textContent=teleportAim?'CHOOSE DESTINATION':diving?'DIVE':braking?'BRAKING':hypersonic?'HYPERFLIGHT':flying&&flightHeight<9?'HOVER':flying&&glide?'GLIDE':flying?'CRUISE':flightHeight>0?'LANDING':'GROUNDED';
   cinematicLook?.setSunrise(now<sunriseUntil);
@@ -1139,6 +1194,7 @@ const group = game.loaded.get('C15_R14');
   game.scene.add(player);
   createSouls(x, z);
   npcSystem=createNpcSystem({scene:game.scene,player,groundAt,isSafe:(x,z,r=2)=>!blockedAt(x,groundAt(x,z)+1.55,z,r),count:coarseDevice?8:(window.JC_NPC_COUNT||12),onReport:text=>{npcReadout.textContent=text;}});
+  npcSystem.npcs.forEach((npc,index)=>assignNpcPrayer(npc,index));
   npcReadout.textContent=`${npcSystem.npcs.length} LIVING NPCS · MOVE CLOSE TO TALK`;
   npcReadout.style.cursor='pointer';npcReadout.setAttribute('role','button');npcReadout.tabIndex=0;npcReadout.onclick=()=>openNpcTalk();npcReadout.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openNpcTalk();}};
   hud.querySelector('#jcEditor').onclick = () => setMode(false);
@@ -1154,7 +1210,7 @@ const group = game.loaded.get('C15_R14');
     if(e.code==='KeyL'&&!e.repeat)cycleTarget();
     if(e.code==='KeyK'&&!e.repeat)cycleBuildingTarget();
     if (e.code === 'Space' && !e.repeat && !flying) dash();
-    if (e.code === 'KeyQ' && !e.repeat) cast();
+    if (e.code === 'KeyQ' && !e.repeat) {if(!answerPrayer())cast();}
     if (e.code === 'KeyF' && !e.repeat) cast('flight');
     if (e.code === 'KeyG' && !e.repeat) cast('hypersonic');
     if (e.code === 'KeyV' && !e.repeat) beginDive(true);
