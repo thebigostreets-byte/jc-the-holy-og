@@ -18,6 +18,7 @@ import {createVegasStreetNetwork,resolveStreetLocation,VEGAS_LOCATIONS} from './
 import {createTrafficSystem} from './jc-traffic.js';
 import {createMissionTracker} from './jc-missions.js';
 import {createPhotorealDetailMaps,applyPhotorealMaterial} from './photorealism-pbr.js';
+import {decorateBuildingRooftops} from './rooftop-details.js';
 
 const jcAudio=createJcAudio();
 const npcContacts=createNpcContactStore();
@@ -771,7 +772,7 @@ function installPavedRoads(centerX,centerZ,network=vegasStreetNetwork) {
   const yellow=roadStripeMaterial(0xffd24a,.9),white=roadStripeMaterial(0xe8edf1,.78);
   const concrete=new THREE.MeshStandardMaterial({color:0x62636b,roughness:.92});
   const planeGeometry=new THREE.PlaneGeometry(1,1),boxGeometry=new THREE.BoxGeometry(1,1,1),dummy=new THREE.Object3D();
-  const surfaces=[],sidewalks=[],yellowDashes=[],whiteDashes=[],curbs=[];
+  const surfaces=[],sidewalks=[],yellowDashes=[],whiteDashes=[],curbs=[],streetlightPoles=[],streetlightHeads=[];
   const addPlane=(target,x,z,width,length,rotation,y)=>target.push({x,z,width,length,rotation,y});
   for(const route of network.routes){
     for(let i=0;i<route.points.length-1;i++){
@@ -790,6 +791,14 @@ function installPavedRoads(centerX,centerZ,network=vegasStreetNetwork) {
         }
         if(route.kind==='arterial'&&route.width>=18&&part%2===0)addPlane(yellowDashes,x,z,.2,Math.min(18,length*.42),rotation,y+.04);
         if(route.kind==='freeway'&&part%2===0)for(const offset of [-6,6])addPlane(whiteDashes,x+nx*offset,z+nz*offset,.18,Math.min(22,length*.45),rotation,y+.04);
+        // Instanced warm LED streetlights add scale cues without hundreds of real light sources.
+        if(route.kind==='arterial'&&part%2===0){
+          for(const side of [-1,1]){
+            const offset=route.width/2+4.2,lx=x+nx*offset*side,lz=z+nz*offset*side,ly=groundAt(lx,lz),yaw=Math.atan2(-dz,dx);
+            streetlightPoles.push({x:lx,y:ly+3.6,z:lz,yaw});
+            streetlightHeads.push({x:lx-nx*side*.58,y:ly+7.2,z:lz-nz*side*.58,yaw});
+          }
+        }
       }
     }
   }
@@ -807,6 +816,18 @@ function installPavedRoads(centerX,centerZ,network=vegasStreetNetwork) {
     const mesh=new THREE.InstancedMesh(boxGeometry,concrete,curbs.length);mesh.name='Street curbs';mesh.frustumCulled=false;
     curbs.forEach((item,index)=>{dummy.position.set(item.x,item.y,item.z);dummy.rotation.set(0,item.yaw,0);dummy.scale.set(item.length,item.height,item.width);dummy.updateMatrix();mesh.setMatrixAt(index,dummy.matrix);});
     mesh.instanceMatrix.needsUpdate=true;root.add(mesh);
+  }
+  if(streetlightPoles.length){
+    const poleGeometry=new THREE.CylinderGeometry(.5,.5,1,6);
+    const poleMaterial=new THREE.MeshStandardMaterial({color:0x4b5056,roughness:.72,metalness:.38});
+    const poles=new THREE.InstancedMesh(poleGeometry,poleMaterial,streetlightPoles.length);poles.name='Arterial streetlight poles';poles.frustumCulled=false;
+    streetlightPoles.forEach((item,index)=>{dummy.position.set(item.x,item.y,item.z);dummy.rotation.set(0,item.yaw,0);dummy.scale.set(.16,7.2,.16);dummy.updateMatrix();poles.setMatrixAt(index,dummy.matrix);});
+    poles.instanceMatrix.needsUpdate=true;root.add(poles);
+    const headGeometry=new THREE.BoxGeometry(1.2,.18,.34);
+    const headMaterial=new THREE.MeshStandardMaterial({color:0xffe1a0,emissive:0xffbd66,emissiveIntensity:.58,roughness:.62,metalness:.08});
+    const heads=new THREE.InstancedMesh(headGeometry,headMaterial,streetlightHeads.length);heads.name='Warm LED streetlight heads';heads.frustumCulled=false;
+    streetlightHeads.forEach((item,index)=>{dummy.position.set(item.x,item.y,item.z);dummy.rotation.set(0,item.yaw,0);dummy.scale.set(1,1,1);dummy.updateMatrix();heads.setMatrixAt(index,dummy.matrix);});
+    heads.instanceMatrix.needsUpdate=true;root.add(heads);
   }
   // A raised Tropicana crossing makes the I-15 intersection visibly grade-separated.
   const bridge=network.project(-115.1775,36.0997),baseY=groundAt(bridge.x,bridge.z),deckY=baseY+8;
@@ -871,6 +892,26 @@ function installVegasLandmarks(network=vegasStreetNetwork) {
   sphere.name='Sphere LED dome landmark';sphere.position.set(spherePoint.x,sphereGround+62,spherePoint.z);sphere.scale.y=.8;root.add(sphere);
   const sphereBase=new THREE.Mesh(new THREE.TorusGeometry(76,1.5,8,80),steel);sphereBase.rotation.x=Math.PI/2;sphereBase.position.set(spherePoint.x,sphereGround+2,spherePoint.z);root.add(sphereBase);
 
+  // Distinct skyline silhouettes: the Luxor's square pyramid and The STRAT's shaft, pod, and mast.
+  const luxorPoint=network.project(-115.1765,36.0954),luxorGround=groundAt(luxorPoint.x,luxorPoint.z);
+  const luxorGlass=new THREE.MeshStandardMaterial({color:0x202a34,roughness:.28,metalness:.26,emissive:0x08111c,emissiveIntensity:.2});
+  const luxorBase=new THREE.Mesh(new THREE.BoxGeometry(188,12,160),new THREE.MeshStandardMaterial({color:0x121820,roughness:.38,metalness:.18}));
+  luxorBase.name='Luxor pyramid base';luxorBase.position.set(luxorPoint.x,luxorGround+6,luxorPoint.z);root.add(luxorBase);
+  const luxor=new THREE.Mesh(new THREE.ConeGeometry(130,108,4,1,false),luxorGlass);
+  luxor.name='Luxor pyramid landmark';luxor.position.set(luxorPoint.x,luxorGround+66,luxorPoint.z);luxor.rotation.y=Math.PI/4;root.add(luxor);
+
+  const stratPoint=network.project(-115.1565,36.1475),stratGround=groundAt(stratPoint.x,stratPoint.z);
+  const stratSteel=new THREE.MeshStandardMaterial({color:0x697681,roughness:.48,metalness:.42});
+  const stratGlass=new THREE.MeshStandardMaterial({color:0x26323d,roughness:.3,metalness:.28,emissive:0x101b27,emissiveIntensity:.16});
+  const stratShaft=new THREE.Mesh(new THREE.CylinderGeometry(7,13,205,12),stratSteel);
+  stratShaft.name='The STRAT tower shaft';stratShaft.position.set(stratPoint.x,stratGround+102.5,stratPoint.z);root.add(stratShaft);
+  const stratPod=new THREE.Mesh(new THREE.CylinderGeometry(22,25,18,16),stratGlass);
+  stratPod.name='The STRAT observation pod';stratPod.position.set(stratPoint.x,stratGround+215,stratPoint.z);root.add(stratPod);
+  const stratRoof=new THREE.Mesh(new THREE.ConeGeometry(21,14,16),stratSteel);
+  stratRoof.position.set(stratPoint.x,stratGround+231,stratPoint.z);root.add(stratRoof);
+  const stratMast=new THREE.Mesh(new THREE.CylinderGeometry(.55,1,90,8),stratSteel);
+  stratMast.name='The STRAT antenna mast';stratMast.position.set(stratPoint.x,stratGround+281,stratPoint.z);root.add(stratMast);
+
   // Two instanced meshes keep 200 palms and 1,000 fronds to two draw calls.
   const treeRoutes=network.routes.filter(route=>route.kind==='arterial'&&route.width>=16&&route.name!=='Airport Connector');
   const palms=[];
@@ -900,9 +941,9 @@ function installVegasLandmarks(network=vegasStreetNetwork) {
     }
   });
   trunks.instanceMatrix.needsUpdate=true;fronds.instanceMatrix.needsUpdate=true;root.add(trunks,fronds);
-  root.userData.palmCount=palms.length;root.userData.landmarks=['HIGH ROLLER','SPHERE'];
+  root.userData.palmCount=palms.length;root.userData.landmarks=['HIGH ROLLER','SPHERE','LUXOR PYRAMID','THE STRAT'];
   game.scene.add(root);
-  return worldLandmarks={root,sphere,wheel,palmCount:palms.length,update(dt){sphere.rotation.y+=dt*.018;}};
+  return worldLandmarks={root,sphere,wheel,luxor,strat,palmCount:palms.length,update(dt){sphere.rotation.y+=dt*.018;}};
 }
 
 function clearSpot(x, z) {
@@ -1491,6 +1532,10 @@ function wallpaperStrip() {
       applyBuildingTheme(ob, ownerId, redeemedBuildings.has(ownerId));
     });
     group.userData.jcThemeApplied = true;
+  }
+  if(!group.userData.jcRooftopDetails){
+    const details=decorateBuildingRooftops(THREE,group,game.buildings);
+    if(details)group.userData.jcRooftopDetails=details;
   }
 }
 setInterval(wallpaperStrip, 500);
