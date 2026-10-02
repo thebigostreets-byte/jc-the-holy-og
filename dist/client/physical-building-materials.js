@@ -4,21 +4,40 @@ let pending;
 
 // Casino identity is intentionally explicit. Everything else defaults to matte
 // residential/commercial treatment instead of receiving "Strip" gloss by height.
-const CASINO_PROPERTIES = [
-  ['Bellagio', -115.1767, 36.1126, 260],
-  ['Caesars Palace', -115.1745, 36.1162, 330],
-  ['Paris Las Vegas', -115.1707, 36.1125, 210],
-  ['MGM Grand', -115.1697, 36.1025, 300],
-  ['New York-New York', -115.1745, 36.1022, 220],
-  ['Excalibur', -115.1756, 36.0987, 260],
-  ['Luxor', -115.1761, 36.0955, 260],
-  ['Mandalay Bay', -115.1757, 36.0919, 320],
-  ['The Venetian / Palazzo', -115.1697, 36.1212, 330],
-  ['Wynn / Encore', -115.1657, 36.1269, 360],
+export const CASINO_PROPERTIES = [
+  // North end: the STRAT through the Convention Center resort cluster.
+  ['The STRAT', -115.1566, 36.1475, 220],
+  ['Sahara Las Vegas', -115.1564, 36.1425, 220],
+  ['Fontainebleau Las Vegas', -115.1583, 36.1377, 270],
+  ['Westgate Las Vegas', -115.1630, 36.1364, 210],
   ['Resorts World', -115.1658, 36.1354, 320],
   ['Circus Circus', -115.1659, 36.1372, 300],
-  ['Fontainebleau Las Vegas', -115.1583, 36.1377, 270],
-  ['The STRAT', -115.1566, 36.1475, 220]
+
+  // Central Strip: Wynn/Encore to Caesars Palace and the LINQ promenade.
+  ['Wynn / Encore', -115.1657, 36.1269, 360],
+  ['Treasure Island', -115.1725, 36.1247, 210],
+  ['The Venetian / Palazzo', -115.1697, 36.1212, 330],
+  ['Mirage / Hard Rock redevelopment', -115.1717, 36.1214, 190],
+  ["Harrah's Las Vegas", -115.1715, 36.1195, 190],
+  ['The LINQ', -115.1709, 36.1172, 180],
+  ['Caesars Palace', -115.1745, 36.1162, 330],
+  ['Flamingo Las Vegas', -115.1707, 36.1167, 210],
+  ['The Cromwell', -115.1704, 36.1147, 150],
+  ['Horseshoe Las Vegas', -115.1714, 36.1129, 190],
+  ['Bellagio', -115.1767, 36.1126, 260],
+  ['Paris Las Vegas', -115.1707, 36.1125, 210],
+  ['The Cosmopolitan', -115.1741, 36.1096, 200],
+  ['Planet Hollywood', -115.1706, 36.1098, 200],
+  ['ARIA Resort & Casino', -115.1760, 36.1072, 230],
+
+  // South Strip: Park MGM, MGM Grand, Excalibur, Luxor and Mandalay Bay.
+  ['Park MGM', -115.1760, 36.1047, 190],
+  ['New York-New York', -115.1745, 36.1022, 220],
+  ['MGM Grand', -115.1697, 36.1025, 300],
+  ['OYO Hotel & Casino', -115.1683, 36.0980, 170],
+  ['Excalibur', -115.1756, 36.0987, 260],
+  ['Luxor', -115.1761, 36.0955, 260],
+  ['Mandalay Bay', -115.1757, 36.0919, 320]
 ];
 
 const toRad = value => value * Math.PI / 180;
