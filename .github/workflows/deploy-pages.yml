@@ -1,4 +1,4 @@
-name: Deploy JC static mirror to GitHub Pages
+name: Deploy JC launcher to GitHub Pages
 on:
   push:
     branches: [main]
@@ -12,32 +12,58 @@ concurrency:
   cancel-in-progress: true
 jobs:
   deploy:
-    timeout-minutes: 20
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Restore checked game assets
-        run: npm run hydrate
-      - name: Build the public client
-        run: npm run build
-      - name: Verify gameplay and asset contracts
+      - name: Build GitHub Pages launcher
         run: |
-          npm run verify:assets
-          node tests/gameplay-regressions.mjs
-          node tests/flight-state.mjs
-          node tests/control-upgrade.mjs
-          node tests/npc-reactions.mjs
-          node tests/performance-guardrails.mjs
-          node tests/sin-city-state.mjs
+          mkdir -p dist/github-pages
+          cat > dist/github-pages/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+            <title>JC The Holy OG</title>
+            <meta name="description" content="Launch JC The Holy OG — Sin City.">
+            <style>
+              html,body{margin:0;min-height:100%;background:#070b12;color:#f8e8b8;font-family:Arial,sans-serif}
+              body{min-height:100vh;display:grid;place-items:center;text-align:center}
+              main{max-width:620px;padding:28px}
+              h1{font-size:clamp(34px,8vw,72px);margin:0 0 10px}
+              p{color:#c9d3dd;line-height:1.5}
+              a{display:inline-block;margin-top:14px;padding:14px 22px;border:1px solid #e8c971;border-radius:8px;color:#fff3c4;text-decoration:none;font-weight:800;background:#151b25}
+            </style>
+          </head>
+          <body>
+            <main>
+              <h1>JC THE HOLY OG</h1>
+              <p>Opening Sin City in 3D…</p>
+              <a id="play" href="https://jc-the-holy-og.ill5299.chatgpt.site/map?play=1">PLAY NOW</a>
+            </main>
+            <script>
+              const target=new URL('https://jc-the-holy-og.ill5299.chatgpt.site/map');
+              const incoming=new URLSearchParams(location.search);
+              for(const [key,value] of incoming)target.searchParams.set(key,value);
+              if(!target.searchParams.has('play'))target.searchParams.set('play','1');
+              target.hash=location.hash;
+              document.getElementById('play').href=target.href;
+              setTimeout(()=>location.replace(target.href),250);
+            </script>
+          </body>
+          </html>
+          HTML
+          cp dist/github-pages/index.html dist/github-pages/404.html
       - uses: actions/configure-pages@v5
         with:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/client
-      - name: Deploy static mirror
+          path: dist/github-pages
+      - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
