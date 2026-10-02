@@ -8,7 +8,7 @@ export function createPhotorealDetailMaps(THREE){
   for(let y=0;y<size;y++)for(let x=0;x<size;x++){
     const i=(y*size+x)*4;
     const n=hash(x,y),grain=((n&255)-127)*.11;
-    const broad=(Math.sin(x*.19+Math.sin(y*.07))*Math.cos(y*.17))*5;
+    const broad=(Math.sin(x*.19+Math.sin(y*.07))*Math.cos(y*.17))*8;
     const height=Math.max(0,Math.min(255,128+grain+broad));
     pixels[i]=pixels[i+1]=pixels[i+2]=height;pixels[i+3]=255;
     const r=Math.max(0,Math.min(255,207+((n>>>8)&31)-15+ broad*.45));
@@ -26,7 +26,7 @@ export function createPhotorealDetailMaps(THREE){
 export function applyPhotorealMaterial(THREE,material,detailMaps,{casino=false,buildingHeight=12}={}){
   if(!material||!detailMaps)return material;
   material.bumpMap ||= detailMaps.bump;
-  material.bumpScale=casino?.018:buildingHeight<12?.035:.024;
+  material.bumpScale = casino ? 0.012 : buildingHeight < 12 ? 0.04 : 0.025;
   material.roughnessMap ||= detailMaps.roughness;
   // Preserve authored roughness but avoid polished plastic on ordinary walls.
   if(!casino)material.roughness=Math.max(.78,material.roughness??.85);
