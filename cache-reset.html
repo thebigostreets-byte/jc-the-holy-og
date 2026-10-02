@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reset JC game cache</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#091018;color:#f5ead0;font:17px Arial}main{max-width:520px;padding:28px;text-align:center}p{line-height:1.6}button,a{background:#172632;color:#f9d878;border:1px solid #344957;border-radius:8px;padding:12px 18px;font:inherit}button{cursor:pointer}</style></head><body><main><h1>Refreshing JC</h1><p id="status" role="status" aria-live="polite">Clearing the game cache…</p><p>Your saves, NPC contacts and settings stay saved.</p><button id="retry" hidden>Retry cache reset</button></main><script>
+const status=document.getElementById('status'),retry=document.getElementById('retry');
+async function reset(){
+ retry.hidden=true;
+ try{
+  const base=new URL('./',location.href);
+  const belongs=url=>{const value=new URL(url,base);return value.origin===base.origin&&value.pathname.startsWith(base.pathname);};
+  if('caches' in window){
+   for(const name of await caches.keys()){
+    const cache=await caches.open(name);
+    for(const request of await cache.keys())if(belongs(request.url))await cache.delete(request);
+   }
+  }
+  if('serviceWorker' in navigator){
+   for(const registration of await navigator.serviceWorker.getRegistrations())if(belongs(registration.scope))await registration.unregister();
+  }
+  // Reload the current asset URLs into the HTTP cache. Saves are stored separately.
+  const response=await fetch(new URL('scripts/public-assets.json',base),{cache:'reload',signal:AbortSignal.timeout(15000)});
+  if(!response.ok)throw Error('Could not get the latest game file list.');
+  const files=(await response.json()).filter(path=>/\.(js|css|json|webp|png|jpg|jpeg)$/i.test(path)&&!path.startsWith('tiles/'));
+  let cursor=0,done=0;
+  async function refresh(){while(cursor<files.length){const path=files[cursor++],url=new URL(path,base);if(!belongs(url.href))throw Error('Invalid game file path.');const asset=await fetch(url,{cache:'reload',signal:AbortSignal.timeout(20000)});if(!asset.ok)throw Error('Could not refresh '+path+'. Please retry.');await asset.arrayBuffer();status.textContent=`Refreshing game files ${++done} / ${files.length}…`;}}
+  await Promise.all(Array.from({length:4},refresh));
+  status.textContent='Game cache refreshed. Opening JC…';
+  const target=new URL('map.html',base);target.searchParams.set('play','1');target.searchParams.set('freshcache',Date.now().toString());location.replace(target.href);
+ }catch(error){status.textContent=error.message||'Cache refresh could not finish. Please retry.';retry.hidden=false;}
+}
+retry.onclick=reset;reset();
+</script></body></html>
