@@ -29,6 +29,12 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8,c
   const restorative=new Set(['heal','shield','cleanse','sunrise','sanctuary','restore','grace-surge','rain','rebuild','bless','redemption-wave']);
   const travel=new Set(['flight','hypersonic','hover','glide','sky-lift','leap','teleport','beam-down','recall','phase-step']);
   const labels={civilian:'CIVILIANS',authority:'RESPONDERS',angel:'ANGELS',demon:'DEMONS'};
+  const characterProfiles={
+    civilian:{role:'local resident',personality:'observant, independent, and grounded',goals:'stay safe, understand what is happening, and protect people they care about',speechStyle:'plain, conversational, occasionally skeptical'},
+    authority:{role:'local responder',personality:'alert, procedural, and protective',goals:'protect civilians, assess danger, and restore order',speechStyle:'direct, concise, situational'},
+    angel:{role:'heavenly observer',personality:'calm, perceptive, compassionate, and serious',goals:'guide people away from harm and respond to spiritual events',speechStyle:'measured, vivid, and reassuring'},
+    demon:{role:'adversarial supernatural presence',personality:'provocative, cunning, watchful, and self-interested',goals:'advance its own agenda and exploit opportunities',speechStyle:'taunting, confident, and sharp'}
+  };
 
   for(let i=0;i<size;i++) {
     const [avatar,faction]=AVATARS[(i%4)*4+Math.floor(i/4)];
