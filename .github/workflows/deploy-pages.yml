@@ -31,6 +31,7 @@ jobs:
           node tests/control-upgrade.mjs
           node tests/npc-reactions.mjs
           node tests/performance-guardrails.mjs
+          node tests/sin-city-state.mjs
       - uses: actions/configure-pages@v5
         with:
           enablement: true
