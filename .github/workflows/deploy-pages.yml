@@ -31,6 +31,7 @@ jobs:
           node tests/performance-guardrails.mjs
           node tests/npc-motion.mjs
           node tests/npc-contacts.mjs
+          node tests/npc-memory.mjs
 
       - name: Checkout GitHub Pages branch
         uses: actions/checkout@v4

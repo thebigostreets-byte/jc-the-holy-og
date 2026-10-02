@@ -76,6 +76,7 @@ const hud = document.createElement('div');
 hud.id = 'jcHud';
 hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><div class="jc-top-tools"><button id="jcWorldToggle" type="button" aria-expanded="false" aria-controls="jcWorldPanel" title="Open nearby map and saved people">WORLD</button><button id="jcSoundToggle" type="button" aria-expanded="false" aria-controls="jcSoundPanel" title="Open sound settings">SOUND</button><button id="jcEditor" type="button">CITY EDITOR</button></div></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · E enter/exit · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q answer prayer / cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Left joystick: move"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: look and steer flight pitch"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="enter" type="button">ENTER</button><button data-action="wheel" type="button">43 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>43 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div><section id="jcSoundPanel" role="dialog" aria-label="Sound settings" hidden><div class="jc-sound-heading"><strong>AUDIO SETTINGS</strong><button id="jcSoundClose" type="button" aria-label="Close sound settings">×</button></div><button id="jcSoundMute" type="button">MUTE ALL</button><label for="jcMasterVolume">MASTER <output id="jcMasterValue">72%</output></label><input id="jcMasterVolume" data-audio-level="master" type="range" min="0" max="100" step="1" value="72"><label for="jcMusicVolume">AMBIENCE <output id="jcMusicValue">14%</output></label><input id="jcMusicVolume" data-audio-level="music" type="range" min="0" max="100" step="1" value="14"><label for="jcEffectsVolume">SOUND EFFECTS <output id="jcEffectsValue">78%</output></label><input id="jcEffectsVolume" data-audio-level="effects" type="range" min="0" max="100" step="1" value="78"><small>Settings save automatically on this device.</small></section><section id="jcWorldPanel" role="dialog" aria-label="World map and people" hidden><div class="jc-world-heading"><strong>WORLD INTEL</strong><span id="jcWorldStatus">City loading…</span><button id="jcWorldClose" type="button" aria-label="Close world panel">×</button></div><div class="jc-world-tabs" role="tablist"><button type="button" data-world-tab="map" aria-selected="true">MAP</button><button type="button" data-world-tab="people" aria-selected="false">PEOPLE</button></div><div id="jcWorldMapTab"><div id="jcStreetName">LOCATING STREET…</div><canvas id="jcStreetMap" width="360" height="220" aria-label="Nearby streets and people"></canvas><div class="jc-region-grid"><button type="button" data-region="strip">STRIP</button><button type="button" data-region="psalms">PSALMS</button><button type="button" data-region="airport">AIRPORT</button><button type="button" data-region="sphere">SPHERE / WHEEL</button><button type="button" data-region="downtown">DOWNTOWN</button></div><small>Game road layout is approximate. Choose a region to travel there.</small></div><div id="jcWorldPeopleTab" hidden><input id="jcContactSearch" type="search" maxlength="60" placeholder="Search saved people…" aria-label="Search saved contacts"><div id="jcContactList"><p>No saved people yet. Click a person in the world to talk and track them.</p></div><small>Saved contacts and their last-known locations persist on this device.</small></div></section><div id="jcStreetChip">LOCATING STREET…</div><div id="jcTrackedMarker" aria-live="polite"></div>`;
 document.body.append(hud);
+const JC_VISUAL_APPEARANCE='white hooded robe with gold trim, a glowing halo, and white wings';
 const sinState=document.createElement('section');
 sinState.id='jcSinState';sinState.setAttribute('aria-label','Sin City good and evil state');
 sinState.innerHTML='<div class="jc-sin-labels"><b>EVIL</b><strong>SIN CITY STATE</strong><b>GOOD</b></div><div class="jc-sin-track"><i id="jcSinMarker"></i></div><div class="jc-sin-footer"><span id="jcSinVerdict">CONTESTED</span><small id="jcSinScore">BALANCE 0</small></div>';
@@ -144,6 +145,8 @@ function renderContactList(){
     const name=document.createElement('strong');name.textContent=contact.name;
     const detail=document.createElement('small');detail.textContent=(npc?contact.faction.toUpperCase():'LAST KNOWN LOCATION')+(distance===null?'':' · '+distance+' m');
     main.append(name,detail);
+    const memory=npcSystem?.memorySummary?.(contact.id)?.at(-1);
+    if(memory){const remembered=document.createElement('small');remembered.className='jc-contact-memory';remembered.textContent='REMEMBERS · '+memory;main.append(remembered);}
     const track=document.createElement('button');track.type='button';track.className='jc-track-button';track.dataset.contactAction='track';track.dataset.contactId=contact.id;track.textContent=trackedId===contact.id?'TRACKED':'TRACK';
     const remove=document.createElement('button');remove.type='button';remove.className='jc-remove-button';remove.dataset.contactAction='remove';remove.dataset.contactId=contact.id;remove.setAttribute('aria-label','Remove '+contact.name);remove.textContent='×';
     row.append(main,track,remove);container.append(row);
@@ -298,7 +301,7 @@ let terrainGround=null;
 const padKeys = new Set();
 let gamepadButtons = [];
 let game, player, portrait, realisticAvatar, npcSystem, trafficSystem, vegasStreetNetwork, worldLandmarks, souls = [], grace = 100, redeemed = 0, playerStepPhase=0;
-let activeConversationNpc=null,lastStreetLabel='',lastWorldMapDraw=0,pointerStart=null;
+let activeConversationNpc=null,lastStreetLabel='',lastWorldMapDraw=0,pointerStart=null,lastNpcObservation=0;
 const characterFrames = Array(39).fill(null);
 let rearWalkReady=false;
 const sheetOverrides=new Set();
@@ -1459,6 +1462,11 @@ function frameStep(now) {
   },(npc,car)=>npcSystem?.trafficImpact(npc,car));
   worldLandmarks?.update(dt);
   nearNpc=closestNpc();
+  if(npcSystem&&now-lastNpcObservation>700){
+    lastNpcObservation=now;
+    const observedState=hypersonic?'hypersonic':flying?(flightHeight<3?'hovering':'flying'):flightHeight>1?'descending':'grounded';
+    npcSystem.observePlayer({position:player.position,appearance:JC_VISUAL_APPEARANCE,state:observedState});
+  }
   if(nearNpc?.prayer?.answered&&now>=nearNpc.prayer.nextAt)assignNpcPrayer(nearNpc,nearNpc.name.charCodeAt(0)+prayersAnswered,now);
   const prayerNpc=pendingPrayerNpc();
   npcTalkButton.classList.toggle('available',coarseDevice&&!!nearNpc&&!talk.classList.contains('open'));npcTalkButton.textContent=nearNpc?`TALK TO ${nearNpc.name.toUpperCase()}`:'TALK';
@@ -1589,7 +1597,17 @@ const group = game.loaded.get('C15_R14');
   spawnPoint=player.position.clone();
   game.scene.add(player);
   createSouls(x, z);
-  npcSystem=createNpcSystem({scene:game.scene,player,groundAt,isSafe:(x,z,r=2)=>!blockedAt(x,groundAt(x,z)+1.55,z,r),count:coarseDevice?8:(window.JC_NPC_COUNT||16),crowdCount:coarseDevice?180:500,mobile:coarseDevice,onReport:text=>{npcReadout.textContent=text;}});
+  const visibleToNpc=(eye,focus)=>{
+    const distance=eye.distanceTo(focus);
+    if(distance>116)return false;
+    const steps=Math.ceil(distance/5);
+    for(let i=1;i<steps-1;i++){
+      const t=i/steps,x=eye.x+(focus.x-eye.x)*t,y=eye.y+(focus.y-eye.y)*t,z=eye.z+(focus.z-eye.z)*t;
+      if(blockedAt(x,y,z,.45))return false;
+    }
+    return true;
+  };
+  npcSystem=createNpcSystem({scene:game.scene,player,groundAt,isSafe:(x,z,r=2)=>!blockedAt(x,groundAt(x,z)+1.55,z,r),canSee:visibleToNpc,count:coarseDevice?8:(window.JC_NPC_COUNT||16),crowdCount:coarseDevice?180:500,mobile:coarseDevice,onReport:text=>{npcReadout.textContent=text;}});
   npcSystem.npcs.forEach((npc,index)=>assignNpcPrayer(npc,index));
   const savedTracked=npcContacts.getTrackedId();
   if(savedTracked)npcSystem.setTracked(savedTracked);

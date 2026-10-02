@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import {createNpcMemoryStore,NPC_MEMORY_STORAGE_KEY} from '../npc-memory.js';
+
+const values=new Map(),storage={getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,value)};
+const store=createNpcMemoryStore(storage),npc={id:'civilian:civilian-01:Mara',name:'Mara',faction:'civilian'};
+const look='white hooded robe with gold trim, a glowing halo, and white wings';
+store.observe(npc,{appearance:look,state:'grounded',at:1000});
+assert.equal(store.summary(npc.id).length,2,'first sighting remembers JC’s appearance and grounded state');
+store.observe(npc,{appearance:look,state:'grounded',at:1500});
+assert.equal(store.summary(npc.id).length,2,'repeated observations do not spam duplicate memories');
+store.observe(npc,{appearance:look,state:'hovering',at:2000});
+assert.match(store.summary(npc.id).at(-1),/hovering above the street/,'a new visible flight state is remembered');
+store.remember(npc,{key:'event:lightning:1',kind:'event',text:'I saw lightning strike near JC.',at:3000});
+const restored=createNpcMemoryStore(storage);
+assert.equal(restored.get(npc.id).lastPlayerState,'hovering','NPC knowledge survives a page reload');
+assert.match(restored.summary(npc.id).at(-1),/lightning strike/,'witnessed events survive a page reload');
+assert.ok(JSON.parse(values.get(NPC_MEMORY_STORAGE_KEY)).records[npc.id]);
+for(let i=0;i<30;i++)restored.remember(npc,{key:'event:'+i,kind:'event',text:'A remembered event '+i,at:4000+i});
+assert.equal(restored.get(npc.id).entries.length,18,'memory remains bounded for browser storage');
+console.log('PASS: NPC appearance, movement and witnessed events persist without unbounded memory growth.');

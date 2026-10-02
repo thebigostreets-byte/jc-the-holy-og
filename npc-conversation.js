@@ -1,5 +1,6 @@
 import {requestNpcDialogue} from './npc-dialogue.js';
 
+const CONVERSATION_STORAGE_KEY='jc-npc-conversations-v1';
 const portraits = Object.fromEntries(['civilian','authority','angel','demon'].map(f => [f, `./character-art/${f}-npc-reference-v1.webp`]));
 
 export function createNpcConversation({panel, log, onOpen = () => {}, onClose = () => {}, notice = () => {}}) {
@@ -29,6 +30,17 @@ export function createNpcConversation({panel, log, onOpen = () => {}, onClose = 
   `;
   document.head.append(style);
   const conversations = new Map(), drafts = new Map();
+  try {
+    const saved=JSON.parse(globalThis.localStorage?.getItem(CONVERSATION_STORAGE_KEY)||'null');
+    if(saved?.version===1&&saved.histories&&typeof saved.histories==='object'){
+      for(const [key,items] of Object.entries(saved.histories).slice(-32)){
+        if(Array.isArray(items))conversations.set(key,items.filter(item=>item&&['user','assistant'].includes(item.role)&&typeof item.content==='string').slice(-8));
+      }
+    }
+  } catch {}
+  function persistConversations(){
+    try{globalThis.localStorage?.setItem(CONVERSATION_STORAGE_KEY,JSON.stringify({version:1,histories:Object.fromEntries([...conversations].slice(-32))}));}catch{}
+  }
   let active = null, pending = false, requestId = 0, controller = null, recognition = null;
   let lastAttempt = null, returnFocus = null, serviceIssue = null, listening = false;
   const keyFor = npc => `${npc.avatar || npc.file || npc.faction}:${npc.name}`;
@@ -62,7 +74,7 @@ export function createNpcConversation({panel, log, onOpen = () => {}, onClose = 
       const reply = await requestNpcDialogue(npc,history,{message,greeting,signal:controller.signal});
       if (id !== requestId || active !== npc) return;
       if (message) history.push({role:'user',content:message});
-      history.push({role:'assistant',content:reply}); conversations.set(key,history.slice(-8));
+      history.push({role:'assistant',content:reply}); conversations.set(key,history.slice(-8));persistConversations();
       serviceIssue = null; renderHistory(); setStatus('READY TO TALK');
       if (message && input.value.trim() === message) input.value = '';
       drafts.set(key,input.value);
