@@ -1,5 +1,6 @@
 import {readFile,writeFile,mkdir,rename,rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {brotliDecompressSync,gzipSync} from 'node:zlib';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
@@ -24,7 +25,7 @@ async function work(){
     if(verifyOnly)throw Error(`Missing or changed asset: ${asset.path}. Run npm run hydrate.`);
     const extension=path.extname(asset.path).toLowerCase();
     const accept=extension==='.jpg'||extension==='.jpeg'?'image/jpeg':extension==='.webp'?'image/webp':extension==='.png'?'image/png':'*/*';
-    const response=await fetch(new URL(asset.path,lock.origin),{signal:AbortSignal.timeout(120000),headers:{accept}});
+    const response=await fetch(new URL(asset.sourcePath||asset.path,lock.origin),{signal:AbortSignal.timeout(120000),headers:{accept}});
     if(!response.ok){
       const optionalTile=/^tiles\/C\d{2}_R\d{2}\.glb\.gz$/.test(asset.path);
       const optionalAtlas=optionalFacadeAtlases.has(asset.path);
@@ -34,7 +35,15 @@ async function work(){
       }
       throw Error(`Asset ${asset.path}: HTTP ${response.status}`);
     }
-    const bytes=Buffer.from(await response.arrayBuffer());
+    let bytes=Buffer.from(await response.arrayBuffer());
+    if(asset.sourcePath){
+      if(bytes.length!==asset.sourceBytes||hash(bytes)!==asset.sourceSha256)throw Error(`Compressed source checksum mismatch: ${asset.sourcePath}`);
+      const raw=brotliDecompressSync(bytes);
+      if(raw.length<20||raw.readUInt32LE(0)!==0x46546c67||raw.readUInt32LE(8)!==raw.length)throw Error(`Invalid city geometry: ${asset.path}`);
+      const geometry=JSON.parse(raw.subarray(20,20+raw.readUInt32LE(12)).toString('utf8'));
+      if(geometry.asset?.extras?.tile!==asset.path.slice(6,13))throw Error(`City tile identity mismatch: ${asset.path}`);
+      bytes=gzipSync(raw);
+    }
     const actualHash=hash(bytes);
     if(bytes.length!==asset.bytes||actualHash!==asset.sha256){
       if(!asset.path.startsWith('assets/imagery/')||!/^C\d{2}_R\d{2}\.jpg$/.test(asset.path.slice(15)))throw Error(`Asset checksum mismatch: ${asset.path}. Expected ${asset.bytes} bytes / ${asset.sha256}; received ${bytes.length} bytes / ${actualHash}.`);

@@ -1,10 +1,12 @@
 import { access, readFile } from 'node:fs/promises';
+import {gunzipSync} from 'node:zlib';
 
 const requiredFiles = [
   'index.html',
   'map.html',
   'map-startup.js',
   'city-manifest.json',
+  'tiles/C15_R14.glb.gz',
   'map-engine.js',
   'jc-map-game.js',
   'three.module.js',
@@ -16,6 +18,12 @@ const requiredFiles = [
 ];
 
 const errors = [];
+try {
+  const tile=gunzipSync(await readFile('dist/client/tiles/C15_R14.glb.gz'));
+  if(tile.readUInt32LE(0)!==0x46546c67||tile.readUInt32LE(8)!==tile.length)throw Error('Invalid GLB');
+  const geometry=JSON.parse(tile.subarray(20,20+tile.readUInt32LE(12)).toString('utf8'));
+  if(geometry.asset?.extras?.tile!=='C15_R14')throw Error('Wrong spawn tile');
+} catch(error) {errors.push('Deployable Strip spawn geometry is missing or invalid: '+error.message);}
 for (const file of requiredFiles) {
   try { await access(file); }
   catch { errors.push(`Missing required game file: ${file}`); }

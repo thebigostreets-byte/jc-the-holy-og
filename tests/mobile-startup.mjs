@@ -5,7 +5,8 @@ import {gunzipSync} from 'node:zlib';
 import * as THREE from '../three.module.js';
 import {cloneBuildingMaterial} from '../map-materials.js';
 import {decodeGlbAttribute} from '../ground-sampling.js';
-import {buildingSurface,wallUV} from '../physical-building-materials.js';
+import {buildingSurface,wallUV,classifyBuilding} from '../physical-building-materials.js';
+import {applyPhotorealMaterial} from '../photorealism-pbr.js';
 const texture=new THREE.Texture();let serialized=0;texture.toJSON=()=>{serialized++;throw Error('Image serialization during material clone');};
 const material=new THREE.MeshStandardMaterial({map:texture});
 material.userData={original:{map:texture,color:new THREE.Color('#ffddbb'),roughness:.7}};
@@ -20,7 +21,7 @@ const source=await fs.readFile(new URL('../map-engine.js',import.meta.url),'utf8
 const fn=source.slice(source.indexOf('async function parseGLB'),source.indexOf('function setAppearance'));
 const bounds=JSON.parse(await fs.readFile(new URL('../city-manifest.json',import.meta.url),'utf8')).manifest.boundsEPSG32611;
 let yields=0;
-const context=vm.createContext({THREE,TextDecoder,DataView,Float32Array,Uint32Array,Uint16Array,Uint8Array,Map,Promise,decodeGlbAttribute,buildingSurface,wallUV,mobileMap:true,physicalPromise:Promise.resolve(Array.from({length:6},()=>new THREE.Texture())),
+const context=vm.createContext({THREE,TextDecoder,DataView,Float32Array,Uint32Array,Uint16Array,Uint8Array,Int8Array,Int16Array,Map,Promise,decodeGlbAttribute,buildingSurface,wallUV,classifyBuilding,applyPhotorealMaterial,photorealDetailMaps:{roughness:new THREE.Texture(),bump:new THREE.Texture()},mobileMap:true,physicalPromise:Promise.resolve(Array.from({length:6},()=>new THREE.Texture())),
  origin:[(bounds[0]+bounds[2])/2,(bounds[1]+bounds[3])/2],
  setTimeout:(fn,ms)=>{yields++;return setTimeout(fn,ms);},statusText:()=>{},
  bytes:async()=>new Uint8Array(),pathRelative:(_,p)=>p,textureFrom:async()=>new THREE.Texture(),
