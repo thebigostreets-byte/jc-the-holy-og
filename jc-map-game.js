@@ -13,8 +13,12 @@ import {createNpcConversation} from './npc-conversation.js';
 import {createCharacter3D} from './jc-character3d.js';
 import {cleanPoseImage,POSE_FRAME_HEIGHT,POSE_FRAME_BOTTOM_PADDING} from './pose-cleanup.js';
 import {createJcAudio} from './jc-audio.js';
+import {createNpcContactStore} from './npc-contacts.js';
+import {createVegasStreetNetwork,resolveStreetLocation,VEGAS_LOCATIONS} from './vegas-streets.js';
+import {createTrafficSystem} from './jc-traffic.js';
 
 const jcAudio=createJcAudio();
+const npcContacts=createNpcContactStore();
 
 const style = document.createElement('style');
 style.textContent = `
@@ -66,7 +70,7 @@ document.head.append(style);
 
 const hud = document.createElement('div');
 hud.id = 'jcHud';
-hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><div class="jc-top-tools"><button id="jcSoundToggle" type="button" aria-expanded="false" aria-controls="jcSoundPanel" title="Open sound settings">SOUND</button><button id="jcEditor" type="button">CITY EDITOR</button></div></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · E enter/exit · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q answer prayer / cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Left joystick: move"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: look and steer flight pitch"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="enter" type="button">ENTER</button><button data-action="wheel" type="button">43 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>43 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div><section id="jcSoundPanel" role="dialog" aria-label="Sound settings" hidden><div class="jc-sound-heading"><strong>AUDIO SETTINGS</strong><button id="jcSoundClose" type="button" aria-label="Close sound settings">×</button></div><button id="jcSoundMute" type="button">MUTE ALL</button><label for="jcMasterVolume">MASTER <output id="jcMasterValue">72%</output></label><input id="jcMasterVolume" data-audio-level="master" type="range" min="0" max="100" step="1" value="72"><label for="jcMusicVolume">AMBIENCE <output id="jcMusicValue">14%</output></label><input id="jcMusicVolume" data-audio-level="music" type="range" min="0" max="100" step="1" value="14"><label for="jcEffectsVolume">SOUND EFFECTS <output id="jcEffectsValue">78%</output></label><input id="jcEffectsVolume" data-audio-level="effects" type="range" min="0" max="100" step="1" value="78"><small>Settings save automatically on this device.</small></section>`;
+hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><div class="jc-top-tools"><button id="jcWorldToggle" type="button" aria-expanded="false" aria-controls="jcWorldPanel" title="Open nearby map and saved people">WORLD</button><button id="jcSoundToggle" type="button" aria-expanded="false" aria-controls="jcSoundPanel" title="Open sound settings">SOUND</button><button id="jcEditor" type="button">CITY EDITOR</button></div></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · E enter/exit · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q answer prayer / cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Left joystick: move"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: look and steer flight pitch"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="enter" type="button">ENTER</button><button data-action="wheel" type="button">43 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>43 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div><section id="jcSoundPanel" role="dialog" aria-label="Sound settings" hidden><div class="jc-sound-heading"><strong>AUDIO SETTINGS</strong><button id="jcSoundClose" type="button" aria-label="Close sound settings">×</button></div><button id="jcSoundMute" type="button">MUTE ALL</button><label for="jcMasterVolume">MASTER <output id="jcMasterValue">72%</output></label><input id="jcMasterVolume" data-audio-level="master" type="range" min="0" max="100" step="1" value="72"><label for="jcMusicVolume">AMBIENCE <output id="jcMusicValue">14%</output></label><input id="jcMusicVolume" data-audio-level="music" type="range" min="0" max="100" step="1" value="14"><label for="jcEffectsVolume">SOUND EFFECTS <output id="jcEffectsValue">78%</output></label><input id="jcEffectsVolume" data-audio-level="effects" type="range" min="0" max="100" step="1" value="78"><small>Settings save automatically on this device.</small></section><section id="jcWorldPanel" role="dialog" aria-label="World map and people" hidden><div class="jc-world-heading"><strong>WORLD INTEL</strong><span id="jcWorldStatus">City loading…</span><button id="jcWorldClose" type="button" aria-label="Close world panel">×</button></div><div class="jc-world-tabs" role="tablist"><button type="button" data-world-tab="map" aria-selected="true">MAP</button><button type="button" data-world-tab="people" aria-selected="false">PEOPLE</button></div><div id="jcWorldMapTab"><div id="jcStreetName">LOCATING STREET…</div><canvas id="jcStreetMap" width="360" height="220" aria-label="Nearby streets and people"></canvas><div class="jc-region-grid"><button type="button" data-region="strip">STRIP</button><button type="button" data-region="psalms">PSALMS</button><button type="button" data-region="airport">AIRPORT</button><button type="button" data-region="sphere">SPHERE / WHEEL</button><button type="button" data-region="downtown">DOWNTOWN</button></div><small>Game road layout is approximate. Choose a region to travel there.</small></div><div id="jcWorldPeopleTab" hidden><input id="jcContactSearch" type="search" maxlength="60" placeholder="Search saved people…" aria-label="Search saved contacts"><div id="jcContactList"><p>No saved people yet. Click a person in the world to talk and track them.</p></div><small>Saved contacts and their last-known locations persist on this device.</small></div></section><div id="jcStreetChip">LOCATING STREET…</div><div id="jcTrackedMarker" aria-live="polite"></div>`;
 document.body.append(hud);
 const sinState=document.createElement('section');
 sinState.id='jcSinState';sinState.setAttribute('aria-label','Sin City good and evil state');
@@ -93,9 +97,10 @@ const npcTalkButton=document.createElement('button');npcTalkButton.id='jcNpcTalk
 const prayerButton=document.createElement('button');prayerButton.id='jcPrayerButton';prayerButton.type='button';prayerButton.textContent='ANSWER PRAYER';prayerButton.setAttribute('aria-label','Answer nearby NPC prayer');hud.append(prayerButton);
 style.textContent += '#jcPrayerButton{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 226px);transform:translateX(-50%);display:none;pointer-events:auto;padding:11px 16px;border:1px solid #b9f3cf;border-radius:8px;background:#10251eee;color:#d8ffe5;font-weight:900;box-shadow:0 6px 18px #0009;z-index:3}#jcPrayerButton.available{display:block}@media(pointer:fine){#jcPrayerButton{bottom:86px}}';
 style.textContent += '@media(max-width:800px),(pointer:coarse){#jcTalk{bottom:calc(env(safe-area-inset-bottom) + 170px)}}#jcTalk{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);width:min(420px,90vw);padding:12px;background:#08111eF2;border:1px solid #e0bf75;border-radius:10px;color:#f5f0df;display:none;pointer-events:auto;box-shadow:0 10px 35px #000b}#jcTalk.open{display:block}#jcTalkHead{display:flex;align-items:center;gap:10px}#jcTalk img{width:48px;height:58px;object-fit:contain;background:#111a28;border-radius:6px}#jcTalk strong{color:#ffdf94}#jcTalk small{display:block;color:#aebaca;margin-top:4px}#jcTalkLog{max-height:108px;overflow:auto;font-size:12px;line-height:1.45;padding:8px 0}#jcTalk form{display:flex;gap:6px}#jcTalk [data-voice]{min-width:42px;font-size:17px}#jcTalk input{min-width:0;flex:1;background:#111a28;color:white;border:1px solid #566273;border-radius:5px;padding:9px}#jcTalk button{background:#94702e;color:white;border:1px solid #efcf81;border-radius:5px;padding:8px 10px}#jcTalk button.close{margin-left:auto;background:#18212c}';
-const talk=document.createElement('section');talk.id='jcTalk';talk.setAttribute('aria-label','Talk to nearby character');talk.innerHTML='<div id=jcTalkHead><img alt=""><div><strong></strong><small></small></div><button class=close type=button aria-label="Close conversation">×</button></div><div id=jcTalkLog role=log aria-live=polite></div><form><input maxlength=180 aria-label="Message to character" placeholder="Say something…"><button data-voice type=button aria-label="Speak your message" title="Speak your message">🎙</button><button type=submit>Send</button></form>';hud.append(talk);
+style.textContent += '#jcWorldToggle{min-width:62px}#jcWorldPanel{position:absolute;top:54px;right:12px;z-index:9;width:min(340px,calc(100vw - 24px));max-height:min(72vh,620px);overflow:auto;box-sizing:border-box;padding:12px;background:#071018f7;border:1px solid #d2b86b99;border-radius:9px;box-shadow:0 12px 32px #000b;pointer-events:auto;color:#f4f0e6}#jcWorldPanel[hidden],#jcWorldMapTab[hidden],#jcWorldPeopleTab[hidden]{display:none!important}.jc-world-heading{display:flex;align-items:center;gap:8px;margin-bottom:9px;color:#ffe6a4;font-size:12px;letter-spacing:.08em}.jc-world-heading span{margin-left:auto;color:#aebaca;font-size:9px;letter-spacing:0}.jc-world-heading button{padding:2px 8px!important;font-size:18px!important}.jc-world-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px}.jc-world-tabs button{padding:7px!important;font-size:10px!important}.jc-world-tabs button[aria-selected=true]{background:#59482a;border-color:#ffe293;color:#fff0bc}#jcStreetName{font-size:11px;font-weight:900;letter-spacing:.06em;color:#ffe6a4;margin:0 0 7px}#jcStreetMap{display:block;width:100%;height:auto;aspect-ratio:18/11;border:1px solid #ffffff22;border-radius:6px;background:#08111b}#jcWorldMapTab>small,#jcWorldPeopleTab>small{display:block;color:#9eacba;font-size:9px;line-height:1.4;margin-top:8px}.jc-region-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:8px}.jc-region-grid button{padding:7px 4px!important;font-size:9px!important}#jcContactSearch{width:100%;box-sizing:border-box;margin:0 0 8px;background:#111a28;color:#fff;border:1px solid #566273;border-radius:5px;padding:9px}#jcContactList{display:grid;gap:6px}.jc-contact-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px;align-items:stretch}.jc-contact-row button{padding:7px 6px!important;font-size:9px!important;min-width:0}.jc-contact-row .jc-contact-main{text-align:left;overflow:hidden}.jc-contact-main strong,.jc-contact-main small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.jc-contact-main strong{font-size:10px;color:#f5e3b3}.jc-contact-main small{font-size:8px;color:#aebaca;margin-top:3px}.jc-contact-row.is-tracked .jc-contact-main{border-color:#ffe293;background:#40351f}.jc-contact-row .jc-track-button{min-width:50px}.jc-contact-row .jc-remove-button{min-width:25px}#jcStreetChip{position:absolute;left:12px;top:112px;max-width:min(300px,45vw);padding:7px 9px;background:#071018e8;border:1px solid #ffffff26;border-left:2px solid #f9d878;border-radius:5px;color:#ffe6a4;font-size:10px;font-weight:900;letter-spacing:.04em;pointer-events:none;text-shadow:0 2px 5px #000}#jcTrackedMarker{display:none;position:absolute;left:50%;top:25%;transform:translate(-50%,-100%);max-width:60vw;padding:6px 9px;background:#101a26ed;border:1px solid #ffe293;border-radius:6px;color:#ffe6a4;font-size:10px;font-weight:900;white-space:nowrap;text-shadow:0 1px 3px #000;pointer-events:none;z-index:5}#jcTalkHead #jcSaveContact{margin-left:auto;padding:5px 7px!important;font-size:9px!important;white-space:nowrap}#jcTalkHead button.close{margin-left:0!important}@media(max-width:800px),(pointer:coarse){#jcWorldPanel{top:48px;right:8px;width:calc(100vw - 16px);max-height:68vh}#jcWorldToggle{padding:8px 8px!important;min-width:54px;font-size:10px}#jcStreetChip{top:102px;left:8px;max-width:47vw;padding:6px 7px;font-size:9px}#jcTrackedMarker{font-size:9px;max-width:70vw}.jc-region-grid{grid-template-columns:repeat(3,minmax(0,1fr))}#jcTalkHead #jcSaveContact{padding:5px 5px!important;font-size:8px!important}}';
+const talk=document.createElement('section');talk.id='jcTalk';talk.setAttribute('aria-label','Talk to nearby character');talk.innerHTML='<div id=jcTalkHead><img alt=""><div><strong></strong><small></small></div><button id=jcSaveContact type=button aria-pressed="false">☆ SAVE PERSON</button><button class=close type=button aria-label="Close conversation">×</button></div><div id=jcTalkLog role=log aria-live=polite></div><form><input maxlength=180 aria-label="Message to character" placeholder="Say something…"><button data-voice type=button aria-label="Speak your message" title="Speak your message">🎙</button><button type=submit>Send</button></form>';hud.append(talk);
 let nearNpc=null;
-const conversation=createNpcConversation({panel:talk,log:talk.querySelector('#jcTalkLog'),onOpen:()=>{resetInput();velocity.set(0,0,0);},onClose:()=>resetInput(),notice:message=>feedback(message)});
+const conversation=createNpcConversation({panel:talk,log:talk.querySelector('#jcTalkLog'),onOpen:()=>{resetInput();velocity.set(0,0,0);updateSaveContactButton();},onClose:()=>{resetInput();activeConversationNpc=null;updateSaveContactButton();},notice:message=>feedback(message)});
 function closestNpc(){
   if(!npcSystem||!player)return null;
   let nearest=null,nearestDistance=10;
@@ -106,7 +111,125 @@ function closestNpc(){
   }
   return nearest;
 }
-function openNpcTalk(npc=nearNpc){if(npc&&playing)conversation.open(npc);}
+function openNpcTalk(npc=nearNpc,{track=false}={}){if(!npc||!playing)return;if(track){npcContacts.add(npc);npcContacts.setTracked(npc.id);npcSystem?.setTracked(npc.id);renderContactList();feedback('TRACKING '+npc.name.toUpperCase());}activeConversationNpc=npc;conversation.open(npc);updateSaveContactButton();}
+
+function updateSaveContactButton(){
+  const button=hud.querySelector('#jcSaveContact');
+  if(!button)return;
+  const saved=!!activeConversationNpc&&npcContacts.has(activeConversationNpc.id);
+  button.textContent=saved?'★ SAVED':'☆ SAVE PERSON';
+  button.setAttribute('aria-pressed',String(saved));
+  button.disabled=!activeConversationNpc;
+}
+function renderContactList(){
+  const container=hud.querySelector('#jcContactList'),search=hud.querySelector('#jcContactSearch');
+  if(!container)return;
+  const query=(search?.value||'').trim().toLowerCase();
+  const trackedId=npcContacts.getTrackedId();
+  const contacts=npcContacts.getAll().filter(contact=>(contact.name+' '+contact.faction+' '+contact.avatar).toLowerCase().includes(query));
+  container.replaceChildren();
+  if(!contacts.length){
+    const empty=document.createElement('p');empty.textContent=npcContacts.size?'No contacts match that search.':'No saved people yet. Click a person in the world to talk and track them.';
+    container.append(empty);return;
+  }
+  for(const contact of contacts){
+    const npc=npcSystem?.npcs.find(person=>person.id===contact.id);
+    const distance=npc?Math.round(npc.position.distanceTo(player.position)):contact.position?Math.round(Math.hypot(contact.position.x-player.position.x,contact.position.z-player.position.z)):null;
+    const row=document.createElement('div');row.className='jc-contact-row'+(trackedId===contact.id?' is-tracked':'');
+    const main=document.createElement('button');main.type='button';main.className='jc-contact-main';main.dataset.contactAction='talk';main.dataset.contactId=contact.id;
+    const name=document.createElement('strong');name.textContent=contact.name;
+    const detail=document.createElement('small');detail.textContent=(npc?contact.faction.toUpperCase():'LAST KNOWN LOCATION')+(distance===null?'':' · '+distance+' m');
+    main.append(name,detail);
+    const track=document.createElement('button');track.type='button';track.className='jc-track-button';track.dataset.contactAction='track';track.dataset.contactId=contact.id;track.textContent=trackedId===contact.id?'TRACKED':'TRACK';
+    const remove=document.createElement('button');remove.type='button';remove.className='jc-remove-button';remove.dataset.contactAction='remove';remove.dataset.contactId=contact.id;remove.setAttribute('aria-label','Remove '+contact.name);remove.textContent='×';
+    row.append(main,track,remove);container.append(row);
+  }
+}
+function drawWorldMap(){
+  const canvas=hud.querySelector('#jcStreetMap');
+  if(!canvas||!vegasStreetNetwork||!player)return;
+  const ctx=canvas.getContext('2d');if(!ctx)return;
+  const width=canvas.width,height=canvas.height,range=1800,scale=Math.min(width,height)/(range*2),cx=width/2,cy=height/2;
+  const mapPoint=(x,z)=>({x:cx+(x-player.position.x)*scale,y:cy+(z-player.position.z)*scale});
+  ctx.clearRect(0,0,width,height);ctx.fillStyle='#07111b';ctx.fillRect(0,0,width,height);
+  ctx.strokeStyle='#182b39';ctx.lineWidth=1;
+  for(let x=0;x<width;x+=30){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,height);ctx.stroke();}
+  for(let y=0;y<height;y+=30){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(width,y);ctx.stroke();}
+  for(const segment of vegasStreetNetwork.segments){
+    const a=mapPoint(segment.a[0],segment.a[1]),b=mapPoint(segment.b[0],segment.b[1]);
+    if(Math.max(a.x,b.x)<-30||Math.min(a.x,b.x)>width+30||Math.max(a.y,b.y)<-30||Math.min(a.y,b.y)>height+30)continue;
+    ctx.strokeStyle=segment.kind==='freeway'?'#d69a63':segment.kind==='arterial'?'#617b90':'#304656';
+    ctx.lineWidth=segment.kind==='freeway'?3.2:segment.kind==='arterial'?2:1;
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+  }
+  for(const key of ['psalms','airport','sphere','downtown']){
+    const location=VEGAS_LOCATIONS[key],p=vegasStreetNetwork.project(location.lon,location.lat),m=mapPoint(p.x,p.z);
+    if(m.x<0||m.x>width||m.y<0||m.y>height)continue;
+    ctx.fillStyle='#8adbc6';ctx.beginPath();ctx.arc(m.x,m.y,3.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#b8cbd5';ctx.font='9px Arial';ctx.fillText(key==='psalms'?'PSALMS':key==='airport'?'AIRPORT':key==='sphere'?'SPHERE':'DOWNTOWN',m.x+5,m.y-4);
+  }
+  for(const npc of npcSystem?.npcs||[]){
+    const m=mapPoint(npc.position.x,npc.position.z);
+    if(m.x<0||m.x>width||m.y<0||m.y>height)continue;
+    const tracked=npc.id===npcContacts.getTrackedId();
+    ctx.fillStyle=tracked?'#ffe293':npc.faction==='demon'?'#ff6c77':npc.faction==='angel'?'#c8f4ff':'#a4d8c7';
+    ctx.beginPath();ctx.arc(m.x,m.y,tracked?4.5:2.5,0,Math.PI*2);ctx.fill();
+    if(tracked){ctx.strokeStyle='#ffe293';ctx.lineWidth=1;ctx.beginPath();ctx.arc(m.x,m.y,7,0,Math.PI*2);ctx.stroke();}
+  }
+  const trackedId=npcContacts.getTrackedId(),trackedNpc=npcSystem?.npcs.find(npc=>npc.id===trackedId);
+  const trackedContact=npcContacts.getAll().find(contact=>contact.id===trackedId);
+  if(!trackedNpc&&trackedContact?.position){
+    const m=mapPoint(trackedContact.position.x,trackedContact.position.z);
+    ctx.strokeStyle='#ffe293';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(m.x,m.y-6);ctx.lineTo(m.x+6,m.y);ctx.lineTo(m.x,m.y+6);ctx.lineTo(m.x-6,m.y);ctx.closePath();ctx.stroke();
+  }
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(yaw);ctx.fillStyle='#fff0b8';ctx.strokeStyle='#0b1119';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(5,6);ctx.lineTo(0,3);ctx.lineTo(-5,6);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+  ctx.fillStyle='#d4e3ec';ctx.font='bold 10px Arial';ctx.fillText('N',10,15);
+}
+function updateStreetHud(now){
+  if(!player||!vegasStreetNetwork||now-lastWorldMapDraw<180)return;
+  lastWorldMapDraw=now;
+  const location=resolveStreetLocation(player.position.x,player.position.z,vegasStreetNetwork);
+  const chip=hud.querySelector('#jcStreetChip'),name=hud.querySelector('#jcStreetName');
+  if(location.label!==lastStreetLabel){lastStreetLabel=location.label;if(chip)chip.textContent=location.label;if(name)name.textContent=location.label;}
+  const trackedId=npcContacts.getTrackedId(),trackedNpc=npcSystem?.npcs.find(npc=>npc.id===trackedId);
+  const contact=npcContacts.getAll().find(item=>item.id===trackedId);
+  const marker=hud.querySelector('#jcTrackedMarker');
+  if(!marker)return;
+  if(!trackedId||(!trackedNpc&&!contact?.position)){marker.style.display='none';if(!hud.querySelector('#jcWorldPanel').hidden&&!hud.querySelector('#jcWorldMapTab').hidden)drawWorldMap();return;}
+  const position=trackedNpc?trackedNpc.position:contact.position;
+  if(trackedNpc)npcContacts.touch(trackedNpc);
+  const distance=Math.round(Math.hypot(position.x-player.position.x,position.z-player.position.z));
+  const projected=new THREE.Vector3(position.x,position.y+2.7,position.z).project(game.camera);
+  const onScreen=projected.z<1&&Math.abs(projected.x)<.88&&Math.abs(projected.y)<.78;
+  const bearing=Math.atan2(position.x-player.position.x,-(position.z-player.position.z));
+  const delta=Math.atan2(Math.sin(bearing-yaw),Math.cos(bearing-yaw));
+  const arrow=Math.abs(delta)>2.4?'↓':Math.abs(delta)<.55?'↑':delta>0?'→':'←';
+  marker.textContent=(onScreen?'◆':arrow)+' '+(trackedNpc?.name||contact?.name||'PERSON')+' · '+distance+' m'+(trackedNpc?'':' · LAST SEEN');
+  marker.style.display='block';
+  marker.style.left=onScreen?((projected.x+1)*50)+'%':'50%';
+  marker.style.top=onScreen?((1-projected.y)*50)+'%':'23%';
+  if(!hud.querySelector('#jcWorldPanel').hidden&& !hud.querySelector('#jcWorldMapTab').hidden)drawWorldMap();
+}
+function travelToRegion(key){
+  const location=VEGAS_LOCATIONS[key];
+  if(!location||!player||!game||!vegasStreetNetwork)return;
+  const projected=vegasStreetNetwork.project(location.lon,location.lat);
+  const tileId=game.sectionAt(projected.x,projected.z);
+  if(!game.availableTile(tileId)){feedback('AREA TILE NOT IN THIS DEPLOYMENT · '+location.label);return;}
+  if(interiorState)exitInterior(false);
+  feedback('LOADING '+location.label);
+  void game.loadArea(tileId,coarseDevice?0:1,false).then(()=>{
+    if(!game.loaded.has(tileId)){feedback('COULD NOT LOAD '+location.label);return;}
+    refreshFootprints();
+    const spot=clearSpot(projected.x,projected.z);
+    terrainY=groundAt(spot[0],spot[1]);
+    player.position.set(spot[0],terrainY,spot[1]);spawnPoint.copy(player.position);velocity.set(0,0,0);
+    flying=false;hypersonic=false;glide=false;diving=false;flightHeight=0;descending=0;
+    game.controls?.target?.copy(player.position);snapCameraBehindPlayer();
+    feedback('ARRIVED · '+location.label);
+    hud.querySelector('#jcWorldPanel').hidden=true;hud.querySelector('#jcWorldToggle').setAttribute('aria-expanded','false');
+  });
+}
 const prayerTemplates=[
   {kind:'heal',text:'Please give me strength and healing.'},
   {kind:'shield',text:'Please protect me and my family tonight.'},
@@ -161,7 +284,8 @@ const terrainHeightCache=new Map();
 let terrainGround=null;
 const padKeys = new Set();
 let gamepadButtons = [];
-let game, player, portrait, realisticAvatar, npcSystem, souls = [], grace = 100, redeemed = 0, playerStepPhase=0;
+let game, player, portrait, realisticAvatar, npcSystem, trafficSystem, vegasStreetNetwork, worldLandmarks, souls = [], grace = 100, redeemed = 0, playerStepPhase=0;
+let activeConversationNpc=null,lastStreetLabel='',lastWorldMapDraw=0,pointerStart=null;
 const characterFrames = Array(39).fill(null);
 let rearWalkReady=false;
 const sheetOverrides=new Set();
@@ -621,67 +745,147 @@ function addRoadPlane(root, x, z, width, length, rotation, material, y) {
   return mesh;
 }
 
-function installPavedRoads(centerX, centerZ) {
-  if (game.scene.getObjectByName('JC paved Strip roads')) return;
-  const root = new THREE.Group();
-  root.name = 'JC paved Strip roads';
-  const asphalt = new THREE.MeshStandardMaterial({map:asphaltTexture(), color:0x263043, roughness:.30, metalness:.22});
-  asphalt.map.repeat.set(7, 48);
-  asphalt.map.needsUpdate = true;
-  const yellow = roadStripeMaterial(0xffd24a, .95);
-  const white = roadStripeMaterial(0xe8edf1, .75);
-  const concrete = new THREE.MeshStandardMaterial({color:0x62636b, roughness:.92});
-  const curbMaterial = new THREE.MeshStandardMaterial({color:0xa4a1a0, roughness:.85});
-  const lampMaterial = new THREE.MeshStandardMaterial({color:0xffcb81, emissive:0xffa35a, emissiveIntensity:1.4});
-  const roads = [
-    [centerX, centerZ, 34, 1800, 0],
-    [centerX - 86, centerZ, 24, 1500, 0],
-    [centerX + 92, centerZ, 24, 1500, 0],
-    [centerX, centerZ - 285, 24, 520, Math.PI / 2],
-    [centerX, centerZ + 320, 24, 560, Math.PI / 2]
-  ];
-  for (const [x, z, width, length, rotation] of roads) {
-    const alongX = Math.abs(rotation) > .1;
-    const pieces = Math.ceil(length / 50);
-    const pieceLength = length / pieces;
-    for (let i = 0; i < pieces; i++) {
-      const offset = (i + .5) * pieceLength - length / 2;
-      const px = x + (alongX ? offset : 0);
-      const pz = z + (alongX ? 0 : offset);
-      const y = groundAt(px, pz) + .12;
-      addRoadPlane(root, px, pz, width, pieceLength + .35, rotation, asphalt, y);
-      for (const side of [-1, 1]) {
-        const sx = px + (alongX ? 0 : side * (width / 2 + 2.3));
-        const sz = pz + (alongX ? side * (width / 2 + 2.3) : 0);
-        addRoadPlane(root, sx, sz, 3.4, pieceLength + .3, rotation, concrete, y + .09);
-        const cx = px + (alongX ? 0 : side * (width / 2 + .35));
-        const cz = pz + (alongX ? side * (width / 2 + .35) : 0);
-        const edge = new THREE.Mesh(new THREE.BoxGeometry(alongX ? pieceLength + .3 : .48, .22, alongX ? .48 : pieceLength + .3), curbMaterial);
-        edge.position.set(cx, y + .06, cz);
-        root.add(edge);
-        const laneX = px + (alongX ? 0 : side * (width / 2 - 2.5));
-        const laneZ = pz + (alongX ? side * (width / 2 - 2.5) : 0);
-        if (i % 2 === 0) addRoadPlane(root, laneX, laneZ, .18, pieceLength * .58, rotation, white, y + .025);
-      }
-      if (i % 2 === 0) addRoadPlane(root, px, pz, .22, pieceLength * .58, rotation, yellow, y + .03);
-      if (i % 6 === 0) {
-        for (const side of [-1, 1]) {
-          const lx = px + (alongX ? 0 : side * (width / 2 + 3.2));
-          const lz = pz + (alongX ? side * (width / 2 + 3.2) : 0);
-          const pole = new THREE.Mesh(new THREE.CylinderGeometry(.09, .12, 7, 6), curbMaterial);
-          pole.position.set(lx, y + 3.38, lz);
-          root.add(pole);
-          const bulb = new THREE.Mesh(new THREE.SphereGeometry(.38, 6, 4), lampMaterial);
-          bulb.position.set(lx, pole.position.y + 3.6, lz);
-          root.add(bulb);
+function installPavedRoads(centerX,centerZ,network=vegasStreetNetwork) {
+  if(game.scene.getObjectByName('JC paved Strip roads'))return;
+  if(!network){network=createVegasStreetNetwork({anchorX:centerX,anchorZ:centerZ});vegasStreetNetwork=network;}
+  const root=new THREE.Group();root.name='JC paved Strip roads';
+  const asphalt=new THREE.MeshStandardMaterial({map:asphaltTexture(),color:0x263043,roughness:.36,metalness:.12});
+  asphalt.map.repeat.set(1,8);
+  const yellow=roadStripeMaterial(0xffd24a,.9),white=roadStripeMaterial(0xe8edf1,.78);
+  const concrete=new THREE.MeshStandardMaterial({color:0x62636b,roughness:.92});
+  const planeGeometry=new THREE.PlaneGeometry(1,1),boxGeometry=new THREE.BoxGeometry(1,1,1),dummy=new THREE.Object3D();
+  const surfaces=[],sidewalks=[],yellowDashes=[],whiteDashes=[],curbs=[];
+  const addPlane=(target,x,z,width,length,rotation,y)=>target.push({x,z,width,length,rotation,y});
+  for(const route of network.routes){
+    for(let i=0;i<route.points.length-1;i++){
+      const a=route.points[i],b=route.points[i+1],dx=b[0]-a[0],dz=b[1]-a[1],distance=Math.hypot(dx,dz);
+      if(distance<1)continue;
+      const parts=Math.max(1,Math.ceil(distance/(route.kind==='side'?190:220))),rotation=Math.atan2(dx,-dz),nx=-dz/distance,nz=dx/distance;
+      for(let part=0;part<parts;part++){
+        const t=(part+.5)/parts,x=a[0]+dx*t,z=a[1]+dz*t,length=distance/parts,y=groundAt(x,z)+.13;
+        addPlane(surfaces,x,z,route.width,length+1,rotation,y);
+        if(route.kind==='arterial'){
+          for(const side of [-1,1]){
+            const offset=route.width/2+2.6;
+            addPlane(sidewalks,x+nx*offset*side,z+nz*offset*side,2.4,length+1,rotation,y+.055);
+            curbs.push({x:x+nx*(route.width/2+.35)*side,y:y+.07,z:z+nz*(route.width/2+.35)*side,width:.42,height:.2,length:length+1,yaw:Math.atan2(-dz,dx)});
+          }
         }
+        if(route.kind==='arterial'&&route.width>=18&&part%2===0)addPlane(yellowDashes,x,z,.2,Math.min(18,length*.42),rotation,y+.04);
+        if(route.kind==='freeway'&&part%2===0)for(const offset of [-6,6])addPlane(whiteDashes,x+nx*offset,z+nz*offset,.18,Math.min(22,length*.45),rotation,y+.04);
       }
     }
   }
-  // Road surfaces follow terrain samples; visual lamps are emissive so mobile
-  // renderers do not need a live shadow casting light at every intersection.
-  root.userData.semanticGroups = ['ROADS','SIDEWALKS','CURBS','LIGHTING'];
+  function addPlaneInstances(data,material,name){
+    if(!data.length)return;
+    const mesh=new THREE.InstancedMesh(planeGeometry,material,data.length);mesh.name=name;mesh.frustumCulled=false;
+    data.forEach((item,index)=>{dummy.position.set(item.x,item.y,item.z);dummy.rotation.set(-Math.PI/2,0,item.rotation);dummy.scale.set(item.width,item.length,1);dummy.updateMatrix();mesh.setMatrixAt(index,dummy.matrix);});
+    mesh.instanceMatrix.needsUpdate=true;root.add(mesh);
+  }
+  addPlaneInstances(surfaces,asphalt,'Street surfaces');
+  addPlaneInstances(sidewalks,concrete,'Sidewalks');
+  addPlaneInstances(yellowDashes,yellow,'Yellow lane markings');
+  addPlaneInstances(whiteDashes,white,'Freeway lane markings');
+  if(curbs.length){
+    const mesh=new THREE.InstancedMesh(boxGeometry,concrete,curbs.length);mesh.name='Street curbs';mesh.frustumCulled=false;
+    curbs.forEach((item,index)=>{dummy.position.set(item.x,item.y,item.z);dummy.rotation.set(0,item.yaw,0);dummy.scale.set(item.length,item.height,item.width);dummy.updateMatrix();mesh.setMatrixAt(index,dummy.matrix);});
+    mesh.instanceMatrix.needsUpdate=true;root.add(mesh);
+  }
+  // A raised Tropicana crossing makes the I-15 intersection visibly grade-separated.
+  const bridge=network.project(-115.1775,36.0997),baseY=groundAt(bridge.x,bridge.z),deckY=baseY+8;
+  const bridgeMat=asphalt,railMat=new THREE.MeshStandardMaterial({color:0x9ba5ad,roughness:.65,metalness:.2});
+  function bridgePart(length,offsetX,angle,y){
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(length,.75,26),bridgeMat);
+    mesh.position.set(bridge.x+offsetX,y,bridge.z);mesh.rotation.z=angle;mesh.castShadow=false;mesh.receiveShadow=true;root.add(mesh);
+  }
+  bridgePart(105,0,0,deckY);
+  bridgePart(132,-118,.055,baseY+4);
+  bridgePart(132,118,-.055,baseY+4);
+  for(const side of [-1,1]){
+    const rail=new THREE.Mesh(new THREE.BoxGeometry(108,1.1,.36),railMat);
+    rail.position.set(bridge.x,deckY+.8,bridge.z+side*13);root.add(rail);
+    for(const offset of [-37,37]){
+      const pier=new THREE.Mesh(new THREE.CylinderGeometry(.9,1.25,7,8),concrete);
+      pier.position.set(bridge.x+offset,baseY+3.5,bridge.z+side*8);root.add(pier);
+    }
+  }
+  root.userData.semanticGroups=['ROADS','SIDEWALKS','CURBS','OVERPASSES'];
+  root.userData.routeCount=network.routes.length;root.userData.surfaceCount=surfaces.length;
   game.scene.add(root);
+}
+
+function installVegasLandmarks(network=vegasStreetNetwork) {
+  const existing=game.scene.getObjectByName('JC Vegas landmarks and palms');
+  if(existing)return worldLandmarks;
+  const root=new THREE.Group();root.name='JC Vegas landmarks and palms';
+  const steel=new THREE.MeshStandardMaterial({color:0xb8c5cc,roughness:.42,metalness:.68});
+  const cabinMaterial=new THREE.MeshStandardMaterial({color:0x26384a,roughness:.38,metalness:.22,emissive:0x102338,emissiveIntensity:.28});
+  const wheelPoint=network.project(-115.1684,36.1175),wheelGround=groundAt(wheelPoint.x,wheelPoint.z),wheelCenterY=wheelGround+91;
+  const wheel=new THREE.Group();wheel.name='High Roller observation wheel';wheel.position.set(wheelPoint.x,wheelCenterY,wheelPoint.z);root.add(wheel);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(82,2.2,8,96),steel);wheel.add(ring);
+  const hub=new THREE.Mesh(new THREE.CylinderGeometry(4,4,11,12),steel);hub.rotation.x=Math.PI/2;wheel.add(hub);
+  const spokeGeometry=new THREE.CylinderGeometry(.32,.32,82,5);
+  for(let i=0;i<16;i++){
+    const angle=i*Math.PI/8,spoke=new THREE.Mesh(spokeGeometry,steel);
+    spoke.position.set(Math.sin(angle)*41,Math.cos(angle)*41,0);spoke.rotation.z=-angle;wheel.add(spoke);
+  }
+  const cabinGeometry=new THREE.BoxGeometry(5.4,6.4,4.4);
+  for(let i=0;i<28;i++){
+    const angle=i*Math.PI*2/28,cabin=new THREE.Mesh(cabinGeometry,cabinMaterial);
+    cabin.position.set(Math.sin(angle)*82,Math.cos(angle)*82,0);wheel.add(cabin);
+  }
+  for(const side of [-1,1]){
+    const support=new THREE.Mesh(new THREE.BoxGeometry(3,98,3),steel);
+    support.position.set(wheelPoint.x+side*22,wheelGround+45,wheelPoint.z);support.rotation.z=side<0?-.22:.22;root.add(support);
+  }
+  const spherePoint=network.project(-115.1612,36.1208),sphereGround=groundAt(spherePoint.x,spherePoint.z);
+  const ledTexture=canvasTexture((ctx,w,h)=>{
+    const gradient=ctx.createLinearGradient(0,0,w,h);gradient.addColorStop(0,'#08152d');gradient.addColorStop(.45,'#102f53');gradient.addColorStop(1,'#180f30');
+    ctx.fillStyle=gradient;ctx.fillRect(0,0,w,h);
+    for(let y=0;y<h;y+=8){ctx.strokeStyle='rgba(104,213,255,.2)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+    for(let x=0;x<w;x+=10){ctx.strokeStyle='rgba(116,199,255,.15)';ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+    ctx.strokeStyle='rgba(255,190,93,.85)';ctx.lineWidth=7;ctx.beginPath();ctx.ellipse(w*.52,h*.49,w*.18,h*.34,-.15,0,Math.PI*2);ctx.stroke();
+    ctx.strokeStyle='rgba(107,237,255,.9)';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(w*.52,h*.49,w*.31,h*.2,.18,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle='rgba(255,235,171,.95)';ctx.beginPath();ctx.arc(w*.52,h*.49,13,0,Math.PI*2);ctx.fill();
+  },512,256);
+  ledTexture.wrapS=THREE.RepeatWrapping;ledTexture.colorSpace=THREE.SRGBColorSpace;
+  const sphereMaterial=new THREE.MeshStandardMaterial({map:ledTexture,emissiveMap:ledTexture,emissive:0x3268a3,emissiveIntensity:.52,roughness:.3,metalness:.18});
+  const sphere=new THREE.Mesh(new THREE.SphereGeometry(74,48,32),sphereMaterial);
+  sphere.name='Sphere LED dome landmark';sphere.position.set(spherePoint.x,sphereGround+62,spherePoint.z);sphere.scale.y=.8;root.add(sphere);
+  const sphereBase=new THREE.Mesh(new THREE.TorusGeometry(76,1.5,8,80),steel);sphereBase.rotation.x=Math.PI/2;sphereBase.position.set(spherePoint.x,sphereGround+2,spherePoint.z);root.add(sphereBase);
+
+  // Two instanced meshes keep 200 palms and 1,000 fronds to two draw calls.
+  const treeRoutes=network.routes.filter(route=>route.kind==='arterial'&&route.width>=16&&route.name!=='Airport Connector');
+  const palms=[];
+  for(let i=0;i<200;i++){
+    const route=treeRoutes[i%treeRoutes.length],segmentIndex=Math.floor(i/treeRoutes.length)%(route.points.length-1);
+    const a=route.points[segmentIndex],b=route.points[segmentIndex+1],dx=b[0]-a[0],dz=b[1]-a[1],length=Math.hypot(dx,dz)||1;
+    const t=.12+((i*37)%76)/100,side=i%2?1:-1,offset=route.width/2+8,nx=-dz/length,nz=dx/length;
+    let x=a[0]+dx*t+nx*offset*side,z=a[1]+dz*t+nz*offset*side;
+    if(!openSpace(x,z,1.8)){
+      const otherX=a[0]+dx*t-nx*offset*side,otherZ=a[1]+dz*t-nz*offset*side;
+      if(openSpace(otherX,otherZ,1.8)){x=otherX;z=otherZ;}
+      else [x,z]=clearSpot(x,z);
+    }
+    palms.push({x,z,y:groundAt(x,z),angle:(i*2.3999632297)%(Math.PI*2)});
+  }
+  const trunkGeometry=new THREE.CylinderGeometry(.22,.42,7,7,1),frondGeometry=new THREE.ConeGeometry(.18,4.5,5);
+  const trunkMaterial=new THREE.MeshStandardMaterial({color:0x72523a,roughness:.94}),frondMaterial=new THREE.MeshStandardMaterial({color:0x397b4a,roughness:.82,side:THREE.DoubleSide});
+  const trunks=new THREE.InstancedMesh(trunkGeometry,trunkMaterial,palms.length),fronds=new THREE.InstancedMesh(frondGeometry,frondMaterial,palms.length*5);
+  trunks.frustumCulled=false;fronds.frustumCulled=false;
+  const dummy=new THREE.Object3D(),up=new THREE.Vector3(0,1,0);
+  palms.forEach((p,i)=>{
+    dummy.position.set(p.x,p.y+3.5,p.z);dummy.rotation.set(0,p.angle,0);dummy.scale.set(1,1,1);dummy.updateMatrix();trunks.setMatrixAt(i,dummy.matrix);
+    for(let leaf=0;leaf<5;leaf++){
+      const angle=p.angle+leaf*Math.PI*2/5,direction=new THREE.Vector3(Math.cos(angle),-.38,Math.sin(angle)).normalize();
+      dummy.position.set(p.x+direction.x*1.35,p.y+7.1+direction.y*1.35,p.z+direction.z*1.35);
+      dummy.quaternion.setFromUnitVectors(up,direction);dummy.scale.set(1,1,1);dummy.updateMatrix();fronds.setMatrixAt(i*5+leaf,dummy.matrix);
+    }
+  });
+  trunks.instanceMatrix.needsUpdate=true;fronds.instanceMatrix.needsUpdate=true;root.add(trunks,fronds);
+  root.userData.palmCount=palms.length;root.userData.landmarks=['HIGH ROLLER','SPHERE'];
+  game.scene.add(root);
+  return worldLandmarks={root,sphere,wheel,palmCount:palms.length,update(dt){sphere.rotation.y+=dt*.018;}};
 }
 
 function clearSpot(x, z) {
@@ -1037,6 +1241,8 @@ function setMode(play) {
   playing = play;window.JC_WORLD_SCALE=1;
   if(player)cinematicLook?.update(0,performance.now(),player.position,velocity,false,false,play);
   npcSystem?.setVisible(play);
+  trafficSystem?.setVisible(play);
+  if(!play){const panel=hud.querySelector('#jcWorldPanel');if(panel)panel.hidden=true;hud.querySelector('#jcWorldToggle')?.setAttribute('aria-expanded','false');}
   window.JC_MAP_PLAYING = play;
   document.body.classList.toggle('jc-playing', play);
   if (game.controls) game.controls.enabled = !play;
@@ -1187,12 +1393,19 @@ function frameStep(now) {
     if (s.position.distanceTo(player.position.clone().add(new THREE.Vector3(0,1.6,0))) < 3.4) collect(s);
   }
   if(worldDt>0)npcSystem?.update(worldDt,now);
+  trafficSystem?.update(dt,now,player,npcSystem?.npcs,(car)=>{
+    if(Math.abs((player.position.y||0)-car.y)>3.2)return;
+    const dx=player.position.x-car.x,dz=player.position.z-car.z,length=Math.hypot(dx,dz)||1;
+    velocity.x+=dx/length*7;velocity.z+=dz/length*7;grace=Math.max(0,grace-5);feedback('TRAFFIC IMPACT · GRACE -5');
+    npcSystem?.signal('traffic-impact',new THREE.Vector3(car.x,car.y,car.z),18);
+  },(npc,car)=>npcSystem?.trafficImpact(npc,car));
+  worldLandmarks?.update(dt);
   nearNpc=closestNpc();
   if(nearNpc?.prayer?.answered&&now>=nearNpc.prayer.nextAt)assignNpcPrayer(nearNpc,nearNpc.name.charCodeAt(0)+prayersAnswered,now);
   const prayerNpc=pendingPrayerNpc();
   npcTalkButton.classList.toggle('available',coarseDevice&&!!nearNpc&&!talk.classList.contains('open'));npcTalkButton.textContent=nearNpc?`TALK TO ${nearNpc.name.toUpperCase()}`:'TALK';
   prayerButton.classList.toggle('available',!!prayerNpc&&!talk.classList.contains('open'));prayerButton.textContent=prayerNpc?`ANSWER ${prayerNpc.name.toUpperCase()}'S PRAYER`:'ANSWER PRAYER';
-  npcReadout.textContent=talk.classList.contains('open')?npcReadout.textContent:(prayerNpc?`${prayerNpc.name.toUpperCase()} PRAYS: ${prayerNpc.prayer.text} · Q TO ANSWER`:nearNpc?`NEAR ${nearNpc.name.toUpperCase()} · ${nearNpc.faction.toUpperCase()} · PRESS C TO TALK`:`${npcSystem?.npcs.length||0} LIVING NPCS · MOVE CLOSE TO TALK`);
+  npcReadout.textContent=talk.classList.contains('open')?npcReadout.textContent:(prayerNpc?`${prayerNpc.name.toUpperCase()} PRAYS: ${prayerNpc.prayer.text} · Q TO ANSWER`:nearNpc?`NEAR ${nearNpc.name.toUpperCase()} · ${nearNpc.faction.toUpperCase()} · PRESS C TO TALK`:`${npcSystem?.totalPopulation||0} CITIZENS · ${npcSystem?.npcs.length||0} TALKABLE · OPEN WORLD`);
   graceLabel.textContent = Math.round(grace);
   stateLabel.textContent=teleportAim?'CHOOSE DESTINATION':diving?'DIVE':braking?'BRAKING':hypersonic?'HYPERFLIGHT':flying&&flightHeight<9?'HOVER':flying&&glide?'GLIDE':flying?'CRUISE':flightHeight>0?'LANDING':'GROUNDED';
   cinematicLook?.setSunrise(now<sunriseUntil);
@@ -1203,6 +1416,7 @@ function frameStep(now) {
   game.camera.lookAt(focus);
   if(game.camera.fov!==62){game.camera.fov=62;game.camera.updateProjectionMatrix();}
   game.controls?.target?.copy(focus);
+  updateStreetHud(now);
   if(now>nextHud){
     nextHud=now+100;
     feedbackLabel.style.opacity=now<feedbackUntil?'1':'0';
@@ -1282,8 +1496,14 @@ const group = game.loaded.get('C15_R14');
   const originZ = game.origin?.[1] ?? 0;
   const targetX = tile ? tile.originEasting + 500 - originX : 0;
   const targetZ = tile ? originZ - (tile.originNorthing + 500) : 0;
+  const stripSection=game.sections?.find(section=>section.id==='C15_R14');
+  const corners=stripSection?.cornersLonLat||[];
+  const referenceLon=corners.length?corners.reduce((sum,point)=>sum+point[0],0)/corners.length:-115.173;
+  const referenceLat=corners.length?corners.reduce((sum,point)=>sum+point[1],0)/corners.length:36.108;
+  vegasStreetNetwork=createVegasStreetNetwork({anchorX:targetX,anchorZ:targetZ,referenceLon,referenceLat});
   const [x, z] = clearSpot(targetX, targetZ);
-  installPavedRoads(targetX, targetZ);
+  installPavedRoads(targetX, targetZ, vegasStreetNetwork);
+  worldLandmarks=installVegasLandmarks(vegasStreetNetwork);
   player = new THREE.Group();
   portrait = createCharacter3D({faction:'angel',player:true});
   // Use the photoreal JC cutout as the visible in-world avatar. The articulated
@@ -1306,12 +1526,15 @@ const group = game.loaded.get('C15_R14');
   spawnPoint=player.position.clone();
   game.scene.add(player);
   createSouls(x, z);
-  npcSystem=createNpcSystem({scene:game.scene,player,groundAt,isSafe:(x,z,r=2)=>!blockedAt(x,groundAt(x,z)+1.55,z,r),count:coarseDevice?8:(window.JC_NPC_COUNT||12),onReport:text=>{npcReadout.textContent=text;}});
+  npcSystem=createNpcSystem({scene:game.scene,player,groundAt,isSafe:(x,z,r=2)=>!blockedAt(x,groundAt(x,z)+1.55,z,r),count:coarseDevice?8:(window.JC_NPC_COUNT||16),crowdCount:coarseDevice?180:500,mobile:coarseDevice,onReport:text=>{npcReadout.textContent=text;}});
   npcSystem.npcs.forEach((npc,index)=>assignNpcPrayer(npc,index));
-  npcReadout.textContent=`${npcSystem.npcs.length} LIVING NPCS · MOVE CLOSE TO TALK`;
-  npcReadout.style.cursor='pointer';npcReadout.setAttribute('role','button');npcReadout.tabIndex=0;npcReadout.onclick=()=>openNpcTalk();npcReadout.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openNpcTalk();}};
+  const savedTracked=npcContacts.getTrackedId();
+  if(savedTracked)npcSystem.setTracked(savedTracked);
+  trafficSystem=createTrafficSystem({scene:game.scene,network:vegasStreetNetwork,groundAt,mobile:coarseDevice});
+  npcReadout.textContent=npcSystem.totalPopulation.toLocaleString()+' CITIZENS · '+npcSystem.npcs.length+' TALKABLE · CLICK A PERSON TO TALK';
+  npcReadout.style.cursor='pointer';npcReadout.setAttribute('role','button');npcReadout.tabIndex=0;npcReadout.onclick=()=>{selectWorldTab('people');hud.querySelector('#jcWorldPanel').hidden=false;hud.querySelector('#jcWorldToggle').setAttribute('aria-expanded','true');soundPanel.hidden=true;soundToggle.setAttribute('aria-expanded','false');renderContactList();};npcReadout.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();npcReadout.onclick();}};
   hud.querySelector('#jcEditor').onclick = () => setMode(false);
-  const soundToggle=hud.querySelector('#jcSoundToggle'),soundPanel=hud.querySelector('#jcSoundPanel');
+  const worldPanel=hud.querySelector('#jcWorldPanel'),worldToggle=hud.querySelector('#jcWorldToggle'),soundToggle=hud.querySelector('#jcSoundToggle'),soundPanel=hud.querySelector('#jcSoundPanel');
   const soundMute=hud.querySelector('#jcSoundMute');
   function syncSoundControls(){
     const settings=jcAudio.getSettings();
@@ -1323,10 +1546,51 @@ const group = game.loaded.get('C15_R14');
       input.value=String(Math.round(settings[key]*100));output.textContent=input.value+'%';
     }
   }
-  soundToggle.onclick=()=>{jcAudio.start();const open=soundPanel.hidden;soundPanel.hidden=!open;soundToggle.setAttribute('aria-expanded',String(open));if(open)jcAudio.play('ui');};
+  soundToggle.onclick=()=>{jcAudio.start();const open=soundPanel.hidden;soundPanel.hidden=!open;soundToggle.setAttribute('aria-expanded',String(open));if(open){worldPanel.hidden=true;worldToggle.setAttribute('aria-expanded','false');jcAudio.play('ui');}};
   hud.querySelector('#jcSoundClose').onclick=()=>{soundPanel.hidden=true;soundToggle.setAttribute('aria-expanded','false');jcAudio.play('ui');};
   soundMute.onclick=()=>{const muted=!jcAudio.getSettings().muted;jcAudio.set('muted',muted);syncSoundControls();if(!muted)jcAudio.play('ui');};
   soundPanel.querySelectorAll('[data-audio-level]').forEach(input=>input.addEventListener('input',()=>{jcAudio.set(input.dataset.audioLevel,Number(input.value)/100);syncSoundControls();}));
+  function selectWorldTab(name){
+    const mapTab=hud.querySelector('#jcWorldMapTab'),peopleTab=hud.querySelector('#jcWorldPeopleTab');
+    const mapSelected=name!=='people';
+    mapTab.hidden=!mapSelected;peopleTab.hidden=mapSelected;
+    hud.querySelectorAll('[data-world-tab]').forEach(button=>button.setAttribute('aria-selected',String(button.dataset.worldTab===(mapSelected?'map':'people'))));
+    if(mapSelected)drawWorldMap();else renderContactList();
+  }
+  worldToggle.onclick=()=>{
+    const open=worldPanel.hidden;worldPanel.hidden=!open;worldToggle.setAttribute('aria-expanded',String(open));
+    if(open){soundPanel.hidden=true;soundToggle.setAttribute('aria-expanded','false');selectWorldTab('map');renderContactList();}
+  };
+  hud.querySelector('#jcWorldClose').onclick=()=>{worldPanel.hidden=true;worldToggle.setAttribute('aria-expanded','false');};
+  hud.querySelectorAll('[data-world-tab]').forEach(button=>button.addEventListener('click',()=>selectWorldTab(button.dataset.worldTab)));
+  hud.querySelector('#jcContactSearch').addEventListener('input',renderContactList);
+  worldPanel.addEventListener('click',event=>{
+    const region=event.target.closest('[data-region]');
+    if(region){travelToRegion(region.dataset.region);return;}
+    const action=event.target.closest('[data-contact-action]');
+    if(!action)return;
+    const id=action.dataset.contactId,npc=npcSystem?.npcs.find(person=>person.id===id),contact=npcContacts.getAll().find(person=>person.id===id);
+    if(action.dataset.contactAction==='remove'){
+      npcContacts.remove(id);npcSystem?.setTracked(npcContacts.getTrackedId());renderContactList();updateSaveContactButton();return;
+    }
+    if(action.dataset.contactAction==='track'){
+      npcContacts.setTracked(id);
+      if(npc){npcContacts.touch(npc);npcSystem?.setTracked(id);feedback('TRACKING '+npc.name.toUpperCase());}
+      else{npcSystem?.setTracked(null);feedback('TRACKING LAST KNOWN LOCATION');}
+      renderContactList();drawWorldMap();return;
+    }
+    if(action.dataset.contactAction==='talk'){
+      if(npc){openNpcTalk(npc,{track:true});worldPanel.hidden=true;worldToggle.setAttribute('aria-expanded','false');}
+      else if(contact){npcContacts.setTracked(id);npcSystem?.setTracked(null);feedback('PERSON NOT IN THIS CROWD · TRACKING LAST KNOWN LOCATION');renderContactList();}
+    }
+  });
+  hud.querySelector('#jcSaveContact').addEventListener('click',()=>{
+    if(!activeConversationNpc)return;
+    const result=npcContacts.toggle(activeConversationNpc);
+    if(result.saved){npcContacts.setTracked(activeConversationNpc.id);npcSystem?.setTracked(activeConversationNpc.id);feedback('SAVED & TRACKING '+activeConversationNpc.name.toUpperCase());}
+    else{npcSystem?.setTracked(npcContacts.getTrackedId());feedback('REMOVED '+activeConversationNpc.name.toUpperCase()+' FROM CONTACTS');}
+    renderContactList();updateSaveContactButton();
+  });
   syncSoundControls();
   playReturn.onclick = () => setMode(true);
   addEventListener('keydown', e => {
@@ -1358,12 +1622,40 @@ const group = game.loaded.get('C15_R14');
   addEventListener('keyup', e => {keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key);if(e.code==='Space')keys.delete('Space');if(e.code.startsWith('Control'))keys.delete('Control');});
   addEventListener('blur', resetInput);
   document.addEventListener('visibilitychange',()=>{resetInput();last=performance.now();});
+  const npcRay=new THREE.Raycaster(),npcPointer=new THREE.Vector2();
+  function pickNpcAt(clientX,clientY){
+    if(!npcSystem||!game)return null;
+    const rect=game.renderer.domElement.getBoundingClientRect();
+    npcPointer.set((clientX-rect.left)/rect.width*2-1,-(clientY-rect.top)/rect.height*2+1);
+    npcRay.setFromCamera(npcPointer,game.camera);
+    const hit=npcRay.intersectObjects(npcSystem.npcs.map(npc=>npc.sprite).filter(Boolean),true)[0];
+    let object=hit?.object;
+    while(object){if(object.userData?.npcRef)return object.userData.npcRef;object=object.parent;}
+    let nearest=null,nearestPixels=coarseDevice?44:32;
+    for(const npc of npcSystem.npcs){
+      const point=npc.position.clone().add(new THREE.Vector3(0,1.6,0)).project(game.camera);
+      if(point.z>1)continue;
+      const sx=(point.x+1)*.5*rect.width,sy=(1-point.y)*.5*rect.height;
+      const pixels=Math.hypot(sx-(clientX-rect.left),sy-(clientY-rect.top));
+      if(pixels<nearestPixels){nearest=npc;nearestPixels=pixels;}
+    }
+    return nearest;
+  }
   game.renderer.domElement.addEventListener('pointerdown', e => {
     if (!playing) return;
-    if(teleportAim){e.preventDefault();chooseTeleportPoint(e.clientX,e.clientY);return;}
+    if(teleportAim){pointerStart=null;e.preventDefault();chooseTeleportPoint(e.clientX,e.clientY);return;}
+    pointerStart={id:e.pointerId,x:e.clientX,y:e.clientY};
     dragging = true;lookPointer=e.pointerId;game.renderer.domElement.setPointerCapture(e.pointerId);pointerX = e.clientX;pointerY = e.clientY;
   });
-  for(const type of ['pointerup','pointercancel'])addEventListener(type,e=>{if(e.pointerId===lookPointer){dragging=false;lookPointer=null;}});
+  for(const type of ['pointerup','pointercancel'])addEventListener(type,e=>{
+    if(e.pointerId!==lookPointer)return;
+    const clicked=type==='pointerup'&&pointerStart?.id===e.pointerId&&Math.hypot(e.clientX-pointerStart.x,e.clientY-pointerStart.y)<7;
+    dragging=false;lookPointer=null;pointerStart=null;
+    if(clicked&&playing&&!teleportAim&&!conversation.isOpen&&!wheel.classList.contains('open')&&hud.querySelector('#jcWorldPanel').hidden){
+      const npc=pickNpcAt(e.clientX,e.clientY);
+      if(npc){e.preventDefault();openNpcTalk(npc,{track:true});}
+    }
+  });
   addEventListener('pointermove', e => {
     if (!dragging || !playing || e.pointerId!==lookPointer) return;
     yaw += (e.clientX - pointerX) * (coarseDevice ? 0.0034 : 0.0025);
