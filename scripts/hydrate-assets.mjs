@@ -23,7 +23,7 @@ async function work(){
     const bytes=Buffer.from(await response.arrayBuffer());
     const actualHash=hash(bytes);
     if(bytes.length!==asset.bytes||actualHash!==asset.sha256){
-      if(!/^assets\\/imagery\\/C\\d{2}_R\\d{2}\\.jpg$/.test(asset.path))throw Error(`Asset checksum mismatch: ${asset.path}. Expected ${asset.bytes} bytes / ${asset.sha256}; received ${bytes.length} bytes / ${actualHash}.`);
+      if(!asset.path.startsWith('assets/imagery/')||!/^C\d{2}_R\d{2}\.jpg$/.test(asset.path.slice(15)))throw Error(`Asset checksum mismatch: ${asset.path}. Expected ${asset.bytes} bytes / ${asset.sha256}; received ${bytes.length} bytes / ${actualHash}.`);
       asset.bytes=bytes.length;asset.sha256=actualHash;refreshedImagery++;console.log(`Refreshed current city imagery: ${asset.path}`);
     }
     await mkdir(path.dirname(target),{recursive:true});
@@ -33,5 +33,5 @@ async function work(){
   }
 }
 await Promise.all(Array.from({length:4},()=>work()));
-if(refreshedImagery){const lockPath=new URL('./game-assets-lock.json',import.meta.url);await writeFile(lockPath,JSON.stringify(lock,null,2)+'\\n');}
+if(refreshedImagery){const lockPath=new URL('./game-assets-lock.json',import.meta.url);await writeFile(lockPath,JSON.stringify(lock,null,2)+'\n');}
 console.log(`Verified ${verified}, restored ${downloaded} assets, refreshed ${refreshedImagery} city images for JC. SHA-256 checks passed.`);
