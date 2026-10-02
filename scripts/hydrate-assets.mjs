@@ -45,6 +45,6 @@ async function work(){
 await Promise.all(Array.from({length:4},()=>work()));
 if(refreshedImagery||missingTiles.size){
   lock.assets=lock.assets.filter(asset=>!missingTiles.has(asset.path));
-  const lockPath=new URL('./game-assets-lock.json',import.meta.url);await writeFile(lockPath,JSON.stringify(lock,null,2)+'\\n');
+  const lockPath=new URL('./game-assets-lock.json',import.meta.url);await writeFile(lockPath,JSON.stringify(lock,null,2)+'\n');
 }
 console.log(`Verified ${verified}, restored ${downloaded} assets, refreshed ${refreshedImagery} city images, skipped ${skippedTiles} unavailable edge tiles. SHA-256 checks passed.`);
