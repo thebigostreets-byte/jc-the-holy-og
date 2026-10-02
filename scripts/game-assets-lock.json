@@ -173,16 +173,6 @@
       "sha256": "03dfb30dd95beeb4f65e1cd0940387b01d17217ff44b5992733a3ab24b70ee00"
     },
     {
-      "path": "facades/scarlet.webp",
-      "bytes": 293670,
-      "sha256": "024565494ab300909cea85e91273e643a9aaabf4102fae03ae8aa52f2ec3d311"
-    },
-    {
-      "path": "facades/strip.jpg",
-      "bytes": 336902,
-      "sha256": "a8f766d496f3a056a2619e5e4237b60525917834588b94b92eb73a3d3e7a6b56"
-    },
-    {
       "path": "facades/vegas-cell-00.webp",
       "bytes": 20614,
       "sha256": "81ca6664ebe23d52b71fe6c021fdc86bef1347cceac4186da1748550c33dc5c0"
