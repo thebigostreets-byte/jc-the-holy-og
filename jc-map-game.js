@@ -1239,6 +1239,8 @@ function setMode(play) {
   playing = play;window.JC_WORLD_SCALE=1;
   if(player)cinematicLook?.update(0,performance.now(),player.position,velocity,false,false,play);
   npcSystem?.setVisible(play);
+  trafficSystem?.setVisible(play);
+  if(!play){const panel=hud.querySelector('#jcWorldPanel');if(panel)panel.hidden=true;hud.querySelector('#jcWorldToggle')?.setAttribute('aria-expanded','false');}
   window.JC_MAP_PLAYING = play;
   document.body.classList.toggle('jc-playing', play);
   if (game.controls) game.controls.enabled = !play;
@@ -1389,12 +1391,19 @@ function frameStep(now) {
     if (s.position.distanceTo(player.position.clone().add(new THREE.Vector3(0,1.6,0))) < 3.4) collect(s);
   }
   if(worldDt>0)npcSystem?.update(worldDt,now);
+  trafficSystem?.update(dt,now,player,npcSystem?.npcs,(car)=>{
+    if(Math.abs((player.position.y||0)-car.y)>3.2)return;
+    const dx=player.position.x-car.x,dz=player.position.z-car.z,length=Math.hypot(dx,dz)||1;
+    velocity.x+=dx/length*7;velocity.z+=dz/length*7;grace=Math.max(0,grace-5);feedback('TRAFFIC IMPACT · GRACE -5');
+    npcSystem?.signal('traffic-impact',new THREE.Vector3(car.x,car.y,car.z),18);
+  },(npc,car)=>npcSystem?.trafficImpact(npc,car));
+  worldLandmarks?.update(dt);
   nearNpc=closestNpc();
   if(nearNpc?.prayer?.answered&&now>=nearNpc.prayer.nextAt)assignNpcPrayer(nearNpc,nearNpc.name.charCodeAt(0)+prayersAnswered,now);
   const prayerNpc=pendingPrayerNpc();
   npcTalkButton.classList.toggle('available',coarseDevice&&!!nearNpc&&!talk.classList.contains('open'));npcTalkButton.textContent=nearNpc?`TALK TO ${nearNpc.name.toUpperCase()}`:'TALK';
   prayerButton.classList.toggle('available',!!prayerNpc&&!talk.classList.contains('open'));prayerButton.textContent=prayerNpc?`ANSWER ${prayerNpc.name.toUpperCase()}'S PRAYER`:'ANSWER PRAYER';
-  npcReadout.textContent=talk.classList.contains('open')?npcReadout.textContent:(prayerNpc?`${prayerNpc.name.toUpperCase()} PRAYS: ${prayerNpc.prayer.text} · Q TO ANSWER`:nearNpc?`NEAR ${nearNpc.name.toUpperCase()} · ${nearNpc.faction.toUpperCase()} · PRESS C TO TALK`:`${npcSystem?.npcs.length||0} LIVING NPCS · MOVE CLOSE TO TALK`);
+  npcReadout.textContent=talk.classList.contains('open')?npcReadout.textContent:(prayerNpc?`${prayerNpc.name.toUpperCase()} PRAYS: ${prayerNpc.prayer.text} · Q TO ANSWER`:nearNpc?`NEAR ${nearNpc.name.toUpperCase()} · ${nearNpc.faction.toUpperCase()} · PRESS C TO TALK`:`${npcSystem?.totalPopulation||0} CITIZENS · ${npcSystem?.npcs.length||0} TALKABLE · OPEN WORLD`);
   graceLabel.textContent = Math.round(grace);
   stateLabel.textContent=teleportAim?'CHOOSE DESTINATION':diving?'DIVE':braking?'BRAKING':hypersonic?'HYPERFLIGHT':flying&&flightHeight<9?'HOVER':flying&&glide?'GLIDE':flying?'CRUISE':flightHeight>0?'LANDING':'GROUNDED';
   cinematicLook?.setSunrise(now<sunriseUntil);
@@ -1405,6 +1414,7 @@ function frameStep(now) {
   game.camera.lookAt(focus);
   if(game.camera.fov!==62){game.camera.fov=62;game.camera.updateProjectionMatrix();}
   game.controls?.target?.copy(focus);
+  updateStreetHud(now);
   if(now>nextHud){
     nextHud=now+100;
     feedbackLabel.style.opacity=now<feedbackUntil?'1':'0';
