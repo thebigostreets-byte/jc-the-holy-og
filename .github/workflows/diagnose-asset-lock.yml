@@ -7,11 +7,31 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Hash hosted imagery
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Scan hosted assets against lock
         run: |
-          curl -L --fail --silent --show-error -o /tmp/C14_R13.jpg https://jc-the-holy-og.ill5299.chatgpt.site/assets/imagery/C14_R13.jpg
-          echo "BYTES=$(wc -c < /tmp/C14_R13.jpg)"
-          echo "SHA256=$(sha256sum /tmp/C14_R13.jpg | awk '{print $1}')"
-          file /tmp/C14_R13.jpg
+          node --input-type=module <<'NODE'
+          import {readFile} from 'node:fs/promises';
+          import {createHash} from 'node:crypto';
+          const lock=JSON.parse(await readFile('scripts/game-assets-lock.json','utf8'));
+          let cursor=0,checked=0;const mismatches=[];
+          async function worker(){
+            while(true){
+              const i=cursor++; if(i>=lock.assets.length)return;
+              const a=lock.assets[i];
+              const res=await fetch(new URL(a.path,lock.origin),{signal:AbortSignal.timeout(120000)});
+              if(!res.ok){mismatches.push({path:a.path,error:'HTTP '+res.status});continue;}
+              const bytes=Buffer.from(await res.arrayBuffer());
+              const sha256=createHash('sha256').update(bytes).digest('hex');
+              if(bytes.length!==a.bytes||sha256!==a.sha256)mismatches.push({path:a.path,bytes:bytes.length,sha256,oldBytes:a.bytes,oldSha256:a.sha256});
+              checked++; if(checked%100===0)console.log('CHECKED',checked);
+            }
+          }
+          await Promise.all(Array.from({length:12},()=>worker()));
+          console.log('ASSET_SCAN_RESULT='+JSON.stringify({checked,mismatches}));
+          NODE
