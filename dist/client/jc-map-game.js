@@ -17,6 +17,7 @@ import {createNpcContactStore} from './npc-contacts.js';
 import {createVegasStreetNetwork,resolveStreetLocation,VEGAS_LOCATIONS} from './vegas-streets.js';
 import {createTrafficSystem} from './jc-traffic.js';
 import {createMissionTracker} from './jc-missions.js';
+import {createPhotorealDetailMaps,applyPhotorealMaterial} from './photorealism-pbr.js';
 
 const jcAudio=createJcAudio();
 const npcContacts=createNpcContactStore();
@@ -667,6 +668,8 @@ function themedFacade(ownerId, redeemed = false) {
   return base; // Share the GPU image; each building owns its tint and glow.
 }
 
+const photorealDetailMaps=createPhotorealDetailMaps(THREE);
+
 function applyBuildingTheme(mesh, ownerId, redeemed = false) {
   if(mesh.material?.userData?.customTexture) return;
   const identity=mesh.material?.userData?.buildingIdentity||mesh.userData.owner?.userData?.identity||game.buildings?.get(ownerId)?.userData?.identity;
@@ -678,6 +681,7 @@ function applyBuildingTheme(mesh, ownerId, redeemed = false) {
     if(casino&&redeemed){material.emissive.set(0xffd8a0);material.emissiveIntensity=.1;}
     else if(!casino||!edit?.glow){material.emissive.set(0x000000);material.emissiveIntensity=0;material.emissiveMap=null;}
     material.metalness=casino?(material.userData.original?.metalness??material.metalness):0;
+    applyPhotorealMaterial(THREE,material,photorealDetailMaps,{casino,buildingHeight:game.buildings?.get(ownerId)?.userData?.heightMetres||12});
     if(!casino)material.roughness=Math.max(.82,material.roughness);
     material.userData.jcBuildingId=ownerId;
     material.needsUpdate=true;
@@ -688,6 +692,7 @@ function applyBuildingTheme(mesh, ownerId, redeemed = false) {
     mesh.userData.jcMaterialClone = true;
   }
   const material = mesh.material;
+  applyPhotorealMaterial(THREE,material,photorealDetailMaps,{casino,buildingHeight:game.buildings?.get(ownerId)?.userData?.heightMetres||12});
   if(!casino){
     if(material.emissive)material.emissive.set(0x000000);
     material.emissiveMap=null;
@@ -701,12 +706,13 @@ function applyBuildingTheme(mesh, ownerId, redeemed = false) {
   const hash = buildingHash(ownerId);
   material.map = themedFacade(ownerId, redeemed);
   material.color.setRGB(.86+((hash>>>8)&31)/230, (redeemed?.82:.74)+((hash>>>15)&31)/250, (redeemed?.80:.68)+((hash>>>22)&31)/240);
-  material.emissiveMap=material.map;
+  // Keep facade texture readable under scene lighting; emissive color is a restrained accent, not a glowing whole wall.
+  material.emissiveMap=null;
   const heavenly=redeemed || hash%7===0;
   if(material.emissive)material.emissive.set(heavenly?0xffdf9e:vegasNeon[(hash>>>11)%vegasNeon.length]);
-  if ('emissiveIntensity' in material) material.emissiveIntensity = (heavenly?.32:.22)+((hash>>>3)&31)/180;
-  material.roughness = redeemed ? .52 : .62;
-  material.metalness = .12;
+  if ('emissiveIntensity' in material) material.emissiveIntensity = (heavenly?.10:.055)+((hash>>>3)&7)/180;
+  material.roughness = redeemed ? .48 : .54;
+  material.metalness = .08;
   material.userData.original ??= {};
   material.userData.original.map = material.map;
   material.userData.original.color = material.userData.original.color || new THREE.Color();
