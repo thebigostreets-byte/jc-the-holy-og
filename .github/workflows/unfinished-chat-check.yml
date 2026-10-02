@@ -31,6 +31,7 @@ jobs:
             tests/flight-state.mjs \
             tests/full-strip-identities.mjs \
             tests/npc-contacts.mjs \
+            tests/npc-memory.mjs \
             tests/pose-cleanup.mjs \
             tests/photorealism-pbr.mjs \
             tests/rooftop-details.mjs \

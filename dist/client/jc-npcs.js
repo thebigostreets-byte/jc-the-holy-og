@@ -1,6 +1,7 @@
 import * as THREE from './three.module.js';
 import {createCharacter3D} from './jc-character3d.js';
 import {createAmbientCrowd} from './jc-crowd.js';
+import {createNpcMemoryStore} from './npc-memory.js';
 
 const AVATARS = [
   ['civilian-01','civilian'],['civilian-02','civilian'],['civilian-03','civilian'],['civilian-04','civilian'],
@@ -18,10 +19,11 @@ function chooseOpen(x,z,isSafe) {
   return [x,z];
 }
 
-export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8,crowdCount=500,mobile=false}) {
+export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,onReport,count=8,crowdCount=500,mobile=false}) {
   const root=new THREE.Group();root.name='JC responsive NPC crowd';scene.add(root);
   root.visible=false;
   const npcs=[];
+  const memoryStore=createNpcMemoryStore();
   const size=Math.max(6,Math.min(16,Math.round(count||8)));
   let trackedId=null;
   const crowd=createAmbientCrowd({scene,player,groundAt,isSafe,count:crowdCount,mobile});
@@ -43,7 +45,8 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8,c
     const [x,z]=chooseOpen(player.position.x+Math.cos(angle)*ring,player.position.z+Math.sin(angle)*ring,isSafe);
     const given=['Mara','Darius','Sol','Nia','Ezra','Vale','Imani','Theo','Rae','Jonah','Ash','Micah','Zuri','Cal','Noor','Eli'];
     const name=given[i%given.length],id=[faction,avatar,name].join(':');
-    const npc={id,faction,avatar,name,sprite:null,trackerRing:null,position:new THREE.Vector3(x,groundAt(x,z)+1.55,z),target:new THREE.Vector3(x,0,z),event:null,state:'idle',nextWander:0,emotionUntil:0,gait:Math.random()*Math.PI*2,stepDistance:0};
+    const profile=characterProfiles[faction]||characterProfiles.civilian,savedMemory=memoryStore.get(id);
+    const npc={id,faction,avatar,name,...profile,sprite:null,trackerRing:null,position:new THREE.Vector3(x,groundAt(x,z)+1.55,z),target:new THREE.Vector3(x,0,z),event:null,state:'idle',nextWander:0,emotionUntil:0,gait:Math.random()*Math.PI*2,stepDistance:0,lifeMemory:savedMemory,observedPlayer:savedMemory?.lastPlayerState?{state:savedMemory.lastPlayerState,appearance:savedMemory.appearance}:null};
     npcs.push(npc);
     const sprite=createCharacter3D({faction});
     sprite.position.set(x,groundAt(x,z),z);
@@ -51,6 +54,15 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8,c
     const trackerRingMesh=new THREE.Mesh(new THREE.TorusGeometry(1.15,.065,6,20),new THREE.MeshBasicMaterial({color:0xffd45a,transparent:true,opacity:.9,depthWrite:false}));
     trackerRingMesh.name='NPC contact tracking ring';trackerRingMesh.rotation.x=Math.PI/2;trackerRingMesh.position.y=.07;trackerRingMesh.visible=false;sprite.add(trackerRingMesh);npc.trackerRing=trackerRingMesh;
     root.add(sprite);npc.sprite=sprite;
+  }
+
+  const eventWitnessText={flight:'saw JC take flight above the street',hypersonic:'saw JC streak through the sky at hypersonic speed',hover:'saw JC hover above the street',glide:'saw JC glide over the city','sky-lift':'saw JC rise into the air',leap:'saw JC leap high above the ground',teleport:'saw JC vanish and reappear nearby','phase-step':'saw JC pass through an obstacle','beam-down':'saw JC descend in a flash of light',rain:'saw JC call rain over the street',lightning:'saw lightning strike near JC',heal:'saw JC heal someone nearby',bless:'saw JC bless someone nearby',shield:'saw JC shield people nearby',cleanse:'saw JC cleanse the area',sunrise:'saw a wave of light spread from JC',sanctuary:'saw JC create a place of safety','redemption-wave':'saw JC send a bright wave through the street',rebuild:'saw JC repair the surroundings','dive-impact':'saw JC dive hard into the street','traffic-impact':'saw a traffic collision nearby'};
+  function refreshMemory(npc){npc.lifeMemory=memoryStore.get(npc.id);return npc.lifeMemory;}
+  function canWitness(npc,position,range=112){
+    const target=position?.isVector3?position:new THREE.Vector3(position?.x||0,position?.y||0,position?.z||0);
+    if(npc.position.distanceTo(target)>range||Math.abs(npc.position.y-target.y)>95)return false;
+    const eye=npc.position.clone().add(new THREE.Vector3(0,1.15,0)),focus=target.clone().add(new THREE.Vector3(0,1.35,0));
+    return !!canSee(eye,focus,npc);
   }
 
   function report(now) {
@@ -65,7 +77,9 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8,c
   function signal(type,position,radius=95) {
     const now=performance.now(),center=position.clone();
     for(const npc of npcs) {
-      if(npc.position.distanceTo(center)>radius)continue;
+      if(npc.position.distanceTo(center)>radius||!canWitness(npc,center,Math.min(112,radius)))continue;
+      const witnessed=eventWitnessText[type]||`saw ${String(type).replace(/[-_]/g,' ')} happen nearby`;
+      memoryStore.remember(npc,{key:`event:${type}:${Math.floor(now/1000)}`,kind:'event',text:`I ${witnessed}.`,at:Date.now()});refreshMemory(npc);
       npc.event={type,position:center.clone(),time:now};npc.memory={type,time:now};npc.emotionUntil=now+6500;
       const peaceful=restorative.has(type)||travel.has(type);
       npc.state=npc.faction==='civilian'?(peaceful?'awe':'fear'):npc.faction==='authority'?(peaceful?'awe':'respond'):npc.faction==='angel'?'awe':'retreat';
@@ -86,6 +100,18 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8,c
     direction.normalize();
     const [x,z]=chooseOpen(center.x+direction.x*distance,center.z+direction.z*distance,isSafe);
     npc.target.set(x,groundAt(x,z)+1.55,z);
+  }
+
+  function observePlayer({position,appearance='white hooded robe with gold trim, a glowing halo, and white wings',state='grounded'}={}) {
+    if(!position)return 0;
+    let observed=0;
+    for(const npc of npcs){
+      if(!canWitness(npc,position,112))continue;
+      const record=memoryStore.observe(npc,{appearance,state,at:Date.now()});
+      if(!record)continue;
+      npc.lifeMemory=record;npc.observedPlayer={state,appearance,at:Date.now()};observed++;
+    }
+    return observed;
   }
 
   function update(dt,now=performance.now()) {
@@ -148,11 +174,12 @@ export function createNpcSystem({scene,player,groundAt,isSafe,onReport,count=8,c
   function trafficImpact(npc,car) {
     if(!npc)return;
     const now=performance.now(),center=new THREE.Vector3(car.x,groundAt(car.x,car.z)+1.55,car.z);
+    memoryStore.remember(npc,{key:`event:traffic-impact:${Math.floor(now/1000)}`,kind:'event',text:'A vehicle struck me in the street.',at:Date.now()});refreshMemory(npc);
     npc.event={type:'traffic-impact',position:center.clone(),time:now};npc.memory={type:'traffic-impact',time:now};npc.state='fear';npc.emotionUntil=now+4500;setDestination(npc,center,22);
     if(npc.sprite?.userData)npc.sprite.userData.emotion='fear';
   }
 
-  return {npcs,signal,update,setTracked,trafficImpact,get trackedId(){return trackedId;},totalPopulation:npcs.length+crowd.count,crowd,
+  return {npcs,signal,update,observePlayer,setTracked,trafficImpact,memorySummary:id=>memoryStore.summary(id),get trackedId(){return trackedId;},totalPopulation:npcs.length+crowd.count,crowd,
     setVisible(value){root.visible=!!value;crowd.setVisible(value);},
     dispose(){scene.remove(root);crowd.dispose();for(const npc of npcs)npc.sprite?.userData.dispose?.();const materials=new Set();root.traverse(o=>{if(o.material)materials.add(o.material);});for(const material of materials){material.map?.dispose();material.dispose();}}};
 }

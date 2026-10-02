@@ -7,6 +7,8 @@ const deployableFiles=[
   'cinematic-look.js',
   'jc-character3d.js',
   'npc-dialogue.js',
+  'npc-conversation.js',
+  'npc-memory.js',
   'physical-building-materials.js',
   'map-engine.js',
   'jc-map-game.js',
