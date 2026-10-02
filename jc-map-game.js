@@ -112,6 +112,123 @@ function closestNpc(){
   return nearest;
 }
 function openNpcTalk(npc=nearNpc,{track=false}={}){if(!npc||!playing)return;if(track){npcContacts.add(npc);npcContacts.setTracked(npc.id);npcSystem?.setTracked(npc.id);renderContactList();feedback('TRACKING '+npc.name.toUpperCase());}activeConversationNpc=npc;conversation.open(npc);updateSaveContactButton();}
+
+function updateSaveContactButton(){
+  const button=hud.querySelector('#jcSaveContact');
+  if(!button)return;
+  const saved=!!activeConversationNpc&&npcContacts.has(activeConversationNpc.id);
+  button.textContent=saved?'★ SAVED':'☆ SAVE PERSON';
+  button.setAttribute('aria-pressed',String(saved));
+  button.disabled=!activeConversationNpc;
+}
+function renderContactList(){
+  const container=hud.querySelector('#jcContactList'),search=hud.querySelector('#jcContactSearch');
+  if(!container)return;
+  const query=(search?.value||'').trim().toLowerCase();
+  const trackedId=npcContacts.getTrackedId();
+  const contacts=npcContacts.getAll().filter(contact=>(contact.name+' '+contact.faction+' '+contact.avatar).toLowerCase().includes(query));
+  container.replaceChildren();
+  if(!contacts.length){
+    const empty=document.createElement('p');empty.textContent=npcContacts.size?'No contacts match that search.':'No saved people yet. Click a person in the world to talk and track them.';
+    container.append(empty);return;
+  }
+  for(const contact of contacts){
+    const npc=npcSystem?.npcs.find(person=>person.id===contact.id);
+    const distance=npc?Math.round(npc.position.distanceTo(player.position)):contact.position?Math.round(Math.hypot(contact.position.x-player.position.x,contact.position.z-player.position.z)):null;
+    const row=document.createElement('div');row.className='jc-contact-row'+(trackedId===contact.id?' is-tracked':'');
+    const main=document.createElement('button');main.type='button';main.className='jc-contact-main';main.dataset.contactAction='talk';main.dataset.contactId=contact.id;
+    const name=document.createElement('strong');name.textContent=contact.name;
+    const detail=document.createElement('small');detail.textContent=(npc?contact.faction.toUpperCase():'LAST KNOWN LOCATION')+(distance===null?'':' · '+distance+' m');
+    main.append(name,detail);
+    const track=document.createElement('button');track.type='button';track.className='jc-track-button';track.dataset.contactAction='track';track.dataset.contactId=contact.id;track.textContent=trackedId===contact.id?'TRACKED':'TRACK';
+    const remove=document.createElement('button');remove.type='button';remove.className='jc-remove-button';remove.dataset.contactAction='remove';remove.dataset.contactId=contact.id;remove.setAttribute('aria-label','Remove '+contact.name);remove.textContent='×';
+    row.append(main,track,remove);container.append(row);
+  }
+}
+function drawWorldMap(){
+  const canvas=hud.querySelector('#jcStreetMap');
+  if(!canvas||!vegasStreetNetwork||!player)return;
+  const ctx=canvas.getContext('2d');if(!ctx)return;
+  const width=canvas.width,height=canvas.height,range=1800,scale=Math.min(width,height)/(range*2),cx=width/2,cy=height/2;
+  const mapPoint=(x,z)=>({x:cx+(x-player.position.x)*scale,y:cy+(z-player.position.z)*scale});
+  ctx.clearRect(0,0,width,height);ctx.fillStyle='#07111b';ctx.fillRect(0,0,width,height);
+  ctx.strokeStyle='#182b39';ctx.lineWidth=1;
+  for(let x=0;x<width;x+=30){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,height);ctx.stroke();}
+  for(let y=0;y<height;y+=30){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(width,y);ctx.stroke();}
+  for(const segment of vegasStreetNetwork.segments){
+    const a=mapPoint(segment.a[0],segment.a[1]),b=mapPoint(segment.b[0],segment.b[1]);
+    if(Math.max(a.x,b.x)<-30||Math.min(a.x,b.x)>width+30||Math.max(a.y,b.y)<-30||Math.min(a.y,b.y)>height+30)continue;
+    ctx.strokeStyle=segment.kind==='freeway'?'#d69a63':segment.kind==='arterial'?'#617b90':'#304656';
+    ctx.lineWidth=segment.kind==='freeway'?3.2:segment.kind==='arterial'?2:1;
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+  }
+  for(const key of ['psalms','airport','sphere','downtown']){
+    const location=VEGAS_LOCATIONS[key],p=vegasStreetNetwork.project(location.lon,location.lat),m=mapPoint(p.x,p.z);
+    if(m.x<0||m.x>width||m.y<0||m.y>height)continue;
+    ctx.fillStyle='#8adbc6';ctx.beginPath();ctx.arc(m.x,m.y,3.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#b8cbd5';ctx.font='9px Arial';ctx.fillText(key==='psalms'?'PSALMS':key==='airport'?'AIRPORT':key==='sphere'?'SPHERE':'DOWNTOWN',m.x+5,m.y-4);
+  }
+  for(const npc of npcSystem?.npcs||[]){
+    const m=mapPoint(npc.position.x,npc.position.z);
+    if(m.x<0||m.x>width||m.y<0||m.y>height)continue;
+    const tracked=npc.id===npcContacts.getTrackedId();
+    ctx.fillStyle=tracked?'#ffe293':npc.faction==='demon'?'#ff6c77':npc.faction==='angel'?'#c8f4ff':'#a4d8c7';
+    ctx.beginPath();ctx.arc(m.x,m.y,tracked?4.5:2.5,0,Math.PI*2);ctx.fill();
+    if(tracked){ctx.strokeStyle='#ffe293';ctx.lineWidth=1;ctx.beginPath();ctx.arc(m.x,m.y,7,0,Math.PI*2);ctx.stroke();}
+  }
+  const trackedId=npcContacts.getTrackedId(),trackedNpc=npcSystem?.npcs.find(npc=>npc.id===trackedId);
+  const trackedContact=npcContacts.getAll().find(contact=>contact.id===trackedId);
+  if(!trackedNpc&&trackedContact?.position){
+    const m=mapPoint(trackedContact.position.x,trackedContact.position.z);
+    ctx.strokeStyle='#ffe293';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(m.x,m.y-6);ctx.lineTo(m.x+6,m.y);ctx.lineTo(m.x,m.y+6);ctx.lineTo(m.x-6,m.y);ctx.closePath();ctx.stroke();
+  }
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(yaw);ctx.fillStyle='#fff0b8';ctx.strokeStyle='#0b1119';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(5,6);ctx.lineTo(0,3);ctx.lineTo(-5,6);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+  ctx.fillStyle='#d4e3ec';ctx.font='bold 10px Arial';ctx.fillText('N',10,15);
+}
+function updateStreetHud(now){
+  if(!player||!vegasStreetNetwork||now-lastWorldMapDraw<180)return;
+  lastWorldMapDraw=now;
+  const location=resolveStreetLocation(player.position.x,player.position.z,vegasStreetNetwork);
+  const chip=hud.querySelector('#jcStreetChip'),name=hud.querySelector('#jcStreetName');
+  if(location.label!==lastStreetLabel){lastStreetLabel=location.label;if(chip)chip.textContent=location.label;if(name)name.textContent=location.label;}
+  const trackedId=npcContacts.getTrackedId(),trackedNpc=npcSystem?.npcs.find(npc=>npc.id===trackedId);
+  const contact=npcContacts.getAll().find(item=>item.id===trackedId);
+  const marker=hud.querySelector('#jcTrackedMarker');
+  if(!marker||!trackedId||(!trackedNpc&&!contact?.position)){if(marker)marker.style.display='none';return;}
+  const position=trackedNpc?trackedNpc.position:contact.position;
+  if(trackedNpc)npcContacts.touch(trackedNpc);
+  const distance=Math.round(Math.hypot(position.x-player.position.x,position.z-player.position.z));
+  const projected=new THREE.Vector3(position.x,position.y+2.7,position.z).project(game.camera);
+  const onScreen=projected.z<1&&Math.abs(projected.x)<.88&&Math.abs(projected.y)<.78;
+  const bearing=Math.atan2(position.x-player.position.x,-(position.z-player.position.z));
+  const delta=Math.atan2(Math.sin(bearing-yaw),Math.cos(bearing-yaw));
+  const arrow=Math.abs(delta)>2.4?'↓':Math.abs(delta)<.55?'↑':delta>0?'→':'←';
+  marker.textContent=(onScreen?'◆':arrow)+' '+(trackedNpc?.name||contact?.name||'PERSON')+' · '+distance+' m'+(trackedNpc?'':' · LAST SEEN');
+  marker.style.display='block';
+  marker.style.left=onScreen?((projected.x+1)*50)+'%':'50%';
+  marker.style.top=onScreen?((1-projected.y)*50)+'%':'23%';
+  if(!hud.querySelector('#jcWorldPanel').hidden&& !hud.querySelector('#jcWorldMapTab').hidden)drawWorldMap();
+}
+function travelToRegion(key){
+  const location=VEGAS_LOCATIONS[key];
+  if(!location||!player||!game||!vegasStreetNetwork)return;
+  const projected=vegasStreetNetwork.project(location.lon,location.lat);
+  const tileId=game.sectionAt(projected.x,projected.z);
+  if(!game.availableTile(tileId)){feedback('AREA TILE NOT IN THIS DEPLOYMENT · '+location.label);return;}
+  if(interiorState)exitInterior(false);
+  feedback('LOADING '+location.label);
+  void game.loadArea(tileId,coarseDevice?0:1,false).then(()=>{
+    if(!game.loaded.has(tileId)){feedback('COULD NOT LOAD '+location.label);return;}
+    refreshFootprints();
+    const spot=clearSpot(projected.x,projected.z);
+    terrainY=groundAt(spot[0],spot[1]);
+    player.position.set(spot[0],terrainY,spot[1]);spawnPoint.copy(player.position);velocity.set(0,0,0);
+    flying=false;hypersonic=false;glide=false;diving=false;flightHeight=0;descending=0;
+    game.controls?.target?.copy(player.position);snapCameraBehindPlayer();
+    feedback('ARRIVED · '+location.label);
+    hud.querySelector('#jcWorldPanel').hidden=true;hud.querySelector('#jcWorldToggle').setAttribute('aria-expanded','false');
+  });
+}
 const prayerTemplates=[
   {kind:'heal',text:'Please give me strength and healing.'},
   {kind:'shield',text:'Please protect me and my family tonight.'},
