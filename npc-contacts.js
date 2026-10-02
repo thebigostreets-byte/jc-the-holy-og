@@ -12,7 +12,9 @@ function cleanContact(value) {
   const id=String(value.id||'').slice(0,180),name=String(value.name||'').slice(0,80);
   const faction=String(value.faction||'civilian').slice(0,24),avatar=String(value.avatar||value.file||faction+'-01').slice(0,80);
   if(!id||!name)return null;
-  return {id,name,faction,avatar,addedAt:Number(value.addedAt)||Date.now(),lastSeenAt:Number(value.lastSeenAt)||Date.now()};
+  const p=value.position||value.lastPosition;
+  const position=p&&[p.x,p.y,p.z].every(Number.isFinite)?{x:p.x,y:p.y,z:p.z}:null;
+  return {id,name,faction,avatar,addedAt:Number(value.addedAt)||Date.now(),lastSeenAt:Number(value.lastSeenAt)||Date.now(),position};
 }
 
 export function createNpcContactStore(storage=globalThis.localStorage) {
@@ -41,10 +43,11 @@ export function createNpcContactStore(storage=globalThis.localStorage) {
       existing.faction=String(npc.faction||existing.faction).slice(0,24);
       existing.avatar=String(npc.avatar||npc.file||existing.avatar).slice(0,80);
       existing.lastSeenAt=now;
+      if(npc.position&&[npc.position.x,npc.position.y,npc.position.z].every(Number.isFinite))existing.position={x:npc.position.x,y:npc.position.y,z:npc.position.z};
       persist();
       return {...existing};
     }
-    const contact=cleanContact({id,name:npc.name,faction:npc.faction,avatar:npc.avatar||npc.file,addedAt:now,lastSeenAt:now});
+    const contact=cleanContact({id,name:npc.name,faction:npc.faction,avatar:npc.avatar||npc.file,position:npc.position,addedAt:now,lastSeenAt:now});
     if(!contact)return null;
     contacts.push(contact);
     contacts.sort((a,b)=>b.lastSeenAt-a.lastSeenAt);
@@ -75,7 +78,9 @@ export function createNpcContactStore(storage=globalThis.localStorage) {
     if(!contact)return false;
     const now=Date.now();
     if(now-contact.lastSeenAt<15000)return true;
-    contact.lastSeenAt=now;persist();return true;
+    contact.lastSeenAt=now;
+    if(npc.position&&[npc.position.x,npc.position.y,npc.position.z].every(Number.isFinite))contact.position={x:npc.position.x,y:npc.position.y,z:npc.position.z};
+    persist();return true;
   }
   return {getAll,has,add,remove,toggle,setTracked,getTrackedId,touch,clearTracked(){return setTracked(null);},get size(){return contacts.length;}};
 }
