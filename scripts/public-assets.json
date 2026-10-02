@@ -821,5 +821,6 @@
   "jc-traffic.js",
   "vegas-streets.js",
   "physical-building-materials.js",
-  "facades/physical-materials-v1.webp"
+  "facades/physical-materials-v1.webp",
+  "jc-missions.js"
 ]
