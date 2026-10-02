@@ -12,15 +12,36 @@ function orb(parent,material,position,scale){const m=new THREE.Mesh(sph,material
 function segment(parent,material,geometry,position){const m=new THREE.Mesh(geometry,material);m.position.set(...position);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
 export function createCharacter3D({faction='civilian',player=false}={}){
   const colors=palette[faction]||palette.civilian,group=new THREE.Group();group.name=`${faction} ${player?'player':'NPC'} 3D character`;
-  const skin=mat(colors.skin),shirt=mat(colors.cloth,.48,.05),trim=mat(colors.accent,.38,.3, faction==='angel'?0x362600:faction==='demon'?0x31000b:0),pants=mat(colors.pants),boot=mat(0x171a21,.42,.22),iris=mat(faction==='demon'?0xff435d:0x27384a,.22,0, faction==='demon'?0x8e0011:0),glow=mat(colors.accent,.3,.42,colors.accent);
+  const skin=mat(colors.skin,.62,0),shirt=mat(colors.cloth,.82,.01),trim=mat(colors.accent,.42,.22, faction==='angel'?0x362600:faction==='demon'?0x31000b:0),pants=mat(colors.pants,.88,.01),boot=mat(0x171a21,.48,.12),iris=mat(faction==='demon'?0xff435d:0x27384a,.18,0, faction==='demon'?0x8e0011:0),glow=mat(colors.accent,.28,.32,colors.accent);
   const torso=new THREE.Group();torso.position.y=1.76;group.add(torso);
   orb(torso,shirt,[0,.06,0],[.39,.53,.23]);orb(torso,trim,[0,.48,0],[.2,.08,.21]);
+  // Layered hoodie geometry gives JC a less toy-like silhouette without adding a skinned-mesh dependency.
+  if(faction==='angel'){
+    const hood=orb(torso,shirt,[0,.5,-.11],[.31,.28,.18]);hood.scale.z=.62;
+    const neck=orb(torso,skin,[0,.56,.01],[.115,.12,.11]);
+    const laceMat=mat(0xe7e0cf,.9,0);
+    for(const x of [-.07,.07]){const lace=segment(torso,laceMat,new THREE.CylinderGeometry(.012,.012,.33,6),[x,.28,.22]);lace.rotation.x=.08;}
+  }
   // Raised waist belt and a compact chest insignia give factions a readable silhouette.
   const belt=new THREE.Mesh(new THREE.TorusGeometry(.35,.045,6,20),trim);belt.position.set(0,-.37,0);belt.rotation.x=Math.PI/2;torso.add(belt);
   orb(torso,glow,[0,.11,.236],[.075,.11,.035]);
   const head=new THREE.Group();head.position.set(0,.79,0);torso.add(head);
-  orb(head,skin,[0,0,0],[.245,.29,.235]);orb(head,mat(faction==='demon'?0x211723:faction==='authority'?0x252d39:faction==='angel'?0xf0e6d1:0x302b2c),[0,.205,-.025],[.25,.115,.24]);
-  for(const x of [-.088,.088])orb(head,iris,[x,.015,.213],[.026,.025,.012]);
+  orb(head,skin,[0,0,0],[.245,.29,.235]);
+  const hairMat=mat(faction==='demon'?0x211723:faction==='authority'?0x252d39:faction==='angel'?0x3a2f29:0x302b2c,.92,0);
+  orb(head,hairMat,[0,.205,-.025],[.25,.115,.24]);
+  // Ears, nose and brow break the spherical head silhouette at gameplay distance.
+  for(const x of [-.235,.235])orb(head,skin,[x,-.005,0],[.035,.07,.045]);
+  orb(head,skin,[0,-.025,.225],[.035,.055,.04]);
+  const browMat=mat(0x4a372f,.95,0);
+  for(const x of [-.09,.09]){const brow=orb(head,browMat,[x,.072,.223],[.055,.012,.012]);brow.rotation.z=x<0?-.08:.08;}
+  for(const x of [-.088,.088]){orb(head,mat(0xf4f1eb,.35,0),[x,.015,.211],[.041,.027,.012]);orb(head,iris,[x,.015,.223],[.018,.02,.009]);}
+  const mouth=orb(head,mat(0x7c4b43,.72,0),[0,-.115,.222],[.065,.012,.01]);
+  if(faction==='angel'){
+    for(const side of [-1,1]){
+      const strand=segment(head,hairMat,new THREE.CylinderGeometry(.018,.026,.72,7),[side*.19,-.18,-.015]);
+      strand.rotation.z=side*.08;
+    }
+  }
   // Shoulders, articulated arms, fingers, and hands.
   const arms=[],legs=[];
   for(const side of [-1,1]){
@@ -28,10 +49,17 @@ export function createCharacter3D({faction='civilian',player=false}={}){
     orb(arm,trim,[0,0,0],[.19,.18,.19]);segment(arm,shirt,cyl,[0,-.32,0]);
     const elbow=new THREE.Group();elbow.position.y=-.62;arm.add(elbow);orb(elbow,skin,[0,-.02,0],[.115,.12,.115]);segment(elbow,shirt,smallCyl,[0,-.27,0]);
     const hand=new THREE.Group();hand.position.y=-.57;elbow.add(hand);orb(hand,skin,[0,0,.025],[.12,.13,.105]);
+    for(let finger=0;finger<4;finger++){const f=segment(hand,skin,new THREE.CylinderGeometry(.012,.016,.12,6),[(finger-1.5)*.035,-.09,.08]);f.rotation.x=.18;}
     arms.push({arm,elbow,hand,side});
     const leg=new THREE.Group();leg.position.set(side*.2,1.42,0);group.add(leg);orb(leg,trim,[0,0,0],[.18,.17,.19]);segment(leg,pants,cyl,[0,-.39,0]);
     const knee=new THREE.Group();knee.position.y=-.74;leg.add(knee);orb(knee,pants,[0,0,0],[.13,.14,.14]);segment(knee,pants,smallCyl,[0,-.28,0]);
-    orb(knee,boot,[0,-.57,.10],[.16,.1,.25]);legs.push({leg,knee,side});
+    const shoe=orb(knee,boot,[0,-.57,.10],[.17,.105,.27]);
+    if(faction==='angel'){
+      shoe.material=mat(0xf5f2e8,.58,.03);
+      const sole=orb(knee,mat(0xd7d3c9,.82,0),[0,-.65,.12],[.175,.035,.275]);
+      const cross=orb(knee,trim,[side*.02,-.56,.365],[.028,.06,.012]);
+    }
+    legs.push({leg,knee,side});
   }
   if(faction==='angel'){
     const halo=new THREE.Mesh(new THREE.TorusGeometry(.25,.035,6,20),glow);halo.position.set(0,3.02,0);halo.rotation.x=Math.PI/2;group.add(halo);

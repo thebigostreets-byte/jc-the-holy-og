@@ -1,69 +1,62 @@
-name: Deploy JC launcher to GitHub Pages
+name: Deploy JC client to GitHub Pages
 on:
   push:
     branches: [main]
   workflow_dispatch:
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 concurrency:
-  group: github-pages
-  cancel-in-progress: true
+  group: jc-pages-sync
+  cancel-in-progress: false
 jobs:
-  deploy:
-    timeout-minutes: 10
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Build GitHub Pages launcher
+      - name: Checkout main source
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: source
+      - name: Checkout GitHub Pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: pages
+      - name: Sync deployable client
         run: |
-          mkdir -p dist/github-pages
-          cat > dist/github-pages/index.html <<'HTML'
-          <!doctype html>
-          <html lang="en">
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-            <title>JC The Holy OG</title>
-            <meta name="description" content="Launch JC The Holy OG — Sin City.">
-            <style>
-              html,body{margin:0;min-height:100%;background:#070b12;color:#f8e8b8;font-family:Arial,sans-serif}
-              body{min-height:100vh;display:grid;place-items:center;text-align:center}
-              main{max-width:620px;padding:28px}
-              h1{font-size:clamp(34px,8vw,72px);margin:0 0 10px}
-              p{color:#c9d3dd;line-height:1.5}
-              a{display:inline-block;margin-top:14px;padding:14px 22px;border:1px solid #e8c971;border-radius:8px;color:#fff3c4;text-decoration:none;font-weight:800;background:#151b25}
-            </style>
-          </head>
-          <body>
-            <main>
-              <h1>JC THE HOLY OG</h1>
-              <p>Opening Sin City in 3D…</p>
-              <a id="play" href="https://jc-the-holy-og.ill5299.chatgpt.site/map?play=1">PLAY NOW</a>
-            </main>
-            <script>
-              const target=new URL('https://jc-the-holy-og.ill5299.chatgpt.site/map');
-              const incoming=new URLSearchParams(location.search);
-              for(const [key,value] of incoming)target.searchParams.set(key,value);
-              if(!target.searchParams.has('play'))target.searchParams.set('play','1');
-              target.hash=location.hash;
-              document.getElementById('play').href=target.href;
-              setTimeout(()=>location.replace(target.href),250);
-            </script>
-          </body>
-          </html>
-          HTML
-          cp dist/github-pages/index.html dist/github-pages/404.html
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist/github-pages
-      - name: Deploy GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          node --input-type=module <<'NODE'
+          import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+          import { dirname } from 'node:path';
+          const sourceRoot = 'source';
+          const pagesRoot = 'pages';
+          const assets = JSON.parse(readFileSync(`${sourceRoot}/scripts/public-assets.json`, 'utf8'));
+          let copied = 0;
+          for (const asset of assets) {
+            const source = `${sourceRoot}/${asset}`;
+            const target = `${pagesRoot}/dist/client/${asset}`;
+            if (!existsSync(source)) continue;
+            const bytes = readFileSync(source);
+            if (existsSync(target) && bytes.equals(readFileSync(target))) continue;
+            mkdirSync(dirname(target), {recursive: true});
+            copyFileSync(source, target);
+            copied++;
+          }
+          for (const file of ['scripts/public-assets.json', '.redeploy-trigger']) {
+            const target = `${pagesRoot}/${file}`;
+            mkdirSync(dirname(target), {recursive: true});
+            copyFileSync(`${sourceRoot}/${file}`, target);
+          }
+          console.log(`Synchronized ${copied} client assets from main.`);
+          NODE
+      - name: Commit and push deployment bundle
+        working-directory: pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .redeploy-trigger scripts/public-assets.json dist/client
+          if git diff --cached --quiet; then
+            echo "No client changes to deploy."
+            exit 0
+          fi
+          git commit -m "Deploy JC gameplay bundle from main"
+          git push origin gh-pages
