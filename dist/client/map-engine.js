@@ -27,7 +27,12 @@ const mobileMap=matchMedia('(pointer:coarse), (max-width:800px)').matches || nav
 const startInPlay=new URLSearchParams(location.search).get('play')==='1';
 let renderer;
 try{
- renderer=new THREE.WebGLRenderer({canvas:$('scene'),antialias:false,alpha:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'low-power',failIfMajorPerformanceCaveat:false});
+ const canvas=$('scene'),contextOptions={alpha:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'low-power',failIfMajorPerformanceCaveat:false};
+ let context=null;
+ try{context=canvas.getContext('webgl2',contextOptions);}catch{}
+ if(!context){try{context=canvas.getContext('webgl',contextOptions)||canvas.getContext('experimental-webgl',contextOptions);}catch{}}
+ if(!context)throw Error('WebGL 2 and WebGL 1 are unavailable.');
+ renderer=new THREE.WebGLRenderer({canvas,context,antialias:false,alpha:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'low-power',failIfMajorPerformanceCaveat:false});
 }catch(error){
  window.jcLoadingRecovery('This browser could not open its 3D graphics connection. Close other game tabs and retry.');
  throw error;
