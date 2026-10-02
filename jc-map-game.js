@@ -12,6 +12,9 @@ import {createNpcSystem} from './jc-npcs.js';
 import {createNpcConversation} from './npc-conversation.js';
 import {createCharacter3D} from './jc-character3d.js';
 import {cleanPoseImage,POSE_FRAME_HEIGHT,POSE_FRAME_BOTTOM_PADDING} from './pose-cleanup.js';
+import {createJcAudio} from './jc-audio.js';
+
+const jcAudio=createJcAudio();
 
 const style = document.createElement('style');
 style.textContent = `
@@ -63,13 +66,13 @@ document.head.append(style);
 
 const hud = document.createElement('div');
 hud.id = 'jcHud';
-hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · E enter/exit · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q answer prayer / cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Left joystick: move"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: look and steer flight pitch"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="enter" type="button">ENTER</button><button data-action="wheel" type="button">43 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>43 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div>`;
+hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><div class="jc-top-tools"><button id="jcSoundToggle" type="button" aria-expanded="false" aria-controls="jcSoundPanel" title="Open sound settings">SOUND</button><button id="jcEditor" type="button">CITY EDITOR</button></div></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · E enter/exit · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q answer prayer / cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Left joystick: move"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: look and steer flight pitch"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="enter" type="button">ENTER</button><button data-action="wheel" type="button">43 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>43 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div><section id="jcSoundPanel" role="dialog" aria-label="Sound settings" hidden><div class="jc-sound-heading"><strong>AUDIO SETTINGS</strong><button id="jcSoundClose" type="button" aria-label="Close sound settings">×</button></div><button id="jcSoundMute" type="button">MUTE ALL</button><label for="jcMasterVolume">MASTER <output id="jcMasterValue">72%</output></label><input id="jcMasterVolume" data-audio-level="master" type="range" min="0" max="100" step="1" value="72"><label for="jcMusicVolume">AMBIENCE <output id="jcMusicValue">14%</output></label><input id="jcMusicVolume" data-audio-level="music" type="range" min="0" max="100" step="1" value="14"><label for="jcEffectsVolume">SOUND EFFECTS <output id="jcEffectsValue">78%</output></label><input id="jcEffectsVolume" data-audio-level="effects" type="range" min="0" max="100" step="1" value="78"><small>Settings save automatically on this device.</small></section>`;
 document.body.append(hud);
 const sinState=document.createElement('section');
 sinState.id='jcSinState';sinState.setAttribute('aria-label','Sin City good and evil state');
 sinState.innerHTML='<div class="jc-sin-labels"><b>EVIL</b><strong>SIN CITY STATE</strong><b>GOOD</b></div><div class="jc-sin-track"><i id="jcSinMarker"></i></div><div class="jc-sin-footer"><span id="jcSinVerdict">CONTESTED</span><small id="jcSinScore">BALANCE 0</small></div>';
 hud.append(sinState);
-style.textContent += '#jcSinState{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:min(360px,42vw);padding:8px 10px;background:#071018e6;border:1px solid #d2b86b77;border-radius:7px;text-shadow:0 2px 5px #000;pointer-events:none}.jc-sin-labels,.jc-sin-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:9px;letter-spacing:.12em}.jc-sin-labels>b:first-child{color:#ff684d}.jc-sin-labels>b:last-child{color:#9effc2}.jc-sin-labels strong{color:#f4df9e}.jc-sin-track{position:relative;height:8px;margin:6px 0;background:linear-gradient(90deg,#8e1e1e 0%,#431d27 35%,#777 50%,#23553e 65%,#4fbf78 100%);border:1px solid #ffffff30;border-radius:8px}.jc-sin-track i{position:absolute;top:50%;left:50%;width:4px;height:18px;transform:translate(-50%,-50%);background:#fff7cf;box-shadow:0 0 8px #fff;transition:left .35s ease}.jc-sin-footer span{font-weight:900}.jc-sin-footer small{color:#cbd1d6}@media(max-width:800px),(pointer:coarse){#jcSinState{top:8px;width:min(300px,55vw);padding:6px 8px}.jc-sin-labels strong{font-size:8px}.jc-sin-footer{font-size:8px}}';
+style.textContent += '#jcHud .jc-top-tools{display:flex;align-items:start;gap:6px;pointer-events:auto}#jcSoundToggle{min-width:64px}#jcSoundPanel{position:absolute;top:54px;right:12px;z-index:8;width:min(260px,calc(100vw - 24px));box-sizing:border-box;padding:12px;background:#071018f5;border:1px solid #d2b86b99;border-radius:8px;box-shadow:0 12px 32px #000b;pointer-events:auto;color:#fff}#jcSoundPanel[hidden]{display:none!important}.jc-sound-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;color:#ffe6a4;letter-spacing:.08em;font-size:12px}.jc-sound-heading button{padding:2px 9px!important;font-size:18px!important}#jcSoundMute{width:100%;margin-bottom:12px}#jcSoundPanel label{display:flex;justify-content:space-between;gap:12px;margin:9px 0 4px;font-size:11px;letter-spacing:.06em}#jcSoundPanel output{color:#ffe6a4;font-variant-numeric:tabular-nums}#jcSoundPanel input[type=range]{display:block;width:100%;margin:0 0 8px;accent-color:#f9d878;cursor:pointer}#jcSoundPanel small{display:block;color:#aebaca;font-size:10px;margin-top:8px}@media(max-width:800px),(pointer:coarse){#jcSoundToggle{padding:8px 9px!important;min-width:55px;font-size:11px}#jcSoundPanel{top:48px;right:8px}}#jcSinState{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:min(360px,42vw);padding:8px 10px;background:#071018e6;border:1px solid #d2b86b77;border-radius:7px;text-shadow:0 2px 5px #000;pointer-events:none}.jc-sin-labels,.jc-sin-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:9px;letter-spacing:.12em}.jc-sin-labels>b:first-child{color:#ff684d}.jc-sin-labels>b:last-child{color:#9effc2}.jc-sin-labels strong{color:#f4df9e}.jc-sin-track{position:relative;height:8px;margin:6px 0;background:linear-gradient(90deg,#8e1e1e 0%,#431d27 35%,#777 50%,#23553e 65%,#4fbf78 100%);border:1px solid #ffffff30;border-radius:8px}.jc-sin-track i{position:absolute;top:50%;left:50%;width:4px;height:18px;transform:translate(-50%,-50%);background:#fff7cf;box-shadow:0 0 8px #fff;transition:left .35s ease}.jc-sin-footer span{font-weight:900}.jc-sin-footer small{color:#cbd1d6}@media(max-width:800px),(pointer:coarse){#jcSinState{top:8px;width:min(300px,55vw);padding:6px 8px}.jc-sin-labels strong{font-size:8px}.jc-sin-footer{font-size:8px}}';
 let sinBalance=0,prayersAnswered=0;
 try{sinBalance=THREE.MathUtils.clamp(Number(localStorage.getItem('jc-sin-city-balance'))||0,-100,100);}catch{}
 function updateSinState(delta=0,reason=''){
@@ -120,7 +123,7 @@ function pendingPrayerNpc(){return nearNpc?.prayer&&!nearNpc.prayer.answered?nea
 function answerPrayer(npc=pendingPrayerNpc()){
   if(!npc?.prayer||npc.prayer.answered||!playing)return false;
   const prayer=npc.prayer,now=performance.now();prayer.answered=true;prayer.answeredAt=now;prayer.nextAt=now+45000+(npc.name.length%6)*5000;
-  npc.state='awe';npc.event={type:'prayer-answered',position:npc.position.clone(),time:now};npc.memory={type:'prayer-answered',prayer:prayer.text,time:now};npc.emotionUntil=now+6500;
+  npc.state='awe';npc.event={type:'prayer-answered',position:npc.position.clone(),time:now};npc.memory={type:'prayer-answered',prayer:prayer.text,time:now};npc.emotionUntil=now+6500;jcAudio.play('prayer');
   if(prayer.kind==='heal')grace=Math.min(100,grace+18);
   else if(prayer.kind==='shield')shieldUntil=Math.max(shieldUntil,now+5000);
   else if(prayer.kind==='sanctuary')sanctuaryUntil=Math.max(sanctuaryUntil,now+6500);
@@ -711,6 +714,7 @@ function createSouls(x, z) {
 
 function collect(soul) {
   if (!soul.visible) return;
+  jcAudio.play('collect');
   soul.visible = false;
   soul.userData.collected = true;
   if(!runActive&&!runFinished)runActive=true;
@@ -736,7 +740,7 @@ function dash(charge = true) {
   if (!playing || wheel.classList.contains('open') || dashCooldown > 0 || (charge && grace < 25)) return;
   const direction = desired.lengthSq() ? desired.clone().normalize() : forward.clone();
   moveSafely(direction.x*12,direction.z*12,performance.now()<phaseUntil);
-  ringAt(player.position,0xc8eeff,5);
+  ringAt(player.position,0xc8eeff,5);jcAudio.play('dash');
   if (charge) grace -= 25;
   dashCooldown = .8;
 }
@@ -745,10 +749,11 @@ function beginDive(charge=false) {
   if(!playing||!flying||diving){feedback(flying?'DIVE ALREADY IN PROGRESS':'TAKE FLIGHT BEFORE DIVING');return;}
   if(charge&&grace<16){feedback('Need 16 grace to dive');return;}
   if(charge)grace-=16;
-  setFlight('dive');feedback('DIVE · impact changes the street');
+  setFlight('dive');jcAudio.play('dive');feedback('DIVE · impact changes the street');
 }
 
 function resolveDiveImpact() {
+  jcAudio.play('impact');
   const impact=player.position.clone();
   cinematicLook?.impact(impact);
   const hit=nearbyBuildings(30,3);
@@ -835,7 +840,7 @@ function enterInterior(){
   player.position.set((interiorState.minX+interiorState.maxX)/2,interiorState.floorY,(interiorState.minZ+interiorState.maxZ)/2);terrainY=interiorState.floorY;
   nearNpc=null;conversation.close({restoreFocus:false});resetInput();
   const enterButton=hud.querySelector('[data-action="enter"]');if(enterButton)enterButton.textContent='EXIT';
-  feedback('ENTERED · '+(interiorState.identity.name||interiorState.identity.type)+' · E TO EXIT');return true;
+  jcAudio.play('enter');feedback('ENTERED · '+(interiorState.identity.name||interiorState.identity.type)+' · E TO EXIT');return true;
 }
 function exitInterior(showMessage=true){
   if(!interiorState)return false;const state=interiorState;interiorState=null;
@@ -843,7 +848,7 @@ function exitInterior(showMessage=true){
   state.group.traverse(node=>{if(!node.isMesh)return;node.geometry?.dispose();const materials=Array.isArray(node.material)?node.material:[node.material];for(const material of materials){if(material&&!material.userData?.shared)material.dispose?.();}});
   game.scene.remove(state.group);player.position.copy(state.returnPosition);terrainY=groundAt(player.position.x,player.position.z);player.position.y=terrainY;velocity.set(0,0,0);
   const enterButton=hud.querySelector('[data-action="enter"]');if(enterButton)enterButton.textContent='ENTER';
-  resetInput();if(showMessage)feedback('BACK OUTSIDE · '+(state.identity.name||'BUILDING'));return true;
+  resetInput();if(showMessage){jcAudio.play('exit');feedback('BACK OUTSIDE · '+(state.identity.name||'BUILDING'));}return true;
 }
 function toggleInterior(){return interiorState?exitInterior():enterInterior();}
 
@@ -950,6 +955,8 @@ function cast(id = selectedAbility) {
   if(id==='rebuild'&&!nearbyRuins()){feedback('No collapsed building in range');return;}
   if(id==='teleport'&&teleportTarget&&(!Number.isFinite(teleportTarget.x)||!Number.isFinite(teleportTarget.z)||(!flying&&(!openSpace(teleportTarget.x,teleportTarget.z,2)||blockedAt(teleportTarget.x,teleportTarget.y,teleportTarget.z,2))))){teleportTarget=null;clearTeleportMarker();feedback('Choose a clear landing point');return;}
   feedback(ability.name);
+  const soundId=id==='hypersonic'?'boost':id==='teleport'?'teleport':id==='light-pulse'?'pulse':id==='dash'?'dash':id==='beam-down'?'impact':['crumble','heavenly-spear','judgment-storm'].includes(id)?'destroy':['heal','bless','restore','cleanse','radiance-nova','redemption-wave'].includes(id)?'restore':['shield','sanctuary'].includes(id)?'prayer':['flight','hover','leap','glide','sky-lift','skydive'].includes(id)?'flight':'cast';
+  jcAudio.play(soundId);
   const flightAbilities=new Set(['flight','hypersonic','hover','leap','glide','sky-lift','skydive','beam-down']);
   if(!flightAbilities.has(id))showPose(miraclePose[id] ?? 5, id === 'redemption-wave' ? 2400 : 800);
   spawnMiracleSprite(id);
@@ -1304,6 +1311,23 @@ const group = game.loaded.get('C15_R14');
   npcReadout.textContent=`${npcSystem.npcs.length} LIVING NPCS · MOVE CLOSE TO TALK`;
   npcReadout.style.cursor='pointer';npcReadout.setAttribute('role','button');npcReadout.tabIndex=0;npcReadout.onclick=()=>openNpcTalk();npcReadout.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openNpcTalk();}};
   hud.querySelector('#jcEditor').onclick = () => setMode(false);
+  const soundToggle=hud.querySelector('#jcSoundToggle'),soundPanel=hud.querySelector('#jcSoundPanel');
+  const soundMute=hud.querySelector('#jcSoundMute');
+  function syncSoundControls(){
+    const settings=jcAudio.getSettings();
+    soundToggle.textContent=settings.muted?'SOUND OFF':'SOUND';
+    soundToggle.setAttribute('aria-label',settings.muted?'Sound muted. Open sound settings':'Open sound settings');
+    soundMute.textContent=settings.muted?'UNMUTE ALL':'MUTE ALL';
+    for(const key of ['master','music','effects']){
+      const input=hud.querySelector(`[data-audio-level="${key}"]`),output=hud.querySelector(`#jc${key==='master'?'Master':key==='music'?'Music':'Effects'}Value`);
+      input.value=String(Math.round(settings[key]*100));output.textContent=input.value+'%';
+    }
+  }
+  soundToggle.onclick=()=>{jcAudio.start();const open=soundPanel.hidden;soundPanel.hidden=!open;soundToggle.setAttribute('aria-expanded',String(open));if(open)jcAudio.play('ui');};
+  hud.querySelector('#jcSoundClose').onclick=()=>{soundPanel.hidden=true;soundToggle.setAttribute('aria-expanded','false');jcAudio.play('ui');};
+  soundMute.onclick=()=>{const muted=!jcAudio.getSettings().muted;jcAudio.set('muted',muted);syncSoundControls();if(!muted)jcAudio.play('ui');};
+  soundPanel.querySelectorAll('[data-audio-level]').forEach(input=>input.addEventListener('input',()=>{jcAudio.set(input.dataset.audioLevel,Number(input.value)/100);syncSoundControls();}));
+  syncSoundControls();
   playReturn.onclick = () => setMode(true);
   addEventListener('keydown', e => {
     if (conversation.isOpen || !playing || e.target.closest('input,select,textarea')) return;
