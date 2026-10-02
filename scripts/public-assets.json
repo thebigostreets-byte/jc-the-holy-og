@@ -823,5 +823,6 @@
   "physical-building-materials.js",
   "facades/physical-materials-v1.webp",
   "jc-missions.js",
-  "photorealism-pbr.js"
+  "photorealism-pbr.js",
+  "rooftop-details.js"
 ]
