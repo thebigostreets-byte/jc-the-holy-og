@@ -1544,10 +1544,51 @@ const group = game.loaded.get('C15_R14');
       input.value=String(Math.round(settings[key]*100));output.textContent=input.value+'%';
     }
   }
-  soundToggle.onclick=()=>{jcAudio.start();const open=soundPanel.hidden;soundPanel.hidden=!open;soundToggle.setAttribute('aria-expanded',String(open));if(open)jcAudio.play('ui');};
+  soundToggle.onclick=()=>{jcAudio.start();const open=soundPanel.hidden;soundPanel.hidden=!open;soundToggle.setAttribute('aria-expanded',String(open));if(open){worldPanel.hidden=true;worldToggle.setAttribute('aria-expanded','false');jcAudio.play('ui');}};
   hud.querySelector('#jcSoundClose').onclick=()=>{soundPanel.hidden=true;soundToggle.setAttribute('aria-expanded','false');jcAudio.play('ui');};
   soundMute.onclick=()=>{const muted=!jcAudio.getSettings().muted;jcAudio.set('muted',muted);syncSoundControls();if(!muted)jcAudio.play('ui');};
   soundPanel.querySelectorAll('[data-audio-level]').forEach(input=>input.addEventListener('input',()=>{jcAudio.set(input.dataset.audioLevel,Number(input.value)/100);syncSoundControls();}));
+  function selectWorldTab(name){
+    const mapTab=hud.querySelector('#jcWorldMapTab'),peopleTab=hud.querySelector('#jcWorldPeopleTab');
+    const mapSelected=name!=='people';
+    mapTab.hidden=!mapSelected;peopleTab.hidden=mapSelected;
+    hud.querySelectorAll('[data-world-tab]').forEach(button=>button.setAttribute('aria-selected',String(button.dataset.worldTab===(mapSelected?'map':'people'))));
+    if(mapSelected)drawWorldMap();else renderContactList();
+  }
+  worldToggle.onclick=()=>{
+    const open=worldPanel.hidden;worldPanel.hidden=!open;worldToggle.setAttribute('aria-expanded',String(open));
+    if(open){soundPanel.hidden=true;soundToggle.setAttribute('aria-expanded','false');selectWorldTab('map');renderContactList();}
+  };
+  hud.querySelector('#jcWorldClose').onclick=()=>{worldPanel.hidden=true;worldToggle.setAttribute('aria-expanded','false');};
+  hud.querySelectorAll('[data-world-tab]').forEach(button=>button.addEventListener('click',()=>selectWorldTab(button.dataset.worldTab)));
+  hud.querySelector('#jcContactSearch').addEventListener('input',renderContactList);
+  worldPanel.addEventListener('click',event=>{
+    const region=event.target.closest('[data-region]');
+    if(region){travelToRegion(region.dataset.region);return;}
+    const action=event.target.closest('[data-contact-action]');
+    if(!action)return;
+    const id=action.dataset.contactId,npc=npcSystem?.npcs.find(person=>person.id===id),contact=npcContacts.getAll().find(person=>person.id===id);
+    if(action.dataset.contactAction==='remove'){
+      npcContacts.remove(id);npcSystem?.setTracked(npcContacts.getTrackedId());renderContactList();updateSaveContactButton();return;
+    }
+    if(action.dataset.contactAction==='track'){
+      npcContacts.setTracked(id);
+      if(npc){npcContacts.touch(npc);npcSystem?.setTracked(id);feedback('TRACKING '+npc.name.toUpperCase());}
+      else{npcSystem?.setTracked(null);feedback('TRACKING LAST KNOWN LOCATION');}
+      renderContactList();drawWorldMap();return;
+    }
+    if(action.dataset.contactAction==='talk'){
+      if(npc){openNpcTalk(npc,{track:true});worldPanel.hidden=true;worldToggle.setAttribute('aria-expanded','false');}
+      else if(contact){npcContacts.setTracked(id);npcSystem?.setTracked(null);feedback('PERSON NOT IN THIS CROWD · TRACKING LAST KNOWN LOCATION');renderContactList();}
+    }
+  });
+  hud.querySelector('#jcSaveContact').addEventListener('click',()=>{
+    if(!activeConversationNpc)return;
+    const result=npcContacts.toggle(activeConversationNpc);
+    if(result.saved){npcContacts.setTracked(activeConversationNpc.id);npcSystem?.setTracked(activeConversationNpc.id);feedback('SAVED & TRACKING '+activeConversationNpc.name.toUpperCase());}
+    else{npcSystem?.setTracked(npcContacts.getTrackedId());feedback('REMOVED '+activeConversationNpc.name.toUpperCase()+' FROM CONTACTS');}
+    renderContactList();updateSaveContactButton();
+  });
   syncSoundControls();
   playReturn.onclick = () => setMode(true);
   addEventListener('keydown', e => {
@@ -1579,12 +1620,40 @@ const group = game.loaded.get('C15_R14');
   addEventListener('keyup', e => {keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key);if(e.code==='Space')keys.delete('Space');if(e.code.startsWith('Control'))keys.delete('Control');});
   addEventListener('blur', resetInput);
   document.addEventListener('visibilitychange',()=>{resetInput();last=performance.now();});
+  const npcRay=new THREE.Raycaster(),npcPointer=new THREE.Vector2();
+  function pickNpcAt(clientX,clientY){
+    if(!npcSystem||!game)return null;
+    const rect=game.renderer.domElement.getBoundingClientRect();
+    npcPointer.set((clientX-rect.left)/rect.width*2-1,-(clientY-rect.top)/rect.height*2+1);
+    npcRay.setFromCamera(npcPointer,game.camera);
+    const hit=npcRay.intersectObjects(npcSystem.npcs.map(npc=>npc.sprite).filter(Boolean),true)[0];
+    let object=hit?.object;
+    while(object){if(object.userData?.npcRef)return object.userData.npcRef;object=object.parent;}
+    let nearest=null,nearestPixels=coarseDevice?44:32;
+    for(const npc of npcSystem.npcs){
+      const point=npc.position.clone().add(new THREE.Vector3(0,1.6,0)).project(game.camera);
+      if(point.z>1)continue;
+      const sx=(point.x+1)*.5*rect.width,sy=(1-point.y)*.5*rect.height;
+      const pixels=Math.hypot(sx-(clientX-rect.left),sy-(clientY-rect.top));
+      if(pixels<nearestPixels){nearest=npc;nearestPixels=pixels;}
+    }
+    return nearest;
+  }
   game.renderer.domElement.addEventListener('pointerdown', e => {
     if (!playing) return;
-    if(teleportAim){e.preventDefault();chooseTeleportPoint(e.clientX,e.clientY);return;}
+    if(teleportAim){pointerStart=null;e.preventDefault();chooseTeleportPoint(e.clientX,e.clientY);return;}
+    pointerStart={id:e.pointerId,x:e.clientX,y:e.clientY};
     dragging = true;lookPointer=e.pointerId;game.renderer.domElement.setPointerCapture(e.pointerId);pointerX = e.clientX;pointerY = e.clientY;
   });
-  for(const type of ['pointerup','pointercancel'])addEventListener(type,e=>{if(e.pointerId===lookPointer){dragging=false;lookPointer=null;}});
+  for(const type of ['pointerup','pointercancel'])addEventListener(type,e=>{
+    if(e.pointerId!==lookPointer)return;
+    const clicked=type==='pointerup'&&pointerStart?.id===e.pointerId&&Math.hypot(e.clientX-pointerStart.x,e.clientY-pointerStart.y)<7;
+    dragging=false;lookPointer=null;pointerStart=null;
+    if(clicked&&playing&&!teleportAim&&!conversation.isOpen&&!wheel.classList.contains('open')&&hud.querySelector('#jcWorldPanel').hidden){
+      const npc=pickNpcAt(e.clientX,e.clientY);
+      if(npc){e.preventDefault();openNpcTalk(npc,{track:true});}
+    }
+  });
   addEventListener('pointermove', e => {
     if (!dragging || !playing || e.pointerId!==lookPointer) return;
     yaw += (e.clientX - pointerX) * (coarseDevice ? 0.0034 : 0.0025);
