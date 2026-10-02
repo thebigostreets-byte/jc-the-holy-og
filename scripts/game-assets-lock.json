@@ -338,11 +338,6 @@
       "sha256": "730d98a882f1ce2ff0801f88bdd1d8ce857b309a383b4673011e242867c413f3"
     },
     {
-      "path": "map.html.gz",
-      "bytes": 3425,
-      "sha256": "50021dee1ef9e068cbba21c7542d3f95f9e6847d576a99eb19a5f5f3bd88c54f"
-    },
-    {
       "path": "miracles/attract.webp",
       "bytes": 63460,
       "sha256": "529d472cc2201c27903ba050c93d09a9f92b013704f60bea29205f2b74676698"
