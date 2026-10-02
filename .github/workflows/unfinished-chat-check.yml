@@ -32,6 +32,7 @@ jobs:
             tests/npc-contacts.mjs \
             tests/pose-cleanup.mjs \
             tests/photorealism-pbr.mjs \
+            tests/physical-building-materials.mjs \
             tests/rooftop-details.mjs \
             tests/predictive-streaming.mjs \
             tests/sin-city-state.mjs \
