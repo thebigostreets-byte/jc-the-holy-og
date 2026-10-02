@@ -1,0 +1,17 @@
+name: Diagnose hosted asset lock
+on:
+  push:
+    branches: [fix/github-pages-asset-lock]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Hash hosted imagery
+        run: |
+          curl -L --fail --silent --show-error -o /tmp/C14_R13.jpg https://jc-the-holy-og.ill5299.chatgpt.site/assets/imagery/C14_R13.jpg
+          echo "BYTES=$(wc -c < /tmp/C14_R13.jpg)"
+          echo "SHA256=$(sha256sum /tmp/C14_R13.jpg | awk '{print $1}')"
+          file /tmp/C14_R13.jpg
