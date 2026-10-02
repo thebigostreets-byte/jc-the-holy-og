@@ -81,6 +81,7 @@ function updateSinState(delta=0,reason=''){
   sinState.dataset.balance=String(Math.round(sinBalance));if(reason)sinState.title=reason;
 }
 updateSinState();
+window.JC_SIN_STATE={adjust:(delta,reason)=>updateSinState(delta,reason),value:()=>sinBalance,label:()=>hud.querySelector('#jcSinVerdict')?.textContent||'CONTESTED'};
 style.textContent += '#jcNpcReadout{position:absolute;left:12px;bottom:144px;max-width:min(390px,78vw);padding:7px 10px;background:#091018d9;border-left:2px solid #c4ffee;color:#c4ffee;font-size:11px;letter-spacing:.4px;pointer-events:auto}#jcNpcTalkButton{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 178px);transform:translateX(-50%);display:none;pointer-events:auto;padding:11px 16px;border:1px solid #f1d17e;border-radius:8px;background:#111b2aee;color:#ffe6a4;font-weight:900;box-shadow:0 6px 18px #0009;z-index:2}#jcNpcTalkButton.available{display:block}@media(pointer:fine){#jcNpcTalkButton{display:none!important}}';
 const npcReadout=document.createElement('div');npcReadout.id='jcNpcReadout';npcReadout.textContent='CITY FOLKS · OBSERVING';hud.append(npcReadout);
 const npcTalkButton=document.createElement('button');npcTalkButton.id='jcNpcTalkButton';npcTalkButton.type='button';npcTalkButton.textContent='TALK';npcTalkButton.setAttribute('aria-label','Talk to nearby character');hud.append(npcTalkButton);
@@ -804,8 +805,8 @@ function createProceduralInterior(ob,box){
   const accent=new THREE.MeshStandardMaterial({color:isHome?0x76695d:isCasino?0x7b2630:0x4b5960,roughness:.75,metalness:0});
   interiorMesh(group,new THREE.BoxGeometry(width,.18,depth),floor,[0,-.09,0]);
   interiorMesh(group,new THREE.BoxGeometry(width,.16,depth),wall,[0,height+.08,0]);
-  interiorMesh(group,new THREE.BoxGeometry(width,.2,height),wall,[0,height/2,-depth/2]);
-  interiorMesh(group,new THREE.BoxGeometry(width,.2,height),wall,[0,height/2,depth/2]);
+  interiorMesh(group,new THREE.BoxGeometry(width,height,.2),wall,[0,height/2,-depth/2]);
+  interiorMesh(group,new THREE.BoxGeometry(width,height,.2),wall,[0,height/2,depth/2]);
   interiorMesh(group,new THREE.BoxGeometry(.2,height,depth),wall,[-width/2,height/2,0]);
   interiorMesh(group,new THREE.BoxGeometry(.2,height,depth),wall,[width/2,height/2,0]);
   if(isHome){
@@ -813,7 +814,7 @@ function createProceduralInterior(ob,box){
     interiorMesh(group,new THREE.BoxGeometry(1.4,.45,.85),trim,[.4,.24,-depth*.05]);
     interiorMesh(group,new THREE.BoxGeometry(Math.min(2.6,width*.3),.55,1.6),new THREE.MeshStandardMaterial({color:0xd7d0c4,roughness:.95}),[width*.18,.29,depth*.22]);
   }else if(isCasino){
-    for(let i=-2;i<=2;i++){const machine=interiorMesh(group,new THREE.BoxGeometry(.72,1.7,.72),trim,[i*1.15,.86,-depth*.2]);const panel=new THREE.MeshStandardMaterial({color:0xffd96b,emissive:0xff9b2f,emissiveIntensity:.35,roughness:.45});interiorMesh(group,new THREE.BoxGeometry(.48,.52,.04),panel,[i*1.15,1.08,-depth*.2-.38]);}
+    for(let i=-2;i<=2;i++){interiorMesh(group,new THREE.BoxGeometry(.72,1.7,.72),trim,[i*1.15,.86,-depth*.2]);const panel=new THREE.MeshStandardMaterial({color:0xffd96b,emissive:0xff9b2f,emissiveIntensity:.35,roughness:.45});interiorMesh(group,new THREE.BoxGeometry(.48,.52,.04),panel,[i*1.15,1.08,-depth*.2-.38]);}
     interiorMesh(group,new THREE.BoxGeometry(Math.min(5.5,width*.45),1.05,1.15),accent,[0,.53,depth*.2]);
   }else{
     interiorMesh(group,new THREE.BoxGeometry(Math.min(5,width*.5),1.05,.85),trim,[0,.53,-depth*.22]);
