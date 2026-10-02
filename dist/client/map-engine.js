@@ -6,6 +6,8 @@ import { OrbitControls } from './map-controls.js';
 import {createBuildingImpostors} from './building-impostors.js';
 import {decodeGlbAttribute} from './ground-sampling.js';
 import {predictTravel,createPrefetchCache} from './predictive-streaming.js';
+const freshCacheToken=new URLSearchParams(location.search).get('freshcache');
+if(freshCacheToken)THREE.DefaultLoadingManager.setURLModifier(url=>{if(/^(blob:|data:)/.test(url))return url;const asset=new URL(url,location.href);asset.searchParams.set('freshcache',freshCacheToken);return asset.href;});
 const $=id=>document.getElementById(id);
 const photorealDetailMaps=createPhotorealDetailMaps(THREE);
 const statusText=message=>{$('loading').textContent=message;};
@@ -14,7 +16,7 @@ async function fetchBytes(url){
  let failure;
  for(let attempt=0;attempt<2;attempt++){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
-  try{const response=await fetch(url,{signal:controller.signal});
+  try{const response=await fetch(url,{signal:controller.signal,cache:freshCacheToken?'reload':'default'});
    if(!response.ok){const error=Error('Download failed: '+url+' ('+response.status+').');error.permanent=response.status>=400&&response.status<500&&response.status!==408&&response.status!==429;throw error;}
    return new Uint8Array(await response.arrayBuffer());
   }catch(error){failure=error;if(error.permanent)throw error;}finally{clearTimeout(timer);}
