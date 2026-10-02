@@ -706,12 +706,13 @@ function applyBuildingTheme(mesh, ownerId, redeemed = false) {
   const hash = buildingHash(ownerId);
   material.map = themedFacade(ownerId, redeemed);
   material.color.setRGB(.86+((hash>>>8)&31)/230, (redeemed?.82:.74)+((hash>>>15)&31)/250, (redeemed?.80:.68)+((hash>>>22)&31)/240);
-  // Keep facade texture readable under scene lighting; emissive color is a restrained accent, not a glowing whole wall.\n  material.emissiveMap=null;
+  // Keep facade texture readable under scene lighting; emissive color is a restrained accent, not a glowing whole wall.
+  material.emissiveMap=null;
   const heavenly=redeemed || hash%7===0;
   if(material.emissive)material.emissive.set(heavenly?0xffdf9e:vegasNeon[(hash>>>11)%vegasNeon.length]);
   if ('emissiveIntensity' in material) material.emissiveIntensity = (heavenly?.10:.055)+((hash>>>3)&7)/180;
-  material.roughness = redeemed ? .52 : .62;
-  material.metalness = .12;
+  material.roughness = redeemed ? .48 : .54;
+  material.metalness = .08;
   material.userData.original ??= {};
   material.userData.original.map = material.map;
   material.userData.original.color = material.userData.original.color || new THREE.Color();
