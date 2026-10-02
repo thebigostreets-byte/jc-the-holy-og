@@ -34,7 +34,7 @@ export function buildRooftopPlan(buildings) {
     const hash=hashId(id),count=1+(hash%3);
     const unitWidth=clamp(width*.09,1.4,3.2),unitDepth=clamp(depth*.09,1.2,2.8),unitHeight=clamp(height*.014,1.1,2.1);
     for(let i=0;i<count;i++) {
-      const fx=count===1?.5:.22+(((hash>>>(i*5+2))&63)/100);
+      const fx=count===1 ? .5 : .22+(((hash>>>(i*5+2))&63)/100);
       const fz=.24+(((hash>>>(i*7+4))&47)/100);
       const x=min.x+width*clamp(fx,.2,.8),z=min.z+depth*clamp(fz,.2,.8);
       housings.push({x,y:max.y+unitHeight/2+.06,z,sx:unitWidth,sy:unitHeight,sz:unitDepth});
