@@ -1,5 +1,14 @@
 import assert from 'node:assert/strict';
-import {CASINO_PROPERTIES,classifyBuilding} from '../physical-building-materials.js';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+
+const source=readFileSync(new URL('../physical-building-materials.js',import.meta.url),'utf8')
+  .replace("import * as THREE from './three.module.js';","const THREE = {};")
+  .replace(/export /g,'')+
+  '\n globalThis.__testExports={CASINO_PROPERTIES,classifyBuilding};';
+const context=vm.createContext({setTimeout,clearTimeout});
+vm.runInContext(source,context);
+const {CASINO_PROPERTIES,classifyBuilding}=context.__testExports;
 
 assert.ok(CASINO_PROPERTIES.length >= 25,'casino identity coverage spans the full Strip');
 for(const [name,longitude,latitude] of CASINO_PROPERTIES){
