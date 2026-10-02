@@ -113,7 +113,7 @@ function closestNpc(){
   }
   return nearest;
 }
-function openNpcTalk(npc=nearNpc,{track=false}={}){if(!npc||!playing)return;if(track){npcContacts.add(npc);npcContacts.setTracked(npc.id);npcSystem?.setTracked(npc.id);renderContactList();feedback('TRACKING '+npc.name.toUpperCase());}activeConversationNpc=npc;conversation.open(npc);updateSaveContactButton();}
+function openNpcTalk(npc=nearNpc,{track=false}={}){if(!npc||!playing)return;const wasSaved=npcContacts.has(npc.id);if(track){npcContacts.add(npc);npcContacts.setTracked(npc.id);npcSystem?.setTracked(npc.id);renderContactList();feedback('TRACKING '+npc.name.toUpperCase());}if(!wasSaved&&npcContacts.has(npc.id))missionTracker.add('people');activeConversationNpc=npc;conversation.open(npc);updateSaveContactButton();}
 
 function updateSaveContactButton(){
   const button=hud.querySelector('#jcSaveContact');
