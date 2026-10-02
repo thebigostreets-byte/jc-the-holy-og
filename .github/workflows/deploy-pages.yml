@@ -47,8 +47,8 @@ jobs:
           const assets = JSON.parse(readFileSync(`${sourceRoot}/scripts/public-assets.json`, 'utf8'));
           let copied = 0;
           for (const asset of assets) {
-            const source = `${sourceRoot}/${asset}`;
-            const target = `${pagesRoot}/dist/client/${asset}`;
+            const source = `${sourceRoot}/dist/client/${asset}`;
+            const target = `${pagesRoot}/${asset}`;
             if (!existsSync(source)) continue;
             const bytes = readFileSync(source);
             if (existsSync(target) && bytes.equals(readFileSync(target))) continue;
@@ -68,7 +68,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .redeploy-trigger scripts/public-assets.json dist/client
+          git add -A
           if git diff --cached --quiet; then
             echo "No client changes to deploy."
             exit 0
