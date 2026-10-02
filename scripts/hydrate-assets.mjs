@@ -10,7 +10,8 @@ const lock=JSON.parse(await readFile(new URL('./game-assets-lock.json',import.me
 const sourceAssets=new Set(JSON.parse(await readFile(new URL('./public-assets.json',import.meta.url),'utf8')));
 const verifyOnly=process.argv.includes('--verify-only');
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
-let cursor=0,verified=0,downloaded=0,refreshedImagery=0;
+let cursor=0,verified=0,downloaded=0,refreshedImagery=0,skippedTiles=0;
+const missingTiles=new Set();
 async function work(){
   while(cursor<lock.assets.length){
     const asset=lock.assets[cursor++];
@@ -23,7 +24,12 @@ async function work(){
     const extension=path.extname(asset.path).toLowerCase();
     const accept=extension==='.jpg'||extension==='.jpeg'?'image/jpeg':extension==='.webp'?'image/webp':extension==='.png'?'image/png':'*/*';
     const response=await fetch(new URL(asset.path,lock.origin),{signal:AbortSignal.timeout(120000),headers:{accept}});
-    if(!response.ok)throw Error(`Asset ${asset.path}: HTTP ${response.status}`);
+    if(!response.ok){
+      if(response.status===404&&/^tiles\/C\d{2}_R\d{2}\.glb\.gz$/.test(asset.path)){
+        missingTiles.add(asset.path);skippedTiles++;console.log(`Skipped unavailable city tile: ${asset.path}`);continue;
+      }
+      throw Error(`Asset ${asset.path}: HTTP ${response.status}`);
+    }
     const bytes=Buffer.from(await response.arrayBuffer());
     const actualHash=hash(bytes);
     if(bytes.length!==asset.bytes||actualHash!==asset.sha256){
@@ -37,5 +43,8 @@ async function work(){
   }
 }
 await Promise.all(Array.from({length:4},()=>work()));
-if(refreshedImagery){const lockPath=new URL('./game-assets-lock.json',import.meta.url);await writeFile(lockPath,JSON.stringify(lock,null,2)+'\n');}
-console.log(`Verified ${verified}, restored ${downloaded} assets, refreshed ${refreshedImagery} city images for JC. SHA-256 checks passed.`);
+if(refreshedImagery||missingTiles.size){
+  lock.assets=lock.assets.filter(asset=>!missingTiles.has(asset.path));
+  const lockPath=new URL('./game-assets-lock.json',import.meta.url);await writeFile(lockPath,JSON.stringify(lock,null,2)+'\\n');
+}
+console.log(`Verified ${verified}, restored ${downloaded} assets, refreshed ${refreshedImagery} city images, skipped ${skippedTiles} unavailable edge tiles. SHA-256 checks passed.`);
