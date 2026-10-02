@@ -194,7 +194,8 @@ function updateStreetHud(now){
   const trackedId=npcContacts.getTrackedId(),trackedNpc=npcSystem?.npcs.find(npc=>npc.id===trackedId);
   const contact=npcContacts.getAll().find(item=>item.id===trackedId);
   const marker=hud.querySelector('#jcTrackedMarker');
-  if(!marker||!trackedId||(!trackedNpc&&!contact?.position)){if(marker)marker.style.display='none';return;}
+  if(!marker)return;
+  if(!trackedId||(!trackedNpc&&!contact?.position)){marker.style.display='none';if(!hud.querySelector('#jcWorldPanel').hidden&&!hud.querySelector('#jcWorldMapTab').hidden)drawWorldMap();return;}
   const position=trackedNpc?trackedNpc.position:contact.position;
   if(trackedNpc)npcContacts.touch(trackedNpc);
   const distance=Math.round(Math.hypot(position.x-player.position.x,position.z-player.position.z));
@@ -749,6 +750,7 @@ function installPavedRoads(centerX,centerZ,network=vegasStreetNetwork) {
   if(!network){network=createVegasStreetNetwork({anchorX:centerX,anchorZ:centerZ});vegasStreetNetwork=network;}
   const root=new THREE.Group();root.name='JC paved Strip roads';
   const asphalt=new THREE.MeshStandardMaterial({map:asphaltTexture(),color:0x263043,roughness:.36,metalness:.12});
+  asphalt.map.repeat.set(1,8);
   const yellow=roadStripeMaterial(0xffd24a,.9),white=roadStripeMaterial(0xe8edf1,.78);
   const concrete=new THREE.MeshStandardMaterial({color:0x62636b,roughness:.92});
   const planeGeometry=new THREE.PlaneGeometry(1,1),boxGeometry=new THREE.BoxGeometry(1,1,1),dummy=new THREE.Object3D();
@@ -766,7 +768,7 @@ function installPavedRoads(centerX,centerZ,network=vegasStreetNetwork) {
           for(const side of [-1,1]){
             const offset=route.width/2+2.6;
             addPlane(sidewalks,x+nx*offset*side,z+nz*offset*side,2.4,length+1,rotation,y+.055);
-            curbs.push({x:x+nx*(route.width/2+.35)*side,y:y+.07,z:z+nz*(route.width/2+.35)*side,width:.42,height:.2,length:length+1,rotation});
+            curbs.push({x:x+nx*(route.width/2+.35)*side,y:y+.07,z:z+nz*(route.width/2+.35)*side,width:.42,height:.2,length:length+1,yaw:Math.atan2(-dz,dx)});
           }
         }
         if(route.kind==='arterial'&&route.width>=18&&part%2===0)addPlane(yellowDashes,x,z,.2,Math.min(18,length*.42),rotation,y+.04);
@@ -786,7 +788,7 @@ function installPavedRoads(centerX,centerZ,network=vegasStreetNetwork) {
   addPlaneInstances(whiteDashes,white,'Freeway lane markings');
   if(curbs.length){
     const mesh=new THREE.InstancedMesh(boxGeometry,concrete,curbs.length);mesh.name='Street curbs';mesh.frustumCulled=false;
-    curbs.forEach((item,index)=>{dummy.position.set(item.x,item.y,item.z);dummy.rotation.set(0,item.rotation,0);dummy.scale.set(item.length,item.height,item.width);dummy.updateMatrix();mesh.setMatrixAt(index,dummy.matrix);});
+    curbs.forEach((item,index)=>{dummy.position.set(item.x,item.y,item.z);dummy.rotation.set(0,item.yaw,0);dummy.scale.set(item.length,item.height,item.width);dummy.updateMatrix();mesh.setMatrixAt(index,dummy.matrix);});
     mesh.instanceMatrix.needsUpdate=true;root.add(mesh);
   }
   // A raised Tropicana crossing makes the I-15 intersection visibly grade-separated.
@@ -1530,7 +1532,7 @@ const group = game.loaded.get('C15_R14');
   if(savedTracked)npcSystem.setTracked(savedTracked);
   trafficSystem=createTrafficSystem({scene:game.scene,network:vegasStreetNetwork,groundAt,mobile:coarseDevice});
   npcReadout.textContent=npcSystem.totalPopulation.toLocaleString()+' CITIZENS · '+npcSystem.npcs.length+' TALKABLE · CLICK A PERSON TO TALK';
-  npcReadout.style.cursor='pointer';npcReadout.setAttribute('role','button');npcReadout.tabIndex=0;npcReadout.onclick=()=>{selectWorldTab('people');hud.querySelector('#jcWorldPanel').hidden=false;hud.querySelector('#jcWorldToggle').setAttribute('aria-expanded','true');renderContactList();};npcReadout.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();npcReadout.onclick();}};
+  npcReadout.style.cursor='pointer';npcReadout.setAttribute('role','button');npcReadout.tabIndex=0;npcReadout.onclick=()=>{selectWorldTab('people');hud.querySelector('#jcWorldPanel').hidden=false;hud.querySelector('#jcWorldToggle').setAttribute('aria-expanded','true');soundPanel.hidden=true;soundToggle.setAttribute('aria-expanded','false');renderContactList();};npcReadout.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();npcReadout.onclick();}};
   hud.querySelector('#jcEditor').onclick = () => setMode(false);
   const worldPanel=hud.querySelector('#jcWorldPanel'),worldToggle=hud.querySelector('#jcWorldToggle'),soundToggle=hud.querySelector('#jcSoundToggle'),soundPanel=hud.querySelector('#jcSoundPanel');
   const soundMute=hud.querySelector('#jcSoundMute');
