@@ -10,8 +10,9 @@ const lock=JSON.parse(await readFile(new URL('./game-assets-lock.json',import.me
 const sourceAssets=new Set(JSON.parse(await readFile(new URL('./public-assets.json',import.meta.url),'utf8')));
 const verifyOnly=process.argv.includes('--verify-only');
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
-let cursor=0,verified=0,downloaded=0,refreshedImagery=0,skippedTiles=0;
-const missingTiles=new Set();
+let cursor=0,verified=0,downloaded=0,refreshedImagery=0,skippedOptionalAssets=0;
+const missingOptionalAssets=new Set();
+const optionalFacadeAtlases=new Set(['facades/photographic-atlas-v2.webp','facades/physical-materials-v1.webp']);
 async function work(){
   while(cursor<lock.assets.length){
     const asset=lock.assets[cursor++];
@@ -25,8 +26,11 @@ async function work(){
     const accept=extension==='.jpg'||extension==='.jpeg'?'image/jpeg':extension==='.webp'?'image/webp':extension==='.png'?'image/png':'*/*';
     const response=await fetch(new URL(asset.path,lock.origin),{signal:AbortSignal.timeout(120000),headers:{accept}});
     if(!response.ok){
-      if(response.status===404&&/^tiles\/C\d{2}_R\d{2}\.glb\.gz$/.test(asset.path)){
-        missingTiles.add(asset.path);skippedTiles++;console.log(`Skipped unavailable city tile: ${asset.path}`);continue;
+      const optionalTile=/^tiles\/C\d{2}_R\d{2}\.glb\.gz$/.test(asset.path);
+      const optionalAtlas=optionalFacadeAtlases.has(asset.path);
+      if(response.status===404&&(optionalTile||optionalAtlas)){
+        missingOptionalAssets.add(asset.path);skippedOptionalAssets++;
+        console.log(`Skipped optional ${optionalTile?'city tile':'facade atlas'}: ${asset.path}`);continue;
       }
       throw Error(`Asset ${asset.path}: HTTP ${response.status}`);
     }
@@ -43,8 +47,8 @@ async function work(){
   }
 }
 await Promise.all(Array.from({length:4},()=>work()));
-if(refreshedImagery||missingTiles.size){
-  lock.assets=lock.assets.filter(asset=>!missingTiles.has(asset.path));
+if(refreshedImagery||missingOptionalAssets.size){
+  lock.assets=lock.assets.filter(asset=>!missingOptionalAssets.has(asset.path));
   const lockPath=new URL('./game-assets-lock.json',import.meta.url);await writeFile(lockPath,JSON.stringify(lock,null,2)+'\n');
 }
-console.log(`Verified ${verified}, restored ${downloaded} assets, refreshed ${refreshedImagery} city images, skipped ${skippedTiles} unavailable edge tiles. SHA-256 checks passed.`);
+console.log(`Verified ${verified}, restored ${downloaded} assets, refreshed ${refreshedImagery} city images, skipped ${skippedOptionalAssets} optional map assets. SHA-256 checks passed.`);
