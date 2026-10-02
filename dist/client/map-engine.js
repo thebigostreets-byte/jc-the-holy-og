@@ -1,11 +1,13 @@
 import {loadPhotoFacades} from './photo-facades.js';
 import {loadPhysicalMaterials,buildingSurface,classifyBuilding,wallUV} from './physical-building-materials.js';
 import * as THREE from './three.module.js';
+import {createPhotorealDetailMaps,applyPhotorealMaterial} from './photorealism-pbr.js';
 import { OrbitControls } from './map-controls.js';
 import {createBuildingImpostors} from './building-impostors.js';
 import {decodeGlbAttribute} from './ground-sampling.js';
 import {predictTravel,createPrefetchCache} from './predictive-streaming.js';
 const $=id=>document.getElementById(id);
+const photorealDetailMaps=createPhotorealDetailMaps(THREE);
 const statusText=message=>{$('loading').textContent=message;};
 statusText('Opening the city…');
 async function fetchBytes(url){
@@ -83,6 +85,7 @@ async function parseGLB(raw,name){const dv=new DataView(raw.buffer,raw.byteOffse
   const p=m.pbrMetallicRoughness||{},f=p.baseColorFactor||[1,1,1,1],isWall=m.name.endsWith('_walls');
   const id=m.name.replace(/_(walls|roof)$/,''),surface=isWall?buildingSurface(id,buildingMeta.get(id)||{},facadeMaps,physicalMaps):null;
   const ma=new THREE.MeshStandardMaterial({name:m.name,color:surface?.map?new THREE.Color(surface.color):new THREE.Color(f[0],f[1],f[2]),map:surface?.map||textures[p.baseColorTexture?.index]||null,roughness:surface?.roughness??.94,metalness:surface?.metalness??0,side:m.doubleSided?THREE.DoubleSide:THREE.FrontSide});
+  applyPhotorealMaterial(THREE,ma,photorealDetailMaps,{casino:surface?.identity?.type==='casino',buildingHeight:Number(buildingMeta.get(id)?.heightMetres)||12});
   if(!isWall&&!mobileMap&&physicalMaps[4]){ma.bumpMap=physicalMaps[4];ma.bumpScale=.025;}
   ma.userData.original={color:ma.color.clone(),map:ma.map,bumpMap:ma.bumpMap,roughness:ma.roughness,metalness:ma.metalness};
   ma.userData.wallpapered=!!surface?.map;
