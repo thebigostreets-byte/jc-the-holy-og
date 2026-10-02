@@ -18,7 +18,9 @@ const deployableFiles=[
   'vegas-streets.js',
   'pose-cleanup.js',
   'rear-walk.js',
-  'master-upgrade.js'
+  'master-upgrade.js',
+  'photorealism-pbr.js',
+  'rooftop-details.js'
 ];
 
 for(const file of deployableFiles){
@@ -33,7 +35,7 @@ for(const entry of ['map-engine.js','jc-map-game.js','jc-npcs.js']){
   const imports=[...source.matchAll(/from\s+['"]\.\/([^'"]+\.js)['"]/g)].map(match=>match[1]);
   for(const dependency of imports){
     assert(publicAssets.has(dependency),`${entry} imports ${dependency}, but it is missing from scripts/public-assets.json`);
-    if(['jc-audio.js','jc-crowd.js','jc-traffic.js','npc-contacts.js','vegas-streets.js'].includes(dependency))
+    if(['jc-audio.js','jc-crowd.js','jc-traffic.js','npc-contacts.js','vegas-streets.js','photorealism-pbr.js','rooftop-details.js'].includes(dependency))
       await readFile(`dist/client/${dependency}`,'utf8');
   }
 }
