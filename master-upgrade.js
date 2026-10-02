@@ -40,7 +40,7 @@ style.textContent = ':root{--hudglass:rgba(5,10,17,.68)}'+
 '#jcLock{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);font-size:10px;color:var(--gold);text-shadow:0 2px 7px #000}'+
 '.jc-factions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:12px 0}.jc-factions button{min-width:145px}'+
 'body[data-faction=satan]{--gold:#ff6538}body[data-faction=satan] .screen{background:radial-gradient(circle at 50% 35%,#2b0d0c,#07090d 66%)}'+
-'@media(max-width:850px),(pointer:coarse){#jcMini{width:104px;height:70px;top:88px}#jcMission{top:82px;width:49vw;font-size:8px;padding:7px 8px}#jcFlight{top:7px;font-size:7px}.stats{font-size:8px}.brand{font-size:9px}.mobile-actions{bottom:168px}}';
+'@media(max-width:850px),(pointer:coarse){#jcMini{width:110px;height:74px;top:82px}#jcMission{top:166px;left:12px;width:min(190px,calc(100vw - 140px));max-width:calc(100vw - 140px);font-size:8px;padding:7px 8px}#jcFlight{top:7px;font-size:7px}.stats{font-size:8px}.brand{font-size:9px}.mobile-actions{bottom:168px}}';
 document.head.appendChild(style);
 
 const hud = $('hud');
