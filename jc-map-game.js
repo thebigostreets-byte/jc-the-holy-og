@@ -63,11 +63,32 @@ document.head.append(style);
 
 const hud = document.createElement('div');
 hud.id = 'jcHud';
-hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Left joystick: move"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: look and steer flight pitch"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="wheel" type="button">43 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>43 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div>`;
+hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcAbilityReady">Ready</span></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · E enter/exit · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q answer prayer / cast · Tab miracles</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><div id="jcStick" role="group" aria-label="Left joystick: move"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: look and steer flight pitch"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">TELEPORT</button><button data-action="cast" type="button">CAST</button><button data-action="enter" type="button">ENTER</button><button data-action="wheel" type="button">43 POWERS</button></div></div></div><div id="jcWheel" role="dialog" aria-label="JC miracles"><div class="jc-wheel-title"><strong>43 MIRACLES</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups"></div><div class="jc-list"></div></div>`;
 document.body.append(hud);
+const sinState=document.createElement('section');
+sinState.id='jcSinState';sinState.setAttribute('aria-label','Sin City good and evil state');
+sinState.innerHTML='<div class="jc-sin-labels"><b>EVIL</b><strong>SIN CITY STATE</strong><b>GOOD</b></div><div class="jc-sin-track"><i id="jcSinMarker"></i></div><div class="jc-sin-footer"><span id="jcSinVerdict">CONTESTED</span><small id="jcSinScore">BALANCE 0</small></div>';
+hud.append(sinState);
+style.textContent += '#jcSinState{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:min(360px,42vw);padding:8px 10px;background:#071018e6;border:1px solid #d2b86b77;border-radius:7px;text-shadow:0 2px 5px #000;pointer-events:none}.jc-sin-labels,.jc-sin-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:9px;letter-spacing:.12em}.jc-sin-labels>b:first-child{color:#ff684d}.jc-sin-labels>b:last-child{color:#9effc2}.jc-sin-labels strong{color:#f4df9e}.jc-sin-track{position:relative;height:8px;margin:6px 0;background:linear-gradient(90deg,#8e1e1e 0%,#431d27 35%,#777 50%,#23553e 65%,#4fbf78 100%);border:1px solid #ffffff30;border-radius:8px}.jc-sin-track i{position:absolute;top:50%;left:50%;width:4px;height:18px;transform:translate(-50%,-50%);background:#fff7cf;box-shadow:0 0 8px #fff;transition:left .35s ease}.jc-sin-footer span{font-weight:900}.jc-sin-footer small{color:#cbd1d6}@media(max-width:800px),(pointer:coarse){#jcSinState{top:8px;width:min(300px,55vw);padding:6px 8px}.jc-sin-labels strong{font-size:8px}.jc-sin-footer{font-size:8px}}';
+let sinBalance=0,prayersAnswered=0;
+try{sinBalance=THREE.MathUtils.clamp(Number(localStorage.getItem('jc-sin-city-balance'))||0,-100,100);}catch{}
+function updateSinState(delta=0,reason=''){
+  sinBalance=THREE.MathUtils.clamp(sinBalance+delta,-100,100);
+  try{localStorage.setItem('jc-sin-city-balance',String(Math.round(sinBalance)));}catch{}
+  const marker=hud.querySelector('#jcSinMarker'),verdict=hud.querySelector('#jcSinVerdict'),scoreLabel=hud.querySelector('#jcSinScore');
+  if(marker)marker.style.left=((sinBalance+100)/2)+'%';
+  const state=sinBalance>=55?'REDEEMED':sinBalance>=20?'GOOD RISING':sinBalance<=-55?'OVERRUN':sinBalance<=-20?'EVIL RISING':'CONTESTED';
+  if(verdict)verdict.textContent=state;
+  if(scoreLabel)scoreLabel.textContent=sinBalance===0?'BALANCE 0':(sinBalance>0?'GOOD +'+Math.round(sinBalance):'EVIL +'+Math.round(Math.abs(sinBalance)));
+  sinState.dataset.balance=String(Math.round(sinBalance));if(reason)sinState.title=reason;
+}
+updateSinState();
+window.JC_SIN_STATE={adjust:(delta,reason)=>updateSinState(delta,reason),value:()=>sinBalance,label:()=>hud.querySelector('#jcSinVerdict')?.textContent||'CONTESTED'};
 style.textContent += '#jcNpcReadout{position:absolute;left:12px;bottom:144px;max-width:min(390px,78vw);padding:7px 10px;background:#091018d9;border-left:2px solid #c4ffee;color:#c4ffee;font-size:11px;letter-spacing:.4px;pointer-events:auto}#jcNpcTalkButton{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 178px);transform:translateX(-50%);display:none;pointer-events:auto;padding:11px 16px;border:1px solid #f1d17e;border-radius:8px;background:#111b2aee;color:#ffe6a4;font-weight:900;box-shadow:0 6px 18px #0009;z-index:2}#jcNpcTalkButton.available{display:block}@media(pointer:fine){#jcNpcTalkButton{display:none!important}}';
 const npcReadout=document.createElement('div');npcReadout.id='jcNpcReadout';npcReadout.textContent='CITY FOLKS · OBSERVING';hud.append(npcReadout);
 const npcTalkButton=document.createElement('button');npcTalkButton.id='jcNpcTalkButton';npcTalkButton.type='button';npcTalkButton.textContent='TALK';npcTalkButton.setAttribute('aria-label','Talk to nearby character');hud.append(npcTalkButton);
+const prayerButton=document.createElement('button');prayerButton.id='jcPrayerButton';prayerButton.type='button';prayerButton.textContent='ANSWER PRAYER';prayerButton.setAttribute('aria-label','Answer nearby NPC prayer');hud.append(prayerButton);
+style.textContent += '#jcPrayerButton{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 226px);transform:translateX(-50%);display:none;pointer-events:auto;padding:11px 16px;border:1px solid #b9f3cf;border-radius:8px;background:#10251eee;color:#d8ffe5;font-weight:900;box-shadow:0 6px 18px #0009;z-index:3}#jcPrayerButton.available{display:block}@media(pointer:fine){#jcPrayerButton{bottom:86px}}';
 style.textContent += '@media(max-width:800px),(pointer:coarse){#jcTalk{bottom:calc(env(safe-area-inset-bottom) + 170px)}}#jcTalk{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);width:min(420px,90vw);padding:12px;background:#08111eF2;border:1px solid #e0bf75;border-radius:10px;color:#f5f0df;display:none;pointer-events:auto;box-shadow:0 10px 35px #000b}#jcTalk.open{display:block}#jcTalkHead{display:flex;align-items:center;gap:10px}#jcTalk img{width:48px;height:58px;object-fit:contain;background:#111a28;border-radius:6px}#jcTalk strong{color:#ffdf94}#jcTalk small{display:block;color:#aebaca;margin-top:4px}#jcTalkLog{max-height:108px;overflow:auto;font-size:12px;line-height:1.45;padding:8px 0}#jcTalk form{display:flex;gap:6px}#jcTalk [data-voice]{min-width:42px;font-size:17px}#jcTalk input{min-width:0;flex:1;background:#111a28;color:white;border:1px solid #566273;border-radius:5px;padding:9px}#jcTalk button{background:#94702e;color:white;border:1px solid #efcf81;border-radius:5px;padding:8px 10px}#jcTalk button.close{margin-left:auto;background:#18212c}';
 const talk=document.createElement('section');talk.id='jcTalk';talk.setAttribute('aria-label','Talk to nearby character');talk.innerHTML='<div id=jcTalkHead><img alt=""><div><strong></strong><small></small></div><button class=close type=button aria-label="Close conversation">×</button></div><div id=jcTalkLog role=log aria-live=polite></div><form><input maxlength=180 aria-label="Message to character" placeholder="Say something…"><button data-voice type=button aria-label="Speak your message" title="Speak your message">🎙</button><button type=submit>Send</button></form>';hud.append(talk);
 let nearNpc=null;
@@ -83,7 +104,35 @@ function closestNpc(){
   return nearest;
 }
 function openNpcTalk(npc=nearNpc){if(npc&&playing)conversation.open(npc);}
+const prayerTemplates=[
+  {kind:'heal',text:'Please give me strength and healing.'},
+  {kind:'shield',text:'Please protect me and my family tonight.'},
+  {kind:'sanctuary',text:'Please bring peace to this block.'},
+  {kind:'restore',text:'Please restore something broken near us.'},
+  {kind:'cleanse',text:'Please clear the darkness around here.'}
+];
+function assignNpcPrayer(npc,index=0,now=performance.now()){
+  if(!npc||npc.faction==='demon'||npc.faction==='angel'){if(npc)npc.prayer=null;return;}
+  const template=prayerTemplates[Math.abs(index)%prayerTemplates.length];
+  npc.prayer={...template,answered:false,createdAt:now,nextAt:0};
+}
+function pendingPrayerNpc(){return nearNpc?.prayer&&!nearNpc.prayer.answered?nearNpc:null;}
+function answerPrayer(npc=pendingPrayerNpc()){
+  if(!npc?.prayer||npc.prayer.answered||!playing)return false;
+  const prayer=npc.prayer,now=performance.now();prayer.answered=true;prayer.answeredAt=now;prayer.nextAt=now+45000+(npc.name.length%6)*5000;
+  npc.state='awe';npc.event={type:'prayer-answered',position:npc.position.clone(),time:now};npc.memory={type:'prayer-answered',prayer:prayer.text,time:now};npc.emotionUntil=now+6500;
+  if(prayer.kind==='heal')grace=Math.min(100,grace+18);
+  else if(prayer.kind==='shield')shieldUntil=Math.max(shieldUntil,now+5000);
+  else if(prayer.kind==='sanctuary')sanctuaryUntil=Math.max(sanctuaryUntil,now+6500);
+  else if(prayer.kind==='restore')nearbyBuildings(36,1).forEach(redeem);
+  else if(prayer.kind==='cleanse')nearbyBuildings(42,2).forEach(redeem);
+  prayersAnswered++;updateSinState(8,'Prayer answered for '+npc.name);
+  npcSystem?.signal('bless',npc.position,20);ringAt(npc.position.clone().add(new THREE.Vector3(0,1,0)),0xc8ffd9,10);showPose(9,900);
+  feedback('PRAYER ANSWERED · '+npc.name.toUpperCase()+' · GOOD RISING');
+  prayerButton.classList.remove('available');return true;
+}
 npcTalkButton.addEventListener('click',()=>{if(conversation.isOpen)conversation.close();else openNpcTalk();});
+prayerButton.addEventListener('click',()=>answerPrayer());
 hud.addEventListener('click',e=>{if(e.target.closest('button')&&!wheel.classList.contains('open'))e.target.closest('button').blur();});
 const playReturn = document.createElement('button');
 playReturn.id = 'jcPlayReturn';
@@ -253,9 +302,11 @@ function cycleTarget(){
   feedback(lockedSoul?'Light tracked · Q pulse within 18 m':'All lights restored');
 }
 function resetRun(){
+  if(interiorState)exitInterior(false);
   miracleEffects?.clear();phaseUntil=timeScaleUntil=shieldUntil=graceSurgeUntil=sanctuaryUntil=stasisUntil=revealUntil=sunriseUntil=poseOverrideUntil=castingUntil=0;poseOverride=-1;lockedBuilding=null;
   clearTeleportMarker();teleportAim=false;teleportTarget=null;
   redeemed=0;runTime=0;runActive=false;runFinished=false;chain={count:0,last:0,points:0};lockedSoul=null;
+  prayersAnswered=0;updateSinState();npcSystem?.npcs?.forEach((npc,index)=>assignNpcPrayer(npc,index));
   grace=100;cooldowns.clear();dashCooldown=pulseCooldown=0;flightHeight=0;flying=hypersonic=glide=diving=false;
   descending=0;velocity.set(0,0,0);player.position.copy(spawnPoint);terrainY=spawnPoint.y;
   for(const soul of souls){soul.position.copy(soul.userData.home);soul.userData.baseY=soul.position.y;soul.userData.collected=false;soul.visible=playing;}
@@ -478,30 +529,44 @@ function themedFacade(ownerId, redeemed = false) {
 
 function applyBuildingTheme(mesh, ownerId, redeemed = false) {
   if(mesh.material?.userData?.customTexture) return;
-  // Physical materials already carry their paint, scale and reflectivity.
-  // Preserve editor paint and uploaded textures when play mode themes the city.
+  const identity=mesh.material?.userData?.buildingIdentity||mesh.userData.owner?.userData?.identity||game.buildings?.get(ownerId)?.userData?.identity;
+  const casino=identity?.type==='casino';
+  // Non-casino buildings stay physically matte. Redemption changes game state,
+  // not their material class; only verified casino zones receive Strip shine.
   if(mesh.material?.userData?.physicalSurface){
     const material=mesh.material,edit=game.edits?.get(ownerId);
-    if(redeemed){material.emissive.set(0xffd8a0);material.emissiveIntensity=.1;}
-    else if(!edit?.glow){material.emissive.set(0x000000);material.emissiveIntensity=0;}
+    if(casino&&redeemed){material.emissive.set(0xffd8a0);material.emissiveIntensity=.1;}
+    else if(!casino||!edit?.glow){material.emissive.set(0x000000);material.emissiveIntensity=0;material.emissiveMap=null;}
+    material.metalness=casino?(material.userData.original?.metalness??material.metalness):0;
+    if(!casino)material.roughness=Math.max(.82,material.roughness);
     material.userData.jcBuildingId=ownerId;
+    material.needsUpdate=true;
     return;
   }
-  const hash = buildingHash(ownerId);
   if (!mesh.userData.jcMaterialClone) {
     mesh.material = cloneBuildingMaterial(mesh.material);
     mesh.userData.jcMaterialClone = true;
   }
   const material = mesh.material;
+  if(!casino){
+    if(material.emissive)material.emissive.set(0x000000);
+    material.emissiveMap=null;
+    if('emissiveIntensity' in material)material.emissiveIntensity=0;
+    material.roughness=Math.max(.84,material.roughness??.84);
+    material.metalness=0;
+    material.userData.jcBuildingId=ownerId;
+    material.needsUpdate=true;
+    return;
+  }
+  const hash = buildingHash(ownerId);
   material.map = themedFacade(ownerId, redeemed);
   material.color.setRGB(.86+((hash>>>8)&31)/230, (redeemed?.82:.74)+((hash>>>15)&31)/250, (redeemed?.80:.68)+((hash>>>22)&31)/240);
-  // The bright windows glow; dark masonry stays dark instead of a neon wash.
   material.emissiveMap=material.map;
   const heavenly=redeemed || hash%7===0;
   if(material.emissive)material.emissive.set(heavenly?0xffdf9e:vegasNeon[(hash>>>11)%vegasNeon.length]);
   if ('emissiveIntensity' in material) material.emissiveIntensity = (heavenly?.32:.22)+((hash>>>3)&31)/180;
-  material.roughness = redeemed ? .62 : .72;
-  material.metalness = .04;
+  material.roughness = redeemed ? .52 : .62;
+  material.metalness = .12;
   material.userData.original ??= {};
   material.userData.original.map = material.map;
   material.userData.original.color = material.userData.original.color || new THREE.Color();
@@ -648,6 +713,7 @@ function collect(soul) {
   soul.userData.collected = true;
   if(!runActive&&!runFinished)runActive=true;
   redeemed++;
+  updateSinState(8,'Lost light restored');
   grace = Math.min(100, grace + 15);
   score.textContent = `${redeemed} / ${souls.length}`;
   chain=advanceChain(chain,runTime);
@@ -686,7 +752,7 @@ function resolveDiveImpact() {
   const hit=nearbyBuildings(30,3);
   let broken=0;
   for(const ob of hit)if(ob?.userData?.buildingId){game.destroy(ob,'crumble');broken++;}
-  if(broken)refreshFootprints();
+  if(broken){updateSinState(-6*broken,'Dive impact destroyed '+broken+' building'+(broken===1?'':'s'));refreshFootprints();}
   for(const soul of souls)if(soul.visible&&soul.position.distanceTo(impact)<20)collect(soul);
   ringAt(impact,0xffc986,broken?36:24);
   npcSystem?.signal('dive-impact',impact,100);
@@ -715,9 +781,75 @@ function nearbyBuildings(radius, count = 1) {
     .sort((a,b) => a.d - b.d).slice(0,count).map(({ob}) => ob);
 }
 
+let interiorState=null;
+function nearestEnterableBuilding(radius=7){
+  let best=null,bestDistance=radius;
+  for(const item of footprints){
+    const {box,ob}=item;if(!ob?.userData?.buildingId)continue;
+    const nearestX=THREE.MathUtils.clamp(player.position.x,box.min.x,box.max.x),nearestZ=THREE.MathUtils.clamp(player.position.z,box.min.z,box.max.z);
+    const distance=Math.hypot(player.position.x-nearestX,player.position.z-nearestZ);
+    if(distance<bestDistance){best={box,ob};bestDistance=distance;}
+  }
+  return best;
+}
+function interiorMesh(group,geometry,material,position){
+  const mesh=new THREE.Mesh(geometry,material);mesh.position.set(...position);mesh.castShadow=false;mesh.receiveShadow=true;group.add(mesh);return mesh;
+}
+function createProceduralInterior(ob,box){
+  const center=box.getCenter(new THREE.Vector3()),sourceWidth=Math.max(1,box.max.x-box.min.x),sourceDepth=Math.max(1,box.max.z-box.min.z);
+  const width=THREE.MathUtils.clamp(sourceWidth-1,8,28),depth=THREE.MathUtils.clamp(sourceDepth-1,8,24),height=3.4,floorY=box.min.y+.12;
+  const identity=ob.userData.identity||{type:'commercial',name:'Building'},type=identity.type;
+  const group=new THREE.Group();group.name='JC procedural interior · '+ob.userData.buildingId;group.position.set(center.x,floorY,center.z);
+  const isHome=type==='residential',isCasino=type==='casino';
+  const wall=new THREE.MeshStandardMaterial({color:isHome?0xd9c6ae:isCasino?0x3a2922:0xc8c4bc,roughness:isCasino?.48:.92,metalness:isCasino?.08:0});
+  const floor=new THREE.MeshStandardMaterial({color:isHome?0x7a5b43:isCasino?0x332920:0x767676,roughness:isCasino?.55:.88,metalness:0});
+  const trim=new THREE.MeshStandardMaterial({color:isCasino?0xc9a85d:0x6f6256,roughness:isCasino?.42:.82,metalness:isCasino?.18:0});
+  const accent=new THREE.MeshStandardMaterial({color:isHome?0x76695d:isCasino?0x7b2630:0x4b5960,roughness:.75,metalness:0});
+  interiorMesh(group,new THREE.BoxGeometry(width,.18,depth),floor,[0,-.09,0]);
+  interiorMesh(group,new THREE.BoxGeometry(width,.16,depth),wall,[0,height+.08,0]);
+  interiorMesh(group,new THREE.BoxGeometry(width,height,.2),wall,[0,height/2,-depth/2]);
+  interiorMesh(group,new THREE.BoxGeometry(width,height,.2),wall,[0,height/2,depth/2]);
+  interiorMesh(group,new THREE.BoxGeometry(.2,height,depth),wall,[-width/2,height/2,0]);
+  interiorMesh(group,new THREE.BoxGeometry(.2,height,depth),wall,[width/2,height/2,0]);
+  if(isHome){
+    interiorMesh(group,new THREE.BoxGeometry(Math.min(3.4,width*.35),.75,1.05),accent,[-width*.19,.42,-depth*.22]);
+    interiorMesh(group,new THREE.BoxGeometry(1.4,.45,.85),trim,[.4,.24,-depth*.05]);
+    interiorMesh(group,new THREE.BoxGeometry(Math.min(2.6,width*.3),.55,1.6),new THREE.MeshStandardMaterial({color:0xd7d0c4,roughness:.95}),[width*.18,.29,depth*.22]);
+  }else if(isCasino){
+    for(let i=-2;i<=2;i++){interiorMesh(group,new THREE.BoxGeometry(.72,1.7,.72),trim,[i*1.15,.86,-depth*.2]);const panel=new THREE.MeshStandardMaterial({color:0xffd96b,emissive:0xff9b2f,emissiveIntensity:.35,roughness:.45});interiorMesh(group,new THREE.BoxGeometry(.48,.52,.04),panel,[i*1.15,1.08,-depth*.2-.38]);}
+    interiorMesh(group,new THREE.BoxGeometry(Math.min(5.5,width*.45),1.05,1.15),accent,[0,.53,depth*.2]);
+  }else{
+    interiorMesh(group,new THREE.BoxGeometry(Math.min(5,width*.5),1.05,.85),trim,[0,.53,-depth*.22]);
+    for(let i=-1;i<=1;i++)interiorMesh(group,new THREE.BoxGeometry(1.3,.72,.75),accent,[i*2,.37,depth*.18]);
+  }
+  const light=new THREE.PointLight(isCasino?0xffd28c:0xffedd0,isCasino?35:22,Math.max(width,depth)*1.5,2);light.position.set(0,height-0.35,0);group.add(light);
+  game.scene.add(group);
+  return {group,ob,returnPosition:player.position.clone(),floorY,minX:center.x-width/2+.7,maxX:center.x+width/2-.7,minZ:center.z-depth/2+.7,maxZ:center.z+depth/2-.7,identity};
+}
+function enterInterior(){
+  if(interiorState)return true;if(flying||flightHeight>0){feedback('Land before entering a building');return false;}
+  const target=nearestEnterableBuilding(7);if(!target){feedback('Move closer to a building entrance');return false;}
+  interiorState=createProceduralInterior(target.ob,target.box);target.ob.visible=false;velocity.set(0,0,0);
+  player.position.set((interiorState.minX+interiorState.maxX)/2,interiorState.floorY,(interiorState.minZ+interiorState.maxZ)/2);terrainY=interiorState.floorY;
+  nearNpc=null;conversation.close({restoreFocus:false});resetInput();
+  const enterButton=hud.querySelector('[data-action="enter"]');if(enterButton)enterButton.textContent='EXIT';
+  feedback('ENTERED · '+(interiorState.identity.name||interiorState.identity.type)+' · E TO EXIT');return true;
+}
+function exitInterior(showMessage=true){
+  if(!interiorState)return false;const state=interiorState;interiorState=null;
+  if(state.ob?.parent)state.ob.visible=true;
+  state.group.traverse(node=>{if(!node.isMesh)return;node.geometry?.dispose();const materials=Array.isArray(node.material)?node.material:[node.material];for(const material of materials){if(material&&!material.userData?.shared)material.dispose?.();}});
+  game.scene.remove(state.group);player.position.copy(state.returnPosition);terrainY=groundAt(player.position.x,player.position.z);player.position.y=terrainY;velocity.set(0,0,0);
+  const enterButton=hud.querySelector('[data-action="enter"]');if(enterButton)enterButton.textContent='ENTER';
+  resetInput();if(showMessage)feedback('BACK OUTSIDE · '+(state.identity.name||'BUILDING'));return true;
+}
+function toggleInterior(){return interiorState?exitInterior():enterInterior();}
+
 function redeem(ob) {
   if (!ob) return false;
+  const firstRedemption=!redeemedBuildings.has(ob.userData.buildingId);
   redeemedBuildings.add(ob.userData.buildingId);
+  if(firstRedemption)updateSinState(3,'Building restored');
   ob.traverse(mesh => {
     if (!mesh.isMesh || !mesh.material?.name?.endsWith('_walls')) return;
     applyBuildingTheme(mesh, ob.userData.buildingId, true);
@@ -801,6 +933,7 @@ function teleport(distance = 75) {
 
 function cast(id = selectedAbility) {
   if (!playing || wheel.classList.contains('open')) return;
+  if(interiorState){feedback('Exit the building to use miracles');return;}
   const ability = abilities.find(a=>a.id===id);
   if (!ability) return;
   if(id==='teleport'&&!teleportTarget){beginTeleportTarget();return;}
@@ -855,7 +988,7 @@ function cast(id = selectedAbility) {
     case 'rain':rainEffect();break;
     case 'lightning':strike(130,3);ringAt(player.position,0xaed8ff,24);cinematicLook?.impact(player.position);break;
     case 'telekinesis':{const ob=near(40)[0];if(ob){const p=ob.getWorldPosition(new THREE.Vector3());beamTo(p,0x9bdcff);ringAt(p,0x9bdcff,16);const original=ob.position.y;ob.position.y+=5;refreshFootprints();setTimeout(()=>{ob.position.y=original;refreshFootprints();},900);}break;}
-    case 'crumble':{const ob=lockedBuilding||near(55)[0];if(!ob){feedback('No building in range');break;}const point=ob.getWorldPosition(new THREE.Vector3());game.destroy(ob,'crumble');cinematicLook?.impact(point);refreshFootprints();ringAt(point,0xffc38e,26);feedback(`${ob.userData.buildingId} CRUMBLED · debris falling`);lockedBuilding=null;break;}
+    case 'crumble':{const ob=lockedBuilding||near(55)[0];if(!ob){feedback('No building in range');break;}const point=ob.getWorldPosition(new THREE.Vector3());game.destroy(ob,'crumble');updateSinState(-8,'Building destroyed');cinematicLook?.impact(point);refreshFootprints();ringAt(point,0xffc38e,26);feedback(`${ob.userData.buildingId} CRUMBLED · debris falling`);lockedBuilding=null;break;}
     case 'rebuild':{const ob=nearbyRuins();if(ob){game.rebuild(ob);refreshFootprints();redeem(ob);feedback(`${ob.userData.buildingId} REBUILT`);lockedBuilding=null;}break;}
     case 'bless':near(45).forEach(redeem);break;
     case 'exorcise':near(65,5).forEach(redeem);break;
@@ -865,8 +998,8 @@ function cast(id = selectedAbility) {
     case 'attract':moveSouls('attract',55);ringAt(player.position,0xffe6b0,40);break;
     case 'slow-time':timeScaleUntil=performance.now()+7000;ringAt(player.position,0xb9d8ff,30);break;
     case 'redemption-wave':near(105,8).forEach(redeem);ringAt(player.position,0xffe7b1,105);cinematicLook?.impact(player.position);break;
-    case 'heavenly-spear':{const ob=lockedBuilding||near(105)[0];if(!ob){feedback('No building in range');break;}const point=ob.getWorldPosition(new THREE.Vector3());point.y+=Math.max(5,ob.userData.heightMetres*.55);beamTo(point,0xffe6a5);game.destroy(ob,'explode');refreshFootprints();cinematicLook?.impact(point);ringAt(point,0xffe6a5,34);ringAt(player.position,0xfff4ce,17);feedback(`${ob.userData.buildingId} · HEAVENLY SPEAR`);lockedBuilding=null;break;}
-    case 'judgment-storm':{const targets=near(140,3);if(!targets.length){feedback('No buildings in range');break;}for(const ob of targets){const point=ob.getWorldPosition(new THREE.Vector3());point.y+=Math.max(5,ob.userData.heightMetres*.45);beamTo(point,0xb6dcff);game.destroy(ob,'crumble');ringAt(point,0xc4e6ff,24);}refreshFootprints();cinematicLook?.impact(player.position);ringAt(player.position,0xaed8ff,55);feedback(`JUDGMENT STORM · ${targets.length} IMPACTS`);break;}
+    case 'heavenly-spear':{const ob=lockedBuilding||near(105)[0];if(!ob){feedback('No building in range');break;}const point=ob.getWorldPosition(new THREE.Vector3());point.y+=Math.max(5,ob.userData.heightMetres*.55);beamTo(point,0xffe6a5);game.destroy(ob,'explode');updateSinState(-10,'Building destroyed');refreshFootprints();cinematicLook?.impact(point);ringAt(point,0xffe6a5,34);ringAt(player.position,0xfff4ce,17);feedback(`${ob.userData.buildingId} · HEAVENLY SPEAR`);lockedBuilding=null;break;}
+    case 'judgment-storm':{const targets=near(140,3);if(!targets.length){feedback('No buildings in range');break;}for(const ob of targets){const point=ob.getWorldPosition(new THREE.Vector3());point.y+=Math.max(5,ob.userData.heightMetres*.45);beamTo(point,0xb6dcff);game.destroy(ob,'crumble');ringAt(point,0xc4e6ff,24);}updateSinState(-4*targets.length,'Multiple buildings destroyed');refreshFootprints();cinematicLook?.impact(player.position);ringAt(player.position,0xaed8ff,55);feedback(`JUDGMENT STORM · ${targets.length} IMPACTS`);break;}
     case 'singularity':moveSouls('vortex',85);timeScaleUntil=performance.now()+1800;ringAt(player.position,0x9bdcff,72);feedback('SINGULARITY · nearby lights pulled inward');break;
     case 'sonic-boom':{setFlight('surge');const direction=desired.lengthSq()?desired.clone().normalize():forward.clone();moveSafely(direction.x*22,direction.z*22,performance.now()<phaseUntil);velocity.addScaledVector(direction,24);const point=player.position.clone();cinematicLook?.impact(point);ringAt(point,0xbceaff,36);npcSystem?.signal('sonic-boom',point,110);feedback('SONIC BOOM · HYPERFLIGHT');break;}
   }
@@ -891,7 +1024,7 @@ function setMode(play) {
     playReturn.textContent = 'LOADING JC...';
     return;
   }
-  if (!play) {conversation.close({restoreFocus:false});miracleEffects?.clear();}
+  if (!play) {if(interiorState)exitInterior(false);conversation.close({restoreFocus:false});miracleEffects?.clear();}
   playing = play;window.JC_WORLD_SCALE=1;
   if(player)cinematicLook?.update(0,performance.now(),player.position,velocity,false,false,play);
   npcSystem?.setVisible(play);
@@ -971,6 +1104,27 @@ function frameStep(now) {
   const dropHeld=keys.has('c')||keys.has('Control')||padKeys.has('Control');
   if(flying){if(riseHeld)desired.y+=1;if(dropHeld)desired.y-=1;}else desired.y=0;
   if (desired.lengthSq()>1) desired.normalize();
+  if(interiorState){
+    window.JC_WORLD_SCALE=0;const move=desired.clone().setY(0);if(move.lengthSq()>1)move.normalize();
+    const indoorSpeed=(keys.has('Shift')||padKeys.has('Shift'))?5.2:3.8;
+    player.position.x=THREE.MathUtils.clamp(player.position.x+move.x*indoorSpeed*dt,interiorState.minX,interiorState.maxX);
+    player.position.z=THREE.MathUtils.clamp(player.position.z+move.z*indoorSpeed*dt,interiorState.minZ,interiorState.maxZ);player.position.y=interiorState.floorY;terrainY=interiorState.floorY;
+    velocity.set(move.x*indoorSpeed,0,move.z*indoorSpeed);const indoorVelocity=Math.hypot(velocity.x,velocity.z);
+    if(indoorVelocity>.15)playerStepPhase=advanceGait(playerStepPhase,indoorVelocity,dt,indoorVelocity>4.5);
+    const indoorPose=indoorVelocity>1.1?(indoorVelocity>4.5?runPoseSet:walkPoseSet)[Math.floor(playerStepPhase)]:0;
+    portrait.userData.character.setPose(indoorPose,playerStepPhase,indoorVelocity,now,false);applyCharacterFrame(indoorPose);portrait.rotation.y=Math.PI+yaw;
+    if(realisticAvatar){realisticAvatar.material.rotation=0;realisticAvatar.position.y=realisticAvatar.scale.y*.5;}
+    const focus=player.position.clone().add(new THREE.Vector3(0,2.05,0));
+    const cameraPoint=focus.clone().add(new THREE.Vector3(-Math.sin(yaw)*4.2,1.05,Math.cos(yaw)*4.2));
+    cameraPoint.x=THREE.MathUtils.clamp(cameraPoint.x,interiorState.minX+.2,interiorState.maxX-.2);cameraPoint.z=THREE.MathUtils.clamp(cameraPoint.z,interiorState.minZ+.2,interiorState.maxZ-.2);cameraPoint.y=interiorState.floorY+2.65;
+    game.camera.position.copy(cameraPoint);game.camera.lookAt(focus);game.controls?.target?.copy(focus);
+    grace=THREE.MathUtils.clamp(grace+12*dt,0,100);graceLabel.textContent=Math.round(grace);
+    nearNpc=null;npcTalkButton.classList.remove('available');prayerButton.classList.remove('available');
+    stateLabel.textContent='INSIDE · '+(interiorState.identity.type||'BUILDING').toUpperCase();flightLabel.textContent=interiorState.identity.name||'BUILDING INTERIOR';targetLabel.textContent='';
+    feedbackLabel.style.opacity=now<feedbackUntil?'1':'0';const indoorAbility=abilities.find(a=>a.id===selectedAbility);hud.querySelector('#jcAbilityReady').textContent='Exit building to cast · E';
+    runLabel.textContent='INTERIOR · '+(interiorState.identity.name||interiorState.identity.type||'BUILDING');
+    return;
+  }
   if(!runActive&&!runFinished&&(desired.lengthSq()>.02||flightHeight>0)){runActive=true;}
   const braking=keys.has('b')||padKeys.has('b');
   const sprint = !flying && (keys.has('Shift')||padKeys.has('Shift')) && grace > 0 && desired.lengthSq() > 0;
@@ -1024,7 +1178,12 @@ function frameStep(now) {
     if (s.position.distanceTo(player.position.clone().add(new THREE.Vector3(0,1.6,0))) < 3.4) collect(s);
   }
   if(worldDt>0)npcSystem?.update(worldDt,now);
-  nearNpc=closestNpc();npcTalkButton.classList.toggle('available',coarseDevice&&!!nearNpc&&!talk.classList.contains('open'));npcTalkButton.textContent=nearNpc?`TALK TO ${nearNpc.name.toUpperCase()}`:'TALK';npcReadout.textContent=talk.classList.contains('open')?npcReadout.textContent:(nearNpc?`NEAR ${nearNpc.name.toUpperCase()} · ${nearNpc.faction.toUpperCase()} · PRESS C TO TALK`:`${npcSystem?.npcs.length||0} LIVING NPCS · MOVE CLOSE TO TALK`);
+  nearNpc=closestNpc();
+  if(nearNpc?.prayer?.answered&&now>=nearNpc.prayer.nextAt)assignNpcPrayer(nearNpc,nearNpc.name.charCodeAt(0)+prayersAnswered,now);
+  const prayerNpc=pendingPrayerNpc();
+  npcTalkButton.classList.toggle('available',coarseDevice&&!!nearNpc&&!talk.classList.contains('open'));npcTalkButton.textContent=nearNpc?`TALK TO ${nearNpc.name.toUpperCase()}`:'TALK';
+  prayerButton.classList.toggle('available',!!prayerNpc&&!talk.classList.contains('open'));prayerButton.textContent=prayerNpc?`ANSWER ${prayerNpc.name.toUpperCase()}'S PRAYER`:'ANSWER PRAYER';
+  npcReadout.textContent=talk.classList.contains('open')?npcReadout.textContent:(prayerNpc?`${prayerNpc.name.toUpperCase()} PRAYS: ${prayerNpc.prayer.text} · Q TO ANSWER`:nearNpc?`NEAR ${nearNpc.name.toUpperCase()} · ${nearNpc.faction.toUpperCase()} · PRESS C TO TALK`:`${npcSystem?.npcs.length||0} LIVING NPCS · MOVE CLOSE TO TALK`);
   graceLabel.textContent = Math.round(grace);
   stateLabel.textContent=teleportAim?'CHOOSE DESTINATION':diving?'DIVE':braking?'BRAKING':hypersonic?'HYPERFLIGHT':flying&&flightHeight<9?'HOVER':flying&&glide?'GLIDE':flying?'CRUISE':flightHeight>0?'LANDING':'GROUNDED';
   cinematicLook?.setSunrise(now<sunriseUntil);
@@ -1139,6 +1298,7 @@ const group = game.loaded.get('C15_R14');
   game.scene.add(player);
   createSouls(x, z);
   npcSystem=createNpcSystem({scene:game.scene,player,groundAt,isSafe:(x,z,r=2)=>!blockedAt(x,groundAt(x,z)+1.55,z,r),count:coarseDevice?8:(window.JC_NPC_COUNT||12),onReport:text=>{npcReadout.textContent=text;}});
+  npcSystem.npcs.forEach((npc,index)=>assignNpcPrayer(npc,index));
   npcReadout.textContent=`${npcSystem.npcs.length} LIVING NPCS · MOVE CLOSE TO TALK`;
   npcReadout.style.cursor='pointer';npcReadout.setAttribute('role','button');npcReadout.tabIndex=0;npcReadout.onclick=()=>openNpcTalk();npcReadout.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openNpcTalk();}};
   hud.querySelector('#jcEditor').onclick = () => setMode(false);
@@ -1151,10 +1311,11 @@ const group = game.loaded.get('C15_R14');
     if (['w','a','s','d','e','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Shift','b'].includes(key)) keys.add(key);
     if(e.code==='Space'||e.code.startsWith('Control')){keys.add(e.code==='Space'?'Space':'Control');e.preventDefault();}
     if(e.code==='KeyC'&&!e.repeat){e.preventDefault();if(conversation.isOpen)conversation.close();else openNpcTalk();return;}
+    if(e.code==='KeyE'&&!e.repeat&&!flying){e.preventDefault();toggleInterior();return;}
     if(e.code==='KeyL'&&!e.repeat)cycleTarget();
     if(e.code==='KeyK'&&!e.repeat)cycleBuildingTarget();
     if (e.code === 'Space' && !e.repeat && !flying) dash();
-    if (e.code === 'KeyQ' && !e.repeat) cast();
+    if (e.code === 'KeyQ' && !e.repeat) {if(!answerPrayer())cast();}
     if (e.code === 'KeyF' && !e.repeat) cast('flight');
     if (e.code === 'KeyG' && !e.repeat) cast('hypersonic');
     if (e.code === 'KeyV' && !e.repeat) beginDive(true);
@@ -1212,7 +1373,8 @@ const group = game.loaded.get('C15_R14');
   hud.querySelector('[data-action="fly"]').onclick=()=>cast('flight');
   hud.querySelector('[data-action="land"]').onclick=()=>cast('beam-down');
   hud.querySelector('[data-action="teleport"]').onclick=()=>{cast('teleport');};
-  hud.querySelector('[data-action="cast"]').onclick=()=>cast();
+  hud.querySelector('[data-action="cast"]').onclick=()=>{if(!answerPrayer())cast();};
+  hud.querySelector('[data-action="enter"]').onclick=()=>toggleInterior();
   hud.querySelector('[data-action="wheel"]').onclick=()=>toggleWheel();
   const moreButton=hud.querySelector('[data-action="more"]'),extras=hud.querySelector('.jc-extras');
   moreButton.onclick=()=>{const open=extras.classList.toggle('open');moreButton.setAttribute('aria-expanded',String(open));moreButton.textContent=open?'LESS':'MORE';};
