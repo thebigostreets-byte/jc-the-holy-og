@@ -8,7 +8,7 @@ export async function requestNpcDialogue(npc, history, {message = '', greeting =
   try {
     const response = await fetch(ENDPOINT,{
       method:'POST',mode:'same-origin',credentials:'same-origin',headers:{'content-type':'application/json'},signal:controller.signal,
-      body:JSON.stringify({npc:{name:npc.name,faction:npc.faction,state:npc.state || 'calm',recentEvent:npc.event?.type || npc.memory?.type || ''},history:history.slice(-8),message,greeting}),
+      body:JSON.stringify({npc:{name:npc.name,faction:npc.faction,state:npc.state || 'calm',recentEvent:npc.event?.type || npc.memory?.type || '',prayer:npc.prayer?.text || '',prayerAnswered:!!npc.prayer?.answered},history:history.slice(-8),message,greeting}),
     });
     let data;
     try {data = await response.json();} catch {throw new Error('NPC dialogue returned an unreadable response. Your message is saved.');}
