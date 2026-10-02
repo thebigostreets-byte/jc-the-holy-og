@@ -173,11 +173,6 @@
       "sha256": "03dfb30dd95beeb4f65e1cd0940387b01d17217ff44b5992733a3ab24b70ee00"
     },
     {
-      "path": "facades/heaven-hell-atlas.webp",
-      "bytes": 179906,
-      "sha256": "84d9196efd0b0ed0407442dc3e06a40dac8d858a0d05d8b9281e0adcfd89396a"
-    },
-    {
       "path": "facades/obsidian.webp",
       "bytes": 239810,
       "sha256": "da9175e0b200e5e02bbcdbf8a44e5688e045c0328833b7248eb664cf80bedeae"
