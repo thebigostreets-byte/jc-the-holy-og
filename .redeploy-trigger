@@ -1,5 +1,5 @@
 JC THE HOLY OG redeploy trigger
 branch: main
-source_commit: 88e3f8b7755c2cc06302c884ffbb6cd41805bc2c
+source_commit: 9b42058bb098ee5bc54e721959de453648dbddd2
 requested_at: 2026-10-02
-reason: publish latest JC audio, sprite cleanup, NPC contact tracking, world map, street labels, regional travel, Vegas roads, traffic, crowd, Sphere, High Roller and palm landmarks
+reason: deploy synchronized production client with audio controls, sprite cleanup, saved NPC tracking, world map, street labels, regional travel, Vegas roads, traffic, crowd, Sphere, High Roller, palms, building realism and dialogue updates
