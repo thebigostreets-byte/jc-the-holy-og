@@ -1,0 +1,30 @@
+name: Unfinished chat integration regression
+on:
+  push:
+    branches: [feature/unfinished-chat-changes]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          for file in *.js tests/*.mjs scripts/*.mjs; do
+            [ -f "$file" ] || continue
+            node --check "$file"
+          done
+      - name: Check source-to-deploy synchronization
+        run: node tests/deployable-client-sync.mjs
+      - name: Run regression suite
+        run: |
+          for file in tests/*.mjs; do
+            echo "::group::$file"
+            node "$file"
+            echo "::endgroup::"
+          done
