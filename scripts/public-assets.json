@@ -822,5 +822,6 @@
   "vegas-streets.js",
   "physical-building-materials.js",
   "facades/physical-materials-v1.webp",
-  "jc-missions.js"
+  "jc-missions.js",
+  "photorealism-pbr.js"
 ]
