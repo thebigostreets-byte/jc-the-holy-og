@@ -1,0 +1,25 @@
+name: Audio controls regression
+on:
+  push:
+    branches: [feature/game-sound-controls]
+permissions:
+  contents: read
+jobs:
+  audio-controls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          node --check jc-audio.js
+          node --check jc-map-game.js
+          node --check tests/audio-controls.mjs
+      - name: Test audio controls
+        run: node tests/audio-controls.mjs
+      - name: Test flight-state regression
+        run: node tests/flight-state.mjs
+      - name: Test Sin City state regression
+        run: node tests/sin-city-state.mjs
