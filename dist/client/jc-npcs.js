@@ -1,5 +1,5 @@
 import * as THREE from './three.module.js';
-import {createCharacter3D} from './jc-character3d.js';
+import {createNpcCutout} from './npc-cutouts.js';
 import {createAmbientCrowd} from './jc-crowd.js';
 import {createNpcMemoryStore} from './npc-memory.js';
 
@@ -19,14 +19,14 @@ function chooseOpen(x,z,isSafe) {
   return [x,z];
 }
 
-export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,onReport,count=8,crowdCount=500,mobile=false}) {
+export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,onReport,count=8,crowdCount=500,mobile=false,camera=null}) {
   const root=new THREE.Group();root.name='JC responsive NPC crowd';scene.add(root);
   root.visible=false;
   const npcs=[];
   const memoryStore=createNpcMemoryStore();
   const size=Math.max(6,Math.min(16,Math.round(count||8)));
   let trackedId=null;
-  const crowd=createAmbientCrowd({scene,player,groundAt,isSafe,count:crowdCount,mobile});
+  const crowd=createAmbientCrowd({scene,player,camera,groundAt,isSafe,count:crowdCount,mobile});
   let lastReport=0;
   const restorative=new Set(['heal','shield','cleanse','sunrise','sanctuary','restore','grace-surge','rain','rebuild','bless','redemption-wave']);
   const travel=new Set(['flight','hypersonic','hover','glide','sky-lift','leap','teleport','beam-down','recall','phase-step']);
@@ -48,7 +48,7 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,on
     const profile=characterProfiles[faction]||characterProfiles.civilian,savedMemory=memoryStore.get(id);
     const npc={id,faction,avatar,name,...profile,sprite:null,trackerRing:null,position:new THREE.Vector3(x,groundAt(x,z)+1.55,z),target:new THREE.Vector3(x,0,z),event:null,state:'idle',nextWander:0,emotionUntil:0,gait:Math.random()*Math.PI*2,stepDistance:0,lifeMemory:savedMemory,observedPlayer:savedMemory?.lastPlayerState?{state:savedMemory.lastPlayerState,appearance:savedMemory.appearance}:null};
     npcs.push(npc);
-    const sprite=createCharacter3D({faction});
+    const sprite=createNpcCutout({faction,ordinal:i,camera,mobile});
     sprite.position.set(x,groundAt(x,z),z);
     Object.assign(sprite.userData,{faction,avatar,name:npc.name,emotion:'calm',npcRef:npc});
     const trackerRingMesh=new THREE.Mesh(new THREE.TorusGeometry(1.15,.065,6,20),new THREE.MeshBasicMaterial({color:0xffd45a,transparent:true,opacity:.9,depthWrite:false}));
@@ -156,9 +156,9 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,on
       }
       if(len<=.12)npc.moving=false;
       npc.sprite.position.set(npc.position.x,npc.position.y-1.55,npc.position.z);
-      if(len>.12)npc.sprite.rotation.y=Math.atan2(dx,dz);
+      if(len>.12)npc.facingYaw=Math.atan2(dx,dz);
       const pose=npc.moving?(running?31+Math.floor(npc.gait/.45)%8:23+Math.floor(npc.gait/.6)%8):npc.state==='respond'?6:npc.state==='awe'?11:0;
-      npc.sprite.userData.character.setPose(pose,npc.gait,npc.moving?speed:0,now,false);
+      npc.sprite.userData.character.setPose(pose,npc.gait,npc.moving?speed:0,now,false);\n      npc.sprite.userData.updateCutout?.(npc.facingYaw||0);
       if(npc.trackerRing?.visible)npc.trackerRing.material.opacity=.68+Math.sin(now*.006)*.22;
     }
     crowd.update(dt,now);
