@@ -17,16 +17,16 @@ a{display:inline-block;margin-top:14px;padding:14px 22px;border:1px solid #e8c97
 <body>
 <main>
 <h1>JC THE HOLY OG</h1>
-<p>Opening Sin City in 3D…</p>
-<a id="play" href="https://jc-the-holy-og.ill5299.chatgpt.site/map?play=1">PLAY NOW</a>
+<p>Opening Sin City from the GitHub Pages build…</p>
+<a id="play" href="./map-fresh.html?play=1&v=399b5a3">PLAY NOW</a>
 </main>
 <script>
-const target=new URL('https://jc-the-holy-og.ill5299.chatgpt.site/map');
-for(const [key,value] of new URLSearchParams(location.search))target.searchParams.set(key,value);
-if(!target.searchParams.has('play'))target.searchParams.set('play','1');
-target.hash=location.hash;
-document.getElementById('play').href=target.href;
-setTimeout(()=>location.replace(target.href),250);
+const params=new URLSearchParams(location.search);
+params.set('play','1');
+params.set('v','399b5a3');
+const next='./map-fresh.html?'+params.toString();
+document.getElementById('play').href=next;
+setTimeout(()=>location.replace(next),300);
 </script>
 </body>
 </html>
