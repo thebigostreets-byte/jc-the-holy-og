@@ -6,12 +6,26 @@ const palette={
   angel:{skin:0xe4b89d,cloth:0xf1ead5,accent:0xffd875,pants:0xd8d1bd},
   demon:{skin:0x9b5c57,cloth:0x321c2b,accent:0xff526a,pants:0x1e1725},
 };
+const SKIN_POOL=[0xf0c8ae,0xe2b08d,0xd49a77,0xc38462,0xaf7256,0x986047,0x7e4d39,0x673e31,0x543229,0x3f2822];
+const CLOTH_POOL=[0x24364b,0x48596b,0x4f3e48,0x3d594c,0x66513f,0x363b58,0x6a3f43,0x566139,0x315962,0x6b5e67,0x2e2f35,0x7a6648,0x394e68,0x704c5d,0x3f654f,0x5b4d3e];
+const PANTS_POOL=[0x171d26,0x28313a,0x312d31,0x3a3833,0x1f3138,0x403846,0x494137,0x20252d,0x2f3c42,0x3e3230];
+const ACCENT_POOL=[0xd2a45f,0xb7685d,0x6d9dbc,0x76a171,0xa17bc0,0xc6c8c5,0xc58450,0x8b8d98,0xd1b57b,0x5f91a0];
+const HAIR_POOL=[0x171514,0x2a211d,0x3c2c24,0x51392d,0x6b4b35,0x8a6746,0xb09670,0x25262c,0x4a4341,0x1e2024];
+function npcHash(value){let h=2166136261;for(const c of String(value)){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
+function npcAppearance(faction,ordinal=0,player=false){
+  const base=palette[faction]||palette.civilian;
+  if(player||faction==='angel'||faction==='demon')return {...base,hair:faction==='demon'?0x211723:faction==='angel'?0x3a2f29:0,hairStyle:0,height:1,width:1};
+  let seed=npcHash(faction+':'+ordinal),next=()=>((seed=Math.imul(seed,1664525)+1013904223)>>>0)/4294967296;
+  const skin=SKIN_POOL[Math.floor(next()*SKIN_POOL.length)],cloth=CLOTH_POOL[Math.floor(next()*CLOTH_POOL.length)],pants=PANTS_POOL[Math.floor(next()*PANTS_POOL.length)],accent=ACCENT_POOL[Math.floor(next()*ACCENT_POOL.length)],hair=HAIR_POOL[Math.floor(next()*HAIR_POOL.length)];
+  return {skin,cloth,pants,accent,hair,hairStyle:Math.floor(next()*6),height:.94+next()*.13,width:.9+next()*.2};
+}
 const sph=new THREE.SphereGeometry(1,12,10), cyl=new THREE.CylinderGeometry(.13,.17,.58,10,1), smallCyl=new THREE.CylinderGeometry(.105,.13,.5,9,1);
 function mat(color,roughness=.7,metalness=0,emissive=0){return new THREE.MeshStandardMaterial({color,roughness,metalness,emissive,emissiveIntensity:emissive?1.2:0});}
 function orb(parent,material,position,scale){const m=new THREE.Mesh(sph,material);m.position.set(...position);m.scale.set(...scale);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
 function segment(parent,material,geometry,position){const m=new THREE.Mesh(geometry,material);m.position.set(...position);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
-export function createCharacter3D({faction='civilian',player=false}={}){
-  const colors=palette[faction]||palette.civilian,group=new THREE.Group();group.name=`${faction} ${player?'player':'NPC'} 3D character`;
+export function createCharacter3D({faction='civilian',player=false,ordinal=0}={}){
+  const colors=npcAppearance(faction,ordinal,player),group=new THREE.Group();group.name=`${faction} ${player?'player':'NPC'} full 3D character`;
+  if(!player)group.scale.set(colors.width,colors.height,colors.width);
   const skin=mat(colors.skin,.62,0),shirt=mat(colors.cloth,.82,.01),trim=mat(colors.accent,.42,.22, faction==='angel'?0x362600:faction==='demon'?0x31000b:0),pants=mat(colors.pants,.88,.01),boot=mat(0x171a21,.48,.12),iris=mat(faction==='demon'?0xff435d:0x27384a,.18,0, faction==='demon'?0x8e0011:0),glow=mat(colors.accent,.28,.32,colors.accent);
   const torso=new THREE.Group();torso.position.y=1.76;group.add(torso);
   orb(torso,shirt,[0,.06,0],[.39,.53,.23]);orb(torso,trim,[0,.48,0],[.2,.08,.21]);
@@ -27,8 +41,15 @@ export function createCharacter3D({faction='civilian',player=false}={}){
   orb(torso,glow,[0,.11,.236],[.075,.11,.035]);
   const head=new THREE.Group();head.position.set(0,.79,0);torso.add(head);
   orb(head,skin,[0,0,0],[.245,.29,.235]);
-  const hairMat=mat(faction==='demon'?0x211723:faction==='authority'?0x252d39:faction==='angel'?0x3a2f29:0x302b2c,.92,0);
-  orb(head,hairMat,[0,.205,-.025],[.25,.115,.24]);
+  const hairMat=mat(colors.hair||0x302b2c,.92,0);
+  const hairCap=orb(head,hairMat,[0,.205,-.025],[.25,.115,.24]);
+  if(!player&&faction!=='angel'&&faction!=='demon'){
+    if(colors.hairStyle===1){for(const side of [-1,1]){const lock=segment(head,hairMat,new THREE.CylinderGeometry(.025,.035,.42,7),[side*.19,-.02,-.02]);lock.rotation.z=side*.08;}}
+    else if(colors.hairStyle===2){orb(head,hairMat,[0,.26,-.04],[.15,.12,.15]);}
+    else if(colors.hairStyle===3){for(const side of [-1,1])orb(head,hairMat,[side*.13,.17,-.01],[.13,.15,.13]);}
+    else if(colors.hairStyle===4){hairCap.scale.set(.27,.07,.245);}
+    else if(colors.hairStyle===5){const bun=orb(head,hairMat,[0,.30,-.12],[.10,.10,.10]);bun.rotation.x=.15;}
+  }
   // Ears, nose and brow break the spherical head silhouette at gameplay distance.
   for(const x of [-.235,.235])orb(head,skin,[x,-.005,0],[.035,.07,.045]);
   orb(head,skin,[0,-.025,.225],[.035,.055,.04]);
