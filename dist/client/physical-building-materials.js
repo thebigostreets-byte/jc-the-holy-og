@@ -1,70 +1,7 @@
 import * as THREE from './three.module.js';
-
+import {generatedBuildingKind} from './generated-materials.js';
+import {identityPalette} from './building-identities.js';
 let pending;
-
-// Casino identity is intentionally explicit. Everything else defaults to matte
-// residential/commercial treatment instead of receiving "Strip" gloss by height.
-export const CASINO_PROPERTIES = [
-  // North end: the STRAT through the Convention Center resort cluster.
-  ['The STRAT', -115.1566, 36.1475, 220],
-  ['Sahara Las Vegas', -115.1564, 36.1425, 220],
-  ['Fontainebleau Las Vegas', -115.1583, 36.1377, 270],
-  ['Westgate Las Vegas', -115.1630, 36.1364, 210],
-  ['Resorts World', -115.1658, 36.1354, 320],
-  ['Circus Circus', -115.1659, 36.1372, 300],
-
-  // Central Strip: Wynn/Encore to Caesars Palace and the LINQ promenade.
-  ['Wynn / Encore', -115.1657, 36.1269, 360],
-  ['Treasure Island', -115.1725, 36.1247, 210],
-  ['The Venetian / Palazzo', -115.1697, 36.1212, 330],
-  ['Mirage / Hard Rock redevelopment', -115.1717, 36.1214, 190],
-  ["Harrah's Las Vegas", -115.1715, 36.1195, 190],
-  ['The LINQ', -115.1709, 36.1172, 180],
-  ['Caesars Palace', -115.1745, 36.1162, 330],
-  ['Flamingo Las Vegas', -115.1707, 36.1167, 210],
-  ['The Cromwell', -115.1704, 36.1147, 150],
-  ['Horseshoe Las Vegas', -115.1714, 36.1129, 190],
-  ['Bellagio', -115.1767, 36.1126, 260],
-  ['Paris Las Vegas', -115.1707, 36.1125, 210],
-  ['The Cosmopolitan', -115.1741, 36.1096, 200],
-  ['Planet Hollywood', -115.1706, 36.1098, 200],
-  ['ARIA Resort & Casino', -115.1760, 36.1072, 230],
-
-  // South Strip: Park MGM, MGM Grand, Excalibur, Luxor and Mandalay Bay.
-  ['Park MGM', -115.1760, 36.1047, 190],
-  ['New York-New York', -115.1745, 36.1022, 220],
-  ['MGM Grand', -115.1697, 36.1025, 300],
-  ['OYO Hotel & Casino', -115.1683, 36.0980, 170],
-  ['Excalibur', -115.1756, 36.0987, 260],
-  ['Luxor', -115.1761, 36.0955, 260],
-  ['Mandalay Bay', -115.1757, 36.0919, 320]
-];
-
-const toRad = value => value * Math.PI / 180;
-function distanceMetres(lon1,lat1,lon2,lat2){
-  const p1=toRad(lat1),p2=toRad(lat2),dp=toRad(lat2-lat1),dl=toRad(lon2-lon1);
-  const a=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
-  return 12742000*Math.asin(Math.min(1,Math.sqrt(a)));
-}
-
-export function classifyBuilding(meta={}){
-  if(typeof meta==='number') meta={heightMetres:meta};
-  const longitude=Number(meta.longitude),latitude=Number(meta.latitude),height=Number(meta.heightMetres)||0;
-  if(Number.isFinite(longitude)&&Number.isFinite(latitude)){
-    let best=null;
-    for(const [name,lon,lat,radius] of CASINO_PROPERTIES){
-      const distance=distanceMetres(longitude,latitude,lon,lat);
-      const centralCasinoStructure=distance<=Math.min(135,radius*.55),likelyHotelTower=height>=18&&distance<=radius;
-      if((centralCasinoStructure||likelyHotelTower)&&(!best||distance<best.distance))best={type:'casino',name,confidence:'landmark-proximity',distance};
-    }
-    if(best)return best;
-  }
-  const inStripCorridor=Number.isFinite(longitude)&&Number.isFinite(latitude)&&longitude>-115.186&&longitude<-115.154&&latitude>36.086&&latitude<36.151;
-  if(height<=11&&!inStripCorridor)return {type:'residential',name:'Neighborhood residence',confidence:'inferred-form'};
-  if(height<=16&&!inStripCorridor)return {type:'low-rise-commercial',name:'Low-rise building',confidence:'inferred-form'};
-  return {type:'commercial',name:inStripCorridor?'Strip commercial building':'Commercial building',confidence:'inferred-form'};
-}
-
 export function loadPhysicalMaterials(){
  return pending ||= new Promise((resolve,reject)=>{
   const image=new Image(),timer=setTimeout(()=>reject(Error('Material download timed out')),8000);
@@ -84,57 +21,51 @@ export function loadPhysicalMaterials(){
   image.src='./facades/physical-materials-v1.webp';
  });
 }
-
 export function buildingHash(id){let hash=2166136261;for(const c of id){hash^=c.charCodeAt(0);hash=Math.imul(hash,16777619);}return hash>>>0;}
-
-// Appearance remains an art layer. Identity-aware rules prevent ordinary homes and
-// businesses from inheriting reflective casino treatment.
-export function buildingSurface(id,meta,photos,physical){
- const h=buildingHash(id),identity=classifyBuilding(meta),height=typeof meta==='number'?meta:(Number(meta?.heightMetres)||0);
- const paint=['#efe8dc','#ddd2c3','#cdbda9','#e5ddd0','#c7b7a3','#f1ede5'];
- let map,scale,roughness=.9,metalness=0,color='#ffffff',kind='facade';
-
- if(identity.type==='casino'){
-  map=photos[h%Math.max(1,photos.length)];
-  scale=height>=40?[10,13]:[7,8];
-  roughness=.34+(h%4)*.04;
-  metalness=.12+(h%3)*.04;
-  kind='casino glass / illuminated facade';
- } else if(identity.type==='residential'){
-  // Low-rise photo cells supply doors/windows at house scale; physical stucco,
-  // brick and stone keep neighborhood blocks from looking copy-pasted.
-  const usePhoto=photos.length&&h%4!==0;
-  if(usePhoto){
-   map=photos[(2+h%2)%photos.length];scale=[5.2,3.1];color=paint[h%paint.length];
-   kind='matte residential facade';
-  }else{
-   const choices=[0,0,2,3],index=choices[h%choices.length];
-   map=physical[index]||photos[(2+h%2)%Math.max(1,photos.length)];
-   scale=index===0?[2.2,2.2]:index===2?[3,3]:[3.5,3.5];
-   color=index===0?paint[h%paint.length]:'#ffffff';
-   kind=index===0?'residential stucco':index===2?'residential brick':'residential stone';
-  }
-  roughness=.93;
-  metalness=0;
- } else if(identity.type==='low-rise-commercial'){
-  const index=[0,1,2,5][h%4];
-  map=physical[index]||photos[(2+h%2)%Math.max(1,photos.length)];
-  scale=index===0?[2.5,2.5]:index===2?[3.2,3.2]:[4,4];
-  color=index===0?paint[h%paint.length]:'#ffffff';
-  roughness=index===5?.72:.88;
-  metalness=index===5?.04:0;
-  kind='matte low-rise commercial';
- } else {
-  map=height>=24?photos[(2+h%2)%Math.max(1,photos.length)]:(physical[[0,1,2,5][h%4]]||photos[(2+h%2)%Math.max(1,photos.length)]);
-  scale=height>=24?[7,8]:[4,4];
-  color=height>=24?'#ffffff':paint[h%paint.length];
-  roughness=height>=24?.72:.86;
-  metalness=height>=24?.04:0;
-  kind='matte commercial facade';
- }
- return {map,scale,roughness,metalness,color,kind,identity};
+const LANDMARK_FACADES=[
+ [/Bellagio/i,0xe3d5b5,0xd8bc75,0],
+ [/Caesars/i,0xe5dfcd,0x73b5d2,2],
+ [/Paris/i,0xe4d3b4,0xe47a5d,1],
+ [/Luxor/i,0x8b7965,0xf1b64f,3],
+ [/MGM Grand/i,0x93b5a2,0xd8c46a,1],
+ [/Venetian|Palazzo/i,0xdec9a5,0xe6bc73,0],
+ [/Wynn|Encore/i,0xd6c094,0xc68c45,2],
+ [/Flamingo/i,0xe7c6cf,0xff83ba,3],
+ [/Cosmopolitan/i,0xaabac9,0xa07ed5,2],
+ [/New York New York/i,0xb97c71,0x94bdd7,1],
+ [/Excalibur/i,0xd2b98f,0xb684db,3],
+ [/Circus Circus/i,0xa4b77a,0xf1675a,0],
+ [/Resorts World/i,0x8b4144,0xeea56d,2],
+ [/Treasure Island/i,0x8d9ca1,0x75e3c7,1],
+ [/Strat/i,0xbebbb3,0xffd265,3],
+];
+export function facadeTraits(id,identity={}){
+ const signature=buildingHash(String(id)+':identity');
+ const landmark=LANDMARK_FACADES.find(([pattern])=>pattern.test(identity?.name||''));
+ const accents=[0x61cce7,0xe7b75e,0xbd8ee1,0xe88486,0x82ce9d,0xd5d9e8,0x72aaa8,0xe49f70];
+ return {signature,accent:landmark?.[2]??accents[(signature>>>9)%accents.length],pattern:landmark?.[3]??(signature%4),verticalFrequency:1+((signature>>>4)%3),horizontalFrequency:1+((signature>>>7)%3),detailFrequency:2+((signature>>>12)%4),landmark:!!landmark};
 }
-
+// Appearance is a fictional, deterministic art assignment, not surveyed paint.
+export function buildingSurface(id,height,photos,physical,identity=null,generated={}){
+ const h=buildingHash(id),paint=['#f1eee7','#ddd5c8','#c8c4bc','#d8d0c0','#c6b9a6','#e2deda'];
+ let map,scale,roughness=.86,metalness=0,color='#ffffff',kind='facade';
+ if(height>=24){map=photos[(h%2)%photos.length];scale=[9,10];roughness=h%2?.74:.33;metalness=h%2?0:.18;}
+ else if(height>=8 || !physical.length || h%5!==0){map=photos[(2+h%2)%photos.length];scale=[8,9];color=paint[h%paint.length];}
+ else {
+  const index=[0,0,1,2,3,5][h%6];map=physical[index];
+  kind=['painted stucco','concrete','brick','stone','roof aggregate','painted metal'][index];
+  scale=index===0?[2,2]:index===2?[3,3]:[4,4];
+  color=index===0?paint[h%paint.length]:'#ffffff';roughness=index===5?.58:.94;metalness=index===5?.22:0;
+ }
+ const traits=facadeTraits(id,identity),signature=traits.signature,palette=identityPalette(identity?.name);
+ if(palette&&photos.length){map=photos[palette.photo%photos.length];color=palette.color;roughness=palette.roughness;kind='landmark facade';scale=[9,10];}
+ const generatedKind=generatedBuildingKind(identity,height);
+ if(generatedKind&&generated[generatedKind]){map=generated[generatedKind];scale=generatedKind==='casino'?[9,10]:[8,9];roughness=generatedKind==='casino'?.65:.96;metalness=0;color='#ffffff';kind='generated '+generatedKind;}
+ const tint=new THREE.Color(color);tint.offsetHSL(((signature>>>4)%17-8)/900,((signature>>>10)%13-6)/500,((signature>>>17)%17-8)/600);
+ color='#'+tint.getHexString();
+ scale=[scale[0]*(.88+((signature>>>8)%25)/100),scale[1]];
+ return {map,scale,roughness,metalness,color,kind,signature:signature.toString(16).padStart(8,'0'),accent:traits.accent,pattern:traits.pattern,verticalFrequency:traits.verticalFrequency,horizontalFrequency:traits.horizontalFrequency,detailFrequency:traits.detailFrequency};
+}
 // Meter-based projection avoids stretching windows over an entire skyscraper.
 // Only walls are remapped; original aerial roof photographs keep their UVs.
 export function wallUV(positions,normals,width,height){

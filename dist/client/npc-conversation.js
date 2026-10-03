@@ -1,9 +1,9 @@
-import {requestNpcDialogue} from './npc-dialogue.js';
+import {requestNpcDialogue,requestNpcTranscription} from './npc-dialogue.js';
 
 const CONVERSATION_STORAGE_KEY='jc-npc-conversations-v1';
 const portraits = Object.fromEntries(['civilian','authority','angel','demon'].map(f => [f, `./character-art/${f}-npc-reference-v1.webp`]));
 
-export function createNpcConversation({panel, log, onOpen = () => {}, onClose = () => {}, notice = () => {}}) {
+export function createNpcConversation({panel, log, onOpen = () => {}, onClose = () => {}, notice = () => {}, worldContext=()=>null, onWorldAction=()=>null}) {
   const form = panel.querySelector('form'), input = form.querySelector('input');
   const send = form.querySelector('[type=submit]'), mic = form.querySelector('[data-voice]');
   const portrait = panel.querySelector('img'), name = panel.querySelector('strong'), status = panel.querySelector('small');
@@ -41,15 +41,17 @@ export function createNpcConversation({panel, log, onOpen = () => {}, onClose = 
   function persistConversations(){
     try{globalThis.localStorage?.setItem(CONVERSATION_STORAGE_KEY,JSON.stringify({version:1,histories:Object.fromEntries([...conversations].slice(-32))}));}catch{}
   }
-  let active = null, pending = false, requestId = 0, controller = null, recognition = null;
+  let active = null, pending = false, requestId = 0, controller = null, recognition = null, recorder=null, stream=null, chunks=[],discardRecording=false;
+  let ttsButton=form.querySelector('[data-tts]');if(!ttsButton){ttsButton=document.createElement('button');ttsButton.type='button';ttsButton.dataset.tts='';ttsButton.textContent='🔊';ttsButton.setAttribute('aria-label','Repeat NPC reply aloud');mic.after(ttsButton);}
   let lastAttempt = null, returnFocus = null, serviceIssue = null, listening = false;
-  const keyFor = npc => `${npc.avatar || npc.file || npc.faction}:${npc.name}`;
+  const keyFor = npc => `${npc.id ?? npc.name}:${npc.avatar || npc.file || npc.faction}`;
   const line = (label,text) => {const p = document.createElement('p'); p.textContent = `${label}: ${text}`; log.append(p); log.scrollTop = log.scrollHeight;};
   const setStatus = text => {status.textContent = `${active?.faction?.toUpperCase() || 'NPC'} · ${text}`;};
   function renderHistory() {log.replaceChildren(); for (const item of conversations.get(keyFor(active)) || []) line(item.role === 'user' ? 'YOU' : active.name,item.content);}
   function showError(error) {errorText.textContent = error.message || 'NPC dialogue is unavailable. Your message is saved.'; errorBox.hidden = false; setStatus(error.code === 'api_credit_exhausted' ? 'API CREDIT NEEDED' : 'CONNECTION UNAVAILABLE');}
   function resetMic() {listening = false; mic.textContent = '🎙'; mic.setAttribute('aria-label','Speak your message'); mic.setAttribute('aria-pressed','false');}
-  function stopMic() {const current = recognition; recognition = null; try {current?.abort();} catch {} resetMic();}
+  function stopMic() {discardRecording=true;const current = recognition; recognition = null; try {current?.abort();} catch {}if(recorder&&recorder.state!=='inactive'){try{recorder.stop();}catch{}}stream?.getTracks().forEach(t=>t.stop());stream=null;resetMic();}
+  function speakReply(text,npc=active){if(!text||!npc||!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text),female=/\b(female|woman|girl|samantha|victoria|karen|zira|aria|jenny|susan|ava|allison)\b/i,male=/\b(male|man|guy|matthew|daniel|alex|david|tom|aaron|guy)\b/i,voices=window.speechSynthesis.getVoices(),wanted=npc.gender==='female'?female:male;utterance.voice=voices.find(v=>/en/i.test(v.lang)&&wanted.test(v.name))||voices.find(v=>/en/i.test(v.lang))||null;utterance.pitch=npc.gender==='female'?1.08:.94;utterance.rate=.98;window.speechSynthesis.speak(utterance);}
   function placePanel() {
     if (!active) return;
     const viewport = window.visualViewport, height = viewport?.height || window.innerHeight;
@@ -71,11 +73,13 @@ export function createNpcConversation({panel, log, onOpen = () => {}, onClose = 
     setStatus(greeting ? 'CONNECTING…' : 'THINKING…'); renderHistory();
     if (message) {line('YOU',message); drafts.set(key,message);}
     try {
-      const reply = await requestNpcDialogue(npc,history,{message,greeting,signal:controller.signal});
+      const result = await requestNpcDialogue(npc,history,{message,greeting,signal:controller.signal,world:worldContext()});
       if (id !== requestId || active !== npc) return;
+      const worldDirection=result.action?onWorldAction(result.action,npc,message):null;
+      const reply=[result.reply,worldDirection].filter(Boolean).join(' ');
       if (message) history.push({role:'user',content:message});
       history.push({role:'assistant',content:reply}); conversations.set(key,history.slice(-8));persistConversations();
-      serviceIssue = null; renderHistory(); setStatus('READY TO TALK');
+      serviceIssue = null; renderHistory(); setStatus('READY TO TALK');speakReply(reply,npc);
       if (message && input.value.trim() === message) input.value = '';
       drafts.set(key,input.value);
     } catch (error) {
@@ -108,8 +112,10 @@ export function createNpcConversation({panel, log, onOpen = () => {}, onClose = 
     if (event.shiftKey && document.activeElement === first) {event.preventDefault();last.focus();}
     else if (!event.shiftKey && document.activeElement === last) {event.preventDefault();first.focus();}
   });
-  mic.addEventListener('click',() => {
-    if (listening) {try {recognition?.stop();} catch {} return;}
+  mic.addEventListener('click',async() => {
+    if (listening) {if(recorder&&recorder.state!=='inactive'){recorder.stop();stream?.getTracks().forEach(t=>t.stop());stream=null;mic.textContent='…';setStatus('TRANSCRIBING WITH WHISPER…');}else{try {recognition?.stop();} catch {}} return;}
+    if (pending) return;
+    if(navigator.mediaDevices?.getUserMedia&&window.MediaRecorder){discardRecording=false;try{stream=await navigator.mediaDevices.getUserMedia({audio:true});if(!active){stream.getTracks().forEach(t=>t.stop());return;}chunks=[];const types=['audio/webm;codecs=opus','audio/mp4','audio/ogg;codecs=opus'];const mime=types.find(t=>MediaRecorder.isTypeSupported?.(t));recorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);const current=recorder;listening=true;mic.textContent='■';mic.setAttribute('aria-label','Stop and transcribe recording');mic.setAttribute('aria-pressed','true');setStatus('LISTENING · TAP STOP WHEN FINISHED');current.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data);};current.onerror=()=>{resetMic();notice('Microphone recording failed. Check microphone permission and retry.');};current.onstop=async()=>{stream?.getTracks().forEach(t=>t.stop());stream=null;recorder=null;resetMic();if(discardRecording){discardRecording=false;chunks=[];return;}try{const heard=await requestNpcTranscription(new Blob(chunks,{type:current.mimeType||'audio/webm'}));if(!active)return;input.value=[input.value.trim(),heard].filter(Boolean).join(' ').slice(0,600);drafts.set(keyFor(active),input.value);input.focus();setStatus('WHISPER READY · REVIEW THEN SEND');}catch(error){if(active)notice(error.message||'Whisper transcription failed. Retry or type your message.');}};current.start();return;}catch(error){stream?.getTracks().forEach(t=>t.stop());stream=null;resetMic();notice(error.name==='NotAllowedError'?'Allow microphone access to record a message.':'Could not start microphone recording. Try keyboard dictation.');}}
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Speech) {input.placeholder = 'Use the microphone on your keyboard';input.focus();notice('Use your keyboard microphone to dictate a message.');return;}
     if (pending && input.readOnly) return;
@@ -129,6 +135,7 @@ export function createNpcConversation({panel, log, onOpen = () => {}, onClose = 
     current.onend = () => {if (recognition === current) {recognition = null;resetMic();}};
     try {current.start();} catch {recognition = null;resetMic();notice('Microphone could not start. Type or use keyboard dictation.');}
   });
+  ttsButton.addEventListener('click',()=>{const history=active&&conversations.get(keyFor(active))||[];const last=[...history].reverse().find(x=>x.role==='assistant');if(last)speakReply(last.content,active);else notice('There is no NPC reply to play yet.');});
   document.addEventListener('visibilitychange',() => {if (document.hidden) stopMic();});
   return {open,close,get isOpen(){return !!active;}};
 }
