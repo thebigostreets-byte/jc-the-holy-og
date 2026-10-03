@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import * as THREE from '../three.module.js';
 import {createSystemicWorld,INCIDENT_TEMPLATES,createDefaultSystemicState} from '../systemic-world.js';
 
 class MemoryStorage {
@@ -12,7 +11,7 @@ assert.ok(INCIDENT_TEMPLATES.length>=8,'systemic incident catalog covers multipl
 const defaults=createDefaultSystemicState();
 for(const name of ['Strip Core','Airport Corridor','Psalms','Residential East','Downtown','Industrial West'])assert.ok(defaults.districts[name],name+' district exists');
 
-const player={position:new THREE.Vector3(0,0,0)};
+const player={position:{x:0,y:0,z:0}};
 const signals=[];
 const fires=[];
 const storage=new MemoryStorage();
