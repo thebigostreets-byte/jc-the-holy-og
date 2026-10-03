@@ -9,4 +9,10 @@ context.animate(40);assert.ok(Math.abs(samples.at(-1)-.0088)<1e-9,'slow time red
 context.window.JC_WORLD_SCALE=0;context.animate(80);assert.equal(samples.at(-1),0,'stasis or UI pause stops debris');
 context.window.JC_WORLD_SCALE=1;context.animate(120);assert.equal(samples.at(-1),.04,'normal world speed resumes');
 context.window.JC_WORLD_SCALE=10;context.animate(160);assert.equal(samples.at(-1),.04,'world speed stays inside its physics budget');
-console.log('PASS: world slowdown, stasis, pause/resume and bounded physics timing.');
+const look=fs.readFileSync(new URL('../cinematic-look.js',import.meta.url),'utf8');
+const gameplay=fs.readFileSync(new URL('../jc-map-game.js',import.meta.url),'utf8');
+assert.match(look,/function setTimeOfDay\(mode='night'\)/,'cinematic renderer exposes persistent day/night selection');
+assert.match(look,/mode==='day'[\s\S]*?scene\.background=daySky/,'daylight has an explicit bright sky path');
+assert.match(gameplay,/id="jcTimeToggle"/,'game settings expose the day/night control');
+assert.match(gameplay,/let worldTimeMode='day'/,'fresh sessions can boot directly into daylight');
+console.log('PASS: world slowdown, stasis, pause/resume, bounded physics timing, and persistent daylight mode.');
