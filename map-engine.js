@@ -12,7 +12,8 @@ import { OrbitControls } from './map-controls.js';
 import {createBuildingImpostors} from './building-impostors.js';
 import {decodeGlbAttribute} from './ground-sampling.js';
 import {predictTravel,createPrefetchCache,corridorPoints} from './predictive-streaming.js';
-import {createCompatibleRenderer} from './game-renderer.js';
+import {createPhotorealDetailMaps,applyPhotorealMaterial} from './photorealism-pbr.js';
+const photorealDetailMaps=createPhotorealDetailMaps(THREE);
 import {PACKAGED_CITY_TILE_IDS} from './city-tile-index.js';
 const $=id=>document.getElementById(id);
 const statusText=message=>{$('loading').textContent=message;};
@@ -34,11 +35,12 @@ const mobileMap=matchMedia('(pointer:coarse), (max-width:800px)').matches || nav
 const startInPlay=new URLSearchParams(location.search).get('play')==='1';
 let renderer;
 try{
- const contextAttributes={alpha:false,antialias:false,depth:true,stencil:false,preserveDrawingBuffer:false,powerPreference:'low-power',failIfMajorPerformanceCaveat:false};
- // Both APIs run this same scene and gameplay. If Three.js fails to initialize
- // a WebGL 2 context, the helper retries WebGL 1 on a fresh canvas.
- const initialized=createCompatibleRenderer(THREE,$('scene'),contextAttributes);
- renderer=initialized.renderer;
+ const canvas=$('scene'),contextOptions={alpha:false,antialias:false,depth:true,stencil:false,preserveDrawingBuffer:false,powerPreference:'low-power',failIfMajorPerformanceCaveat:false};
+ let context=null;
+ try{context=canvas.getContext('webgl2',contextOptions);}catch{}
+ if(!context){try{context=canvas.getContext('webgl',contextOptions)||canvas.getContext('experimental-webgl',contextOptions);}catch{}}
+ if(!context)throw Error('WebGL 2 and WebGL 1 are unavailable.');
+ renderer=new THREE.WebGLRenderer({canvas,context,antialias:false,alpha:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'low-power',failIfMajorPerformanceCaveat:false});
  window.JC_RENDERER_API=renderer.capabilities.isWebGL2?'WebGL 2':'WebGL 1';
 }catch(error){
  window.jcLoadingRecovery(`JC could not start WebGL 2 or WebGL 1. ${error?.message||'Turn on graphics acceleration and retry.'}`);
@@ -100,6 +102,7 @@ async function parseGLB(raw,name){const dv=new DataView(raw.buffer,raw.byteOffse
   const id=m.name.replace(/_(walls|roof)$/,''),surface=isWall?buildingSurface(id,heights.get(id)||0,facadeMaps,physicalMaps,identities[id],generated):null;
   const ma=new THREE.MeshStandardMaterial({name:m.name,color:surface?.map?new THREE.Color(surface.color):new THREE.Color(f[0],f[1],f[2]),map:surface?.map||textures[p.baseColorTexture?.index]||null,roughness:surface?.roughness??.94,metalness:surface?.metalness??0,side:m.doubleSided?THREE.DoubleSide:THREE.FrontSide});
   if(surface){
+   applyPhotorealMaterial(THREE,ma,photorealDetailMaps,{casino:identities[id]?.type==='casino',buildingHeight:heights.get(id)||12});
    const accent=new THREE.Color(surface.accent);
    ma.onBeforeCompile=shader=>{
     shader.uniforms.jcFacadeAccent={value:accent};
