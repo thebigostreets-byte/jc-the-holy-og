@@ -5,7 +5,8 @@ let sent;
 try {
   globalThis.fetch = async (url,options) => {sent={url,options,body:JSON.parse(options.body)};return Response.json({reply:'The lights came back after your miracle.'});};
   const npc={name:'Mara',faction:'civilian',state:'awe',event:{type:'lightning'}};
-  assert.match(await requestNpcDialogue(npc,[],{message:'What happened?'}),/lights came back/);
+  const dialogue=await requestNpcDialogue(npc,[],{message:'What happened?'});
+  assert.match(dialogue.reply,/lights came back/);
   assert.equal(sent.url,'/api/npc-chat');
   assert.equal(sent.options.mode,'same-origin');
   assert.equal(sent.body.npc.recentEvent,'lightning');
