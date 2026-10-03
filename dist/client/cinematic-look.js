@@ -3,8 +3,9 @@ import * as THREE from './three.module.js';
 // Bounded full-screen glow. Two small blur targets, no per-building lights.
 export function createCinematicLook(game, mobile=false) {
   const {renderer,scene,camera}=game;
-  const skyFallback=new THREE.Color(0x101a30);
-  let sky=skyFallback,sunrise=false;
+  const skyFallback=new THREE.Color(0x101a30),daySky=new THREE.Color(0x8fc5e3);
+  let sky=skyFallback,sunrise=false,baseTime='night';
+  const hemispheres=[];
   scene.background=sky;scene.fog=new THREE.FogExp2(0x172238,mobile?.00044:.00028);
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.03;
@@ -12,7 +13,7 @@ export function createCinematicLook(game, mobile=false) {
   renderer.shadowMap.enabled=!mobile;
   if(!mobile) renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   scene.traverse(o=>{
-    if(o.isHemisphereLight){o.intensity=.34;o.color.set(0xb9caeb);o.groundColor.set(0x342a24);}
+    if(o.isHemisphereLight){hemispheres.push(o);o.intensity=.34;o.color.set(0xb9caeb);o.groundColor.set(0x342a24);}
     if(o.isDirectionalLight){o.color.set(0xfff1d2);o.intensity=2.2;o.castShadow=!mobile;}
     if(o.isMesh&&o.material){
       const materials=Array.isArray(o.material)?o.material:[o.material];
@@ -36,7 +37,7 @@ export function createCinematicLook(game, mobile=false) {
   const rim=new THREE.DirectionalLight(0x8db8ff,mobile?.55:1.15);rim.position.set(-900,360,-700);scene.add(rim);
   new THREE.TextureLoader().load('./assets/jc-storm-sky.webp',t=>{
     t.colorSpace=THREE.SRGBColorSpace;t.mapping=THREE.EquirectangularReflectionMapping;
-    sky=t;scene.environment=t;scene.environmentIntensity=mobile?.28:.62;if(!sunrise)scene.background=t;
+    sky=t;scene.environment=t;applyLighting();
   },undefined,()=>{});
   const rt=new THREE.WebGLRenderTarget(1,1,{type:renderer.extensions?.has('EXT_color_buffer_float')?THREE.HalfFloatType:THREE.UnsignedByteType,depthBuffer:true,stencilBuffer:false});
   const a=new THREE.WebGLRenderTarget(1,1,{depthBuffer:false}),b=a.clone();
@@ -100,15 +101,30 @@ export function createCinematicLook(game, mobile=false) {
     geom.attributes.position.needsUpdate=true;geom.attributes.color.needsUpdate=true;
     flareLife=Math.max(0,flareLife-dt);flare.intensity=flareLife*220;
   }
-  function setSunrise(active){
-    if(active===sunrise)return;
-    sunrise=active;
-    scene.background=active?new THREE.Color(0xf2b783):sky;
-    scene.fog.color.set(active?0x8f756c:0x172238);
-    scene.fog.density=active?(mobile?.00036:.00022):(mobile?.00044:.00028);
-    sun.color.set(active?0xffc58f:0xffe3b8);sun.intensity=active?(mobile?2.15:3.8):(mobile?1.7:3.1);
-    rim.color.set(active?0xff7f62:0x8db8ff);rim.intensity=active?(mobile?.85:1.5):(mobile?.55:1.15);
-    renderer.toneMappingExposure=active?1.08:1.03;
+  function applyLighting(){
+    const mode=sunrise?'sunrise':baseTime;
+    if(mode==='day'){
+      scene.background=daySky;scene.fog.color.set(0xb7cfda);scene.fog.density=mobile?.00022:.00013;
+      sun.color.set(0xfff1d3);sun.intensity=mobile?2.8:4.8;sun.position.set(520,1050,-260);
+      rim.color.set(0xb7d5ff);rim.intensity=mobile?.32:.62;
+      for(const hemi of hemispheres){hemi.intensity=mobile?.72:1.0;hemi.color.set(0xd7eaff);hemi.groundColor.set(0x756850);}
+      scene.environmentIntensity=mobile?.18:.34;renderer.toneMappingExposure=1.16;composite.uniforms.strength.value=mobile?.08:.12;
+    }else if(mode==='sunrise'){
+      scene.background=new THREE.Color(0xf2b783);scene.fog.color.set(0x8f756c);scene.fog.density=mobile?.00036:.00022;
+      sun.color.set(0xffc58f);sun.intensity=mobile?2.15:3.8;sun.position.set(650,900,-420);
+      rim.color.set(0xff7f62);rim.intensity=mobile?.85:1.5;
+      for(const hemi of hemispheres){hemi.intensity=mobile?.52:.72;hemi.color.set(0xffd3b1);hemi.groundColor.set(0x5b4038);}
+      scene.environmentIntensity=mobile?.22:.45;renderer.toneMappingExposure=1.08;composite.uniforms.strength.value=mobile?.16:.22;
+    }else{
+      scene.background=sky;scene.fog.color.set(0x172238);scene.fog.density=mobile?.00044:.00028;
+      sun.color.set(0xffe3b8);sun.intensity=mobile?1.7:3.1;sun.position.set(650,900,-420);
+      rim.color.set(0x8db8ff);rim.intensity=mobile?.55:1.15;
+      for(const hemi of hemispheres){hemi.intensity=.34;hemi.color.set(0xb9caeb);hemi.groundColor.set(0x342a24);}
+      scene.environmentIntensity=mobile?.28:.62;renderer.toneMappingExposure=1.03;composite.uniforms.strength.value=mobile?.24:.34;
+    }
   }
-  return {render,update,impact,setSunrise,setGlow:on=>{enabled=!!on;}};
+  function setTimeOfDay(mode='night'){baseTime=mode==='day'?'day':'night';applyLighting();return baseTime;}
+  function setSunrise(active){active=!!active;if(active===sunrise)return;sunrise=active;applyLighting();}
+  applyLighting();
+  return {render,update,impact,setSunrise,setTimeOfDay,getTimeOfDay:()=>baseTime,setGlow:on=>{enabled=!!on;}};
 }
