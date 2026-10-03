@@ -31,7 +31,7 @@ targets=objects;state.cast('judgment-storm');assert.equal(destroyed.length,3,'st
 state.grace=100;state.cast('heavenly-spear');assert.equal(destroyed.at(-1)[1],'explode');assert.equal(state.grace,62);
 state.grace=100;state.cast('sonic-boom');assert.equal(flight.hypersonic,true,'Sonic Boom preserves boost instead of toggling it off');
 assert.ok(source.includes("if (e.code === 'KeyT' && !e.repeat) {cast(devilMode?'portal':'teleport');}"),'keyboard teleport commits a locked destination');
-assert.ok(source.includes("[data-action=\"teleport\"]\').onclick=()=>{cast('teleport');}"),'mobile teleport commits a locked destination');
+assert.ok(source.includes("hud.querySelector('[data-action=\"teleport\"]').onclick=()=>{cast(devilMode?'portal':'teleport');};"),'mobile teleport follows the active JC/Devil mode');
 console.log('PASS: bounded effects, rain instancing, cleanup, teleport selection, rejected casts, storm limits, cooldowns and Sonic Boom state.');
 
 // Every catalog entry executes in a valid world, with enough grace and a fresh cooldown.
