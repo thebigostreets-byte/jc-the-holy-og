@@ -61,7 +61,7 @@ export function buildingSurface(id,height,photos,physical,identity=null,generate
  if(palette&&photos.length){map=photos[palette.photo%photos.length];color=palette.color;roughness=palette.roughness;kind='landmark facade';scale=[9,10];}
  const generatedKind=generatedBuildingKind(identity,height);
  if(generatedKind&&generated[generatedKind]){map=generated[generatedKind];scale=generatedKind==='casino'?[9,10]:[8,9];roughness=generatedKind==='casino'?.65:.96;metalness=0;color='#ffffff';kind='generated '+generatedKind;}
- const isCasino=identity?.type==='casino';
+ const isCasino=identity&&identity.type==='casino';
  if(isCasino){roughness=.48;metalness=.12;}
  else {roughness=.93;metalness=0;}
  const tint=new THREE.Color(color);tint.offsetHSL(((signature>>>4)%17-8)/900,((signature>>>10)%13-6)/500,((signature>>>17)%17-8)/600);
