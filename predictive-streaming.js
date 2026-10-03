@@ -36,3 +36,13 @@ export function createPrefetchCache(load,{maxBytes=8*1024*1024,maxEntries=2}={})
   function clear(){generation++;cache.clear();pending.clear();used=0;}
   return {get,prefetch,clear,stats:()=>({bytes:used,entries:cache.size,pending:pending.size,hits})};
 }
+
+// Sample the flight corridor at a bounded spacing so the next city tiles can be warmed.
+export function corridorPoints(start,end,spacing=950){
+  const distance=Math.hypot(end.x-start.x,end.z-start.z);
+  const count=Math.min(8,Math.max(1,Math.ceil(distance/Math.max(1,spacing))));
+  return Array.from({length:count},(_,index)=>{
+    const t=(index+1)/count;
+    return {x:start.x+(end.x-start.x)*t,z:start.z+(end.z-start.z)*t};
+  });
+}
