@@ -32,6 +32,7 @@ jobs:
           node tests/npc-motion.mjs
           node tests/npc-contacts.mjs
           node tests/npc-memory.mjs
+          node tests/systemic-world.mjs
 
       - name: Checkout GitHub Pages branch
         uses: actions/checkout@v4
