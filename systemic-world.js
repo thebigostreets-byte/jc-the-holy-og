@@ -1,4 +1,9 @@
-import * as THREE from './three.module.js';
+class Vec3 {
+  constructor(x=0,y=0,z=0){this.x=x;this.y=y;this.z=z;}
+  clone(){return new Vec3(this.x,this.y,this.z);}
+  copy(value){this.x=Number(value?.x)||0;this.y=Number(value?.y)||0;this.z=Number(value?.z)||0;return this;}
+  distanceTo(value){return Math.hypot(this.x-(Number(value?.x)||0),this.y-(Number(value?.y)||0),this.z-(Number(value?.z)||0));}
+}
 
 const STORAGE_KEY='jc-systemic-world-v1';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
@@ -139,7 +144,7 @@ export function createSystemicWorld({
     const incident={
       id:'inc-'+(++state.eventSerial),
       type:template.type,label:template.label,signal:template.signal,severity,
-      position:new THREE.Vector3(x,y,z),
+      position:new Vec3(x,y,z),
       startedAt:now,expiresAt:now+template.duration+severity*4500,
       phase:'active',responded:false,resolvers:[...template.resolvers]
     };
