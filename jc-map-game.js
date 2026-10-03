@@ -946,7 +946,7 @@ function cast(id = selectedAbility) {
     case 'singularity':moveSouls('vortex',85);timeScaleUntil=performance.now()+1800;ringAt(player.position,0x9bdcff,72);feedback('SINGULARITY · nearby lights pulled inward');break;
     case 'sonic-boom':{setFlight('surge');const direction=desired.lengthSq()?desired.clone().normalize():forward.clone();moveSafely(direction.x*22,direction.z*22,performance.now()<phaseUntil);velocity.addScaledVector(direction,24);const point=player.position.clone();cinematicLook?.impact(point);ringAt(point,0xbceaff,36);npcSystem?.signal('sonic-boom',point,110);feedback('SONIC BOOM · HYPERFLIGHT');break;}
   }
-  systemicWorld?.onAbility(id,player.position,devilMode?'satan':'jc');
+  globalThis.JC_SYSTEMIC_WORLD?.onAbility(id,player.position,devilMode?'satan':'jc');
   graceLabel.textContent=Math.round(grace);
 }
 
