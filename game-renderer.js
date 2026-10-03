@@ -1,55 +1,49 @@
-function attributesOf(canvas, attributes, context) {
-  return { canvas, ...attributes, context };
-}
+// Select a working graphics API before booting the shared JC scene.
+// A canvas cannot switch API after a context has been created, so if Three.js
+// cannot initialize an acquired WebGL 2 context, retry WebGL 1 on a new canvas.
+export function createCompatibleRenderer(THREE, initialCanvas, attributes) {
+  const failures = [];
+  let canvas = initialCanvas;
 
-function replacementCanvas(canvas) {
-  const doc = canvas.ownerDocument || globalThis.document;
-  if (!doc?.createElement) return canvas.cloneNode(false);
-  const replacement = doc.createElement('canvas');
-  for (const attribute of [...(canvas.attributes || [])]) {
-    replacement.setAttribute(attribute.name, attribute.value);
-  }
-  replacement.width = canvas.width;
-  replacement.height = canvas.height;
-  replacement.className = canvas.className;
-  replacement.style.cssText = canvas.style?.cssText || '';
-  canvas.parentNode?.replaceChild(replacement, canvas);
-  return replacement;
-}
-
-/**
- * Start the Three.js renderer with WebGL 2 and retry WebGL 1 on a fresh canvas
- * if the browser or Three.js cannot initialize the preferred context.
- */
-export function createCompatibleRenderer(THREE, canvas, contextAttributes = {}) {
-  if (!THREE?.WebGLRenderer || !canvas?.getContext) {
-    throw new TypeError('Three.js WebGLRenderer and a canvas are required.');
-  }
-
-  let webgl2Error;
-  let webgl2 = null;
-  try {
-    webgl2 = canvas.getContext('webgl2', contextAttributes);
-    if (webgl2) {
-      const renderer = new THREE.WebGLRenderer(attributesOf(canvas, contextAttributes, webgl2));
-      return { renderer, canvas, context: webgl2, api: 'WebGL 2' };
+  function attempt(type) {
+    let context;
+    try {
+      context = canvas.getContext(type, attributes);
+    } catch (error) {
+      failures.push(`${type}: ${error?.message || 'context request failed'}`);
+      return { contextAcquired: true, renderer: null };
     }
-  } catch (error) {
-    webgl2Error = error;
+    if (!context) {
+      failures.push(`${type}: unavailable`);
+      return { contextAcquired: false, renderer: null };
+    }
+    try {
+      return {
+        contextAcquired: true,
+        renderer: new THREE.WebGLRenderer({ canvas, context, ...attributes }),
+      };
+    } catch (error) {
+      failures.push(`${type}: ${error?.message || 'renderer initialization failed'}`);
+      return { contextAcquired: true, renderer: null };
+    }
   }
 
-  // A canvas is locked to the first context type it successfully creates.
-  // Replacing it is required if WebGL 2 existed but Three.js rejected it.
-  const target = webgl2 ? replacementCanvas(canvas) : canvas;
-  let webgl1 = null;
-  try {
-    webgl1 = target.getContext('webgl', contextAttributes)
-      || target.getContext('experimental-webgl', contextAttributes);
-    if (!webgl1) throw new Error('WebGL 1 context creation returned null.');
-    const renderer = new THREE.WebGLRenderer(attributesOf(target, contextAttributes, webgl1));
-    return { renderer, canvas: target, context: webgl1, api: 'WebGL 1' };
-  } catch (webgl1Error) {
-    const details = [webgl2Error, webgl1Error].filter(Boolean).map(error => error.message || String(error));
-    throw new Error('WebGL 2 and WebGL 1 could not initialize. ' + details.join(' | '), { cause: webgl1Error });
+  function freshCanvas() {
+    const replacement = canvas.cloneNode(false);
+    canvas.replaceWith(replacement);
+    canvas = replacement;
   }
+
+  let result = attempt('webgl2');
+  if (result.renderer) return { canvas, renderer: result.renderer };
+  if (result.contextAcquired) freshCanvas();
+
+  result = attempt('webgl');
+  if (result.renderer) return { canvas, renderer: result.renderer };
+  if (result.contextAcquired) freshCanvas();
+
+  result = attempt('experimental-webgl');
+  if (result.renderer) return { canvas, renderer: result.renderer };
+
+  throw new Error(`Could not start WebGL 2 or WebGL 1. ${failures.join(' | ')}`);
 }
