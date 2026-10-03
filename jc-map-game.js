@@ -1,6 +1,6 @@
 import {accelerateVelocity} from './realistic-motion.js';
 import {createCharacterContact} from './character-contact.js';
-import {loadPhotoFacades,getFacadeEmissiveMap} from './photo-facades.js';
+import {loadPhotoFacades,getFacadeEmissiveMap} from './photo-facades.js?v=3d-20261003';
 import {createCraterSystem} from './crater-system.js';
 import {createCinematicLook} from './cinematic-look.js';
 import * as THREE from './three.module.js';

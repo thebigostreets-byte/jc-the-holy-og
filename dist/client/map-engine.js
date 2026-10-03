@@ -11,7 +11,7 @@ import * as THREE from './three.module.js';
 import { OrbitControls } from './map-controls.js';
 import {createBuildingImpostors} from './building-impostors.js';
 import {decodeGlbAttribute} from './ground-sampling.js';
-import {predictTravel,createPrefetchCache,corridorPoints} from './predictive-streaming.js';
+import {predictTravel,createPrefetchCache,corridorPoints} from './predictive-streaming.js?v=3d-20261003';
 import {createPhotorealDetailMaps,applyPhotorealMaterial} from './photorealism-pbr.js';
 const photorealDetailMaps=createPhotorealDetailMaps(THREE);
 import {PACKAGED_CITY_TILE_IDS} from './city-tile-index.js';
