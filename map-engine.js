@@ -120,10 +120,7 @@ async function parseGLB(raw,name){const dv=new DataView(raw.buffer,raw.byteOffse
       float jcFine=1.0-step(0.022,min(fract(vMapUv.x*jcFacadeDetail),1.0-fract(vMapUv.x*jcFacadeDetail)));
       float jcPattern=jcFacadePattern<0.5?jcHorizontal:jcFacadePattern<1.5?jcVertical:jcFacadePattern<2.5?max(jcVertical,jcHorizontal):mix(jcVertical,jcHorizontal,step(0.5,fract(vMapUv.y*0.5)));
       float jcDetail=jcFacadePattern>2.5?jcFine:0.0;
-      float jcLum=dot(diffuseColor.rgb,vec3(0.2126,0.7152,0.0722));
-      vec3 jcSoft=diffuseColor.rgb*min(1.0,0.78/max(jcLum,0.001));
-      diffuseColor.rgb=mix(diffuseColor.rgb,jcSoft,smoothstep(0.62,0.95,jcLum)*0.72);
-      diffuseColor.rgb=mix(diffuseColor.rgb,jcFacadeAccent,clamp(jcPattern*0.08+jcDetail*0.06,0.0,0.16));
+      diffuseColor.rgb=mix(diffuseColor.rgb,jcFacadeAccent,clamp(jcPattern*0.06+jcDetail*0.04,0.0,0.12));
     #endif`);
    };
    ma.customProgramCacheKey=()=>`jc-building-facade-${surface.pattern}-${surface.verticalFrequency}-${surface.horizontalFrequency}-${surface.detailFrequency}-${surface.accent}`;
