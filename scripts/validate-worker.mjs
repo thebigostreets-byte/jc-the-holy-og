@@ -24,5 +24,10 @@ try {
   assert.equal(forwarded.options.headers.authorization,'Bearer test-key');
   assert.match(JSON.stringify(JSON.parse(forwarded.options.body).messages),/Hello/);
   assert.equal(forwarded.options.headers.authorization,'Bearer test-key');
+  const openAiResponse=await worker.fetch(new Request(`${origin}/api/npc-chat`, {method:'POST',headers:{origin,'content-type':'application/json'},body}), {OPENAI_API_KEY:'openai-test-key'});
+  assert.equal(openAiResponse.status,200);
+  assert.equal(forwarded.url,'https://api.openai.com/v1/chat/completions');
+  assert.equal(forwarded.options.headers.authorization,'Bearer openai-test-key');
+  assert.equal(JSON.parse(forwarded.options.body).model,'gpt-4o-mini');
 } finally {globalThis.fetch = originalFetch;}
 console.log('Main game Worker passed asset routing, origin protection, and NPC forwarding checks.');
