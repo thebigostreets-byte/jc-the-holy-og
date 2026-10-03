@@ -17,7 +17,7 @@ globalThis.fetch = async (url, options) => {
 };
 try {
   const body = JSON.stringify({npc:{name:'Mara'},message:'Hello'});
-  const response = await worker.fetch(new Request(`${origin}/api/npc-chat`, {method:'POST',headers:{origin,'content-type':'application/json'},body}), {});
+  const response = await worker.fetch(new Request(`${origin}/api/npc-chat`, {method:'POST',headers:{origin,'content-type':'application/json'},body}), {GROQ_API_KEY:'test-key'});
   assert.equal(response.status, 200);
   assert.equal((await response.json()).reply, 'A real service response.');
   assert.equal(forwarded.options.body, body);

@@ -864,7 +864,8 @@ function cast(id = selectedAbility) {
   if((id==='teleport'||id==='portal')&&!teleportTarget){beginTeleportTarget();feedback(devilMode?'PORTAL AIM · choose a clear destination':'TELEPORT AIM · choose a clear destination');return;}
   if((cooldowns.get(id)||0)>performance.now()){feedback('Miracle recharging');return;}
   if(grace<ability.cost){feedback(`Need ${ability.cost} grace · release boost to recover`);return;}
-  jcAudio.play('cast');
+  const soundId=id==='flight'||id==='hypersonic'?'flight':id==='teleport'||id==='portal'?'teleport':id==='dash'?'dash':id==='skydive'?'dive':'cast';
+  jcAudio.play(soundId);
   if(id==='skydive'&&(!flying||diving)){feedback(flying?'DIVE ALREADY IN PROGRESS':'TAKE FLIGHT BEFORE DIVING');return;}
   if(id==='beam-down'&&!flying){feedback('Already grounded');return;}
   if(id==='dash'&&dashCooldown>0||id==='light-pulse'&&pulseCooldown>0){feedback('Miracle recharging');return;}
