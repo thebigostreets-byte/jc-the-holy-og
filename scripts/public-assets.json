@@ -843,6 +843,7 @@
   "jc-character-pose.js",
   "fire-system.js",
   "street-pickups.js",
+  "systemic-world.js",
   "data/vegas-flood-conveyances.geojson",
   "data/nellis-flood-conveyances.geojson",
   "world-catalog.js"
