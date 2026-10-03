@@ -21,3 +21,25 @@ export function loadPhotoFacades(){
   image.src='./facades/photographic-atlas-v2.webp';
  });
 }
+
+const emissiveCache=new WeakMap();
+// Keep the bright facade windows illuminated without making the masonry glow.
+export function getFacadeEmissiveMap(texture){
+ if(!texture)return null;
+ if(emissiveCache.has(texture))return emissiveCache.get(texture);
+ try{
+  const source=texture.image;if(!source?.width||!source?.height)return null;
+  const canvas=document.createElement('canvas');canvas.width=source.width;canvas.height=source.height;
+  const context=canvas.getContext('2d',{willReadFrequently:true});context.drawImage(source,0,0);
+  const pixels=context.getImageData(0,0,canvas.width,canvas.height);
+  for(let i=0;i<pixels.data.length;i+=4){
+   const luminance=.2126*pixels.data[i]+.7152*pixels.data[i+1]+.0722*pixels.data[i+2];
+   const brightness=Math.max(0,Math.min(255,(luminance-105)*2.5));
+   pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=brightness;
+  }
+  context.putImageData(pixels,0,0);
+  const result=new THREE.CanvasTexture(canvas);result.colorSpace=THREE.SRGBColorSpace;
+  result.wrapS=texture.wrapS;result.wrapT=texture.wrapT;result.repeat.copy(texture.repeat);
+  emissiveCache.set(texture,result);return result;
+ }catch{return null;}
+}
