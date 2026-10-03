@@ -158,7 +158,8 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,on
       npc.sprite.position.set(npc.position.x,npc.position.y-1.55,npc.position.z);
       if(len>.12)npc.facingYaw=Math.atan2(dx,dz);
       const pose=npc.moving?(running?31+Math.floor(npc.gait/.45)%8:23+Math.floor(npc.gait/.6)%8):npc.state==='respond'?6:npc.state==='awe'?11:0;
-      npc.sprite.userData.character.setPose(pose,npc.gait,npc.moving?speed:0,now,false);\n      npc.sprite.userData.updateCutout?.(npc.facingYaw||0);
+      npc.sprite.userData.character.setPose(pose,npc.gait,npc.moving?speed:0,now,false);
+      npc.sprite.userData.updateCutout?.(npc.facingYaw||0);
       if(npc.trackerRing?.visible)npc.trackerRing.material.opacity=.68+Math.sin(now*.006)*.22;
     }
     crowd.update(dt,now);
