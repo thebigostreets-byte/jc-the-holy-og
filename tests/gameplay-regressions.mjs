@@ -30,7 +30,7 @@ for(const id of ['heavenly-spear','judgment-storm','telekinesis','crumble','rebu
 targets=objects;state.cast('judgment-storm');assert.equal(destroyed.length,3,'storm destroys at most three buildings');assert.equal(beams,3);assert.equal(state.grace,52);state.cast('judgment-storm');assert.equal(destroyed.length,3,'cooldown blocks repeat destruction');
 state.grace=100;state.cast('heavenly-spear');assert.equal(destroyed.at(-1)[1],'explode');assert.equal(state.grace,62);
 state.grace=100;state.cast('sonic-boom');assert.equal(flight.hypersonic,true,'Sonic Boom preserves boost instead of toggling it off');
-assert.ok(source.includes("if (e.code === 'KeyT' && !e.repeat) {cast('teleport');}"),'keyboard teleport commits a locked destination');
+assert.ok(source.includes("if (e.code === 'KeyT' && !e.repeat) {cast(devilMode?'portal':'teleport');}"),'keyboard teleport commits a locked destination');
 assert.ok(source.includes("[data-action=\"teleport\"]\').onclick=()=>{cast('teleport');}"),'mobile teleport commits a locked destination');
 console.log('PASS: bounded effects, rain instancing, cleanup, teleport selection, rejected casts, storm limits, cooldowns and Sonic Boom state.');
 
@@ -40,5 +40,5 @@ Object.assign(state,{flying:true,diving:false,dashCooldown:0,pulseCooldown:0,spa
 state.cinematicLook.setSunrise=()=>{};state.game.rebuild=()=>{};
 state.catalogIds=vm.runInContext('abilities.map(a=>a.id)',state);
 for(const id of state.catalogIds){state.grace=100;state.cooldowns.clear();state.teleportTarget=new THREE.Vector3(2,0,2);state.cast(id);assert.ok(state.cooldowns.has(id),`${id}: valid cast enters cooldown`);assert.ok(Number.isFinite(state.grace),`${id}: grace remains finite`);abilityCount++;}
-assert.equal(abilityCount,43);
-console.log('PASS: all 43 ability handlers execute with valid targets and maintain finite grace.');
+assert.equal(abilityCount,44);
+console.log('PASS: all 44 ability handlers execute with valid targets and maintain finite grace.');
