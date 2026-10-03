@@ -13,7 +13,7 @@ import {loadRearWalk,loadPoseSheet,FLIGHT_CELLS} from './rear-walk.js';
 import {cachedGroundSample} from './ground-sampling.js';
 import {addBackgroundMusic} from './background-music.js';
 import {createCityMissions} from './city-missions.js';
-let cityMissions=null;
+let cityMissions=null,systemicWorld=null;
 import {createNpcSystem} from './jc-npcs.js';
 import {createNpcConversation} from './npc-conversation.js';
 import {createExplorableWorld} from './explorable-world.js';
@@ -24,6 +24,7 @@ import {selectFlightPose,selectGroundPose} from './jc-character-pose.js';
 import {setNpcApiKey,clearNpcApiKey} from './npc-dialogue.js';
 import {createJcAudio} from './jc-audio.js';
 import {createFireSystem} from './fire-system.js';
+import {createSystemicWorld} from './systemic-world.js';
 import {createStreetPickups} from './street-pickups.js';
 
 const jcAudio=createJcAudio();
@@ -110,6 +111,7 @@ hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATI
 document.body.append(hud);
 style.textContent += '#jcNpcReadout{position:absolute;left:12px;bottom:144px;max-width:min(390px,78vw);padding:7px 10px;background:#091018d9;border-left:2px solid #c4ffee;color:#c4ffee;font-size:11px;letter-spacing:.4px;pointer-events:auto}#jcNpcTalkButton{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 178px);transform:translateX(-50%);display:none;pointer-events:auto;padding:11px 16px;border:1px solid #f1d17e;border-radius:8px;background:#111b2aee;color:#ffe6a4;font-weight:900;box-shadow:0 6px 18px #0009;z-index:2}#jcNpcTalkButton.available{display:block}@media(pointer:fine){#jcNpcTalkButton{display:none!important}}#jcPeople{position:absolute;left:12px;top:48%;z-index:3;pointer-events:auto}#jcPeopleToggle{padding:9px 12px!important;background:#091018eF!important;border:1px solid #f9d878!important;color:#ffe6a4!important}#jcPeoplePanel{display:none;width:min(280px,78vw);max-height:38vh;overflow:auto;margin-top:6px;padding:8px;background:#091018f2;border:1px solid #f9d878;border-radius:8px}#jcPeoplePanel.open{display:block}#jcPeoplePanel button{display:block;width:100%;text-align:left;margin:4px 0;padding:8px!important}#jcPersonMarker{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;pointer-events:none;background:#071018e8;border:1px solid #ffe18c;border-radius:15px;padding:6px 10px;color:#ffe6a4;font-size:13px;text-shadow:0 1px 4px #000;white-space:nowrap;display:none}#jcPersonMarker.visible{display:block}#jcPersonMarker b{font-size:20px;vertical-align:middle;margin-right:5px}';
 const npcReadout=document.createElement('div');npcReadout.id='jcNpcReadout';npcReadout.textContent='CITY FOLKS · OBSERVING';hud.append(npcReadout);
+const worldStateReadout=document.createElement('div');worldStateReadout.id='jcWorldState';worldStateReadout.textContent='SIN CITY SYSTEMS · INITIALIZING';worldStateReadout.style.cssText='position:absolute;left:12px;bottom:110px;max-width:min(520px,82vw);padding:7px 10px;background:#071018dd;border-left:2px solid #f9d878;color:#ffe9b0;font-size:10px;letter-spacing:.35px;pointer-events:none';hud.append(worldStateReadout);
   const npcTalkButton=document.createElement('button');npcTalkButton.id='jcNpcTalkButton';npcTalkButton.type='button';npcTalkButton.textContent='TALK';npcTalkButton.setAttribute('aria-label','Talk to nearby character');hud.append(npcTalkButton);
 const peopleUI=document.createElement('div');peopleUI.id='jcPeople';peopleUI.innerHTML='<button id=jcPeopleToggle type=button>PEOPLE · 0</button><div id=jcPeoplePanel aria-label=Saved people></div>';hud.append(peopleUI);
 const worldPrompt=document.createElement('button');worldPrompt.id='jcWorldPrompt';worldPrompt.type='button';worldPrompt.hidden=true;worldPrompt.style.cssText='position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 92px);transform:translateX(-50%);z-index:5;padding:10px 14px;background:#08131ef2;color:#ffe6a4;border:1px solid #f1d17e;border-radius:9px;font-weight:800;pointer-events:auto';worldPrompt.onclick=()=>{const state=explorableWorld?.update(performance.now());if(state?.canTransit)explorableWorld.linkedZone(explorableWorld.catalog.places.get('military:groom-lake'));else if(explorableWorld?.active)explorableWorld.exit();else if(state?.nearby?.kind==='storm-drain-game-access')explorableWorld.enterDrain(state.nearby);else if(state?.canEnter&&state.nearby?.id==='military:nellis')explorableWorld.linkedZone(state.nearby);else if(state?.canEnter)explorableWorld.enter(state.nearby);};hud.append(worldPrompt);
@@ -944,6 +946,7 @@ function cast(id = selectedAbility) {
     case 'singularity':moveSouls('vortex',85);timeScaleUntil=performance.now()+1800;ringAt(player.position,0x9bdcff,72);feedback('SINGULARITY · nearby lights pulled inward');break;
     case 'sonic-boom':{setFlight('surge');const direction=desired.lengthSq()?desired.clone().normalize():forward.clone();moveSafely(direction.x*22,direction.z*22,performance.now()<phaseUntil);velocity.addScaledVector(direction,24);const point=player.position.clone();cinematicLook?.impact(point);ringAt(point,0xbceaff,36);npcSystem?.signal('sonic-boom',point,110);feedback('SONIC BOOM · HYPERFLIGHT');break;}
   }
+  systemicWorld?.onAbility(id,player.position,devilMode?'satan':'jc');
   graceLabel.textContent=Math.round(grace);
 }
 
@@ -1151,7 +1154,7 @@ function frameStep(now) {
     if (s.position.distanceTo(player.position.clone().add(new THREE.Vector3(0,1.6,0))) < 3.4) collect(s);
   }
   if(worldDt>0&&now-lastNpcObservation>700){lastNpcObservation=now;observeNpcPlayer();}
-  if(worldDt>0)npcSystem?.update(worldDt,now);cityMissions?.update(now,playing);fireSystem?.update(now);pickups?.update(now,npcSystem?.npcs||[]);const worldState=explorableWorld?.update(now),worldPrompt=hud.querySelector('#jcWorldPrompt');if(worldPrompt){const site=worldState?.nearby;worldPrompt.hidden=!site&&!explorableWorld?.active;worldPrompt.textContent=worldState?.canTransit||explorableWorld?.active?.venue.id==='military:nellis'?'E · TRAVEL TO AREA 51 · FICTIONAL ROUTE':explorableWorld?.active?'E · EXIT '+explorableWorld.active.venue.name.toUpperCase():site?(site.kind==='storm-drain-game-access'?'E · ENTER MAPPED DRAIN ROUTE · FICTIONAL ACCESS':`E · ENTER ${site.name.toUpperCase()}`):'';}
+  if(worldDt>0){npcSystem?.update(worldDt,now);systemicWorld?.update(worldDt,now);}cityMissions?.update(now,playing);fireSystem?.update(now);pickups?.update(now,npcSystem?.npcs||[]);const worldState=explorableWorld?.update(now),worldPrompt=hud.querySelector('#jcWorldPrompt');if(worldPrompt){const site=worldState?.nearby;worldPrompt.hidden=!site&&!explorableWorld?.active;worldPrompt.textContent=worldState?.canTransit||explorableWorld?.active?.venue.id==='military:nellis'?'E · TRAVEL TO AREA 51 · FICTIONAL ROUTE':explorableWorld?.active?'E · EXIT '+explorableWorld.active.venue.name.toUpperCase():site?(site.kind==='storm-drain-game-access'?'E · ENTER MAPPED DRAIN ROUTE · FICTIONAL ACCESS':`E · ENTER ${site.name.toUpperCase()}`):'';}
   if(selectedPerson?.contactId){selectedPerson=npcSystem?.npcs.find(n=>String(n.contactId)===String(selectedPerson.contactId))||selectedPerson;}
   nearNpc=closestNpc();
   if(selectedPerson&&selectedPerson.position){const pos=selectedPerson.position.clone().add(new THREE.Vector3(0,2.1,0)).project(game.camera),d=selectedPerson.position.distanceTo(player.position),markerVisible=pos.z>=-1&&pos.z<=1;personMarker.classList.toggle('visible',playing&&!conversation.isOpen);if(playing&&!conversation.isOpen){const x=(pos.x+1)*innerWidth/2,y=(1-pos.y)*innerHeight/2;personMarker.style.left=`${THREE.MathUtils.clamp(x,90,innerWidth-90)}px`;personMarker.style.top=`${THREE.MathUtils.clamp(y,50,innerHeight-50)}px`;personMarker.style.transform=markerVisible?'translate(-50%,-50%)':'translate(-50%,-50%) rotate(0deg)';personMarker.textContent=`${markerVisible?'✦':(pos.x<0?'◀':'▶')} ${selectedPerson.name} · ${Math.round(d)} m`;}}else personMarker.classList.remove('visible');
@@ -1169,6 +1172,7 @@ function frameStep(now) {
   if(now>nextHud){
     nextHud=now+100;
     updateMinimap(now);
+    if(worldStateReadout)worldStateReadout.textContent=systemicWorld?.hudLine(player.position)||'SIN CITY SYSTEMS · ONLINE';
     feedbackLabel.style.opacity=now<feedbackUntil?'1':'0';
     const ability=abilities.find(a=>a.id===selectedAbility),remaining=Math.max(0,((cooldowns.get(selectedAbility)||0)-now)/1000);
     hud.querySelector('#jcAbilityReady').textContent=remaining?`Recharging ${remaining.toFixed(1)}s`:grace<ability.cost?`Need ${ability.cost} grace`:`Ready · ${ability.cost} grace`;
@@ -1273,10 +1277,11 @@ const group = game.loaded.get('C15_R14');
   createSouls(x, z);
   fireSystem=createFireSystem(game.scene);pickups=createStreetPickups(game.scene,player,groundAt,clearSpot,{onCharge:amount=>{electricCharge=Math.min(100,electricCharge+amount);feedback(`LIGHTNING CHARGED · ${Math.round(electricCharge)}%`);},onHeal:amount=>{grace=Math.min(100,grace+12);feedback(`FIRST AID · ${amount} HEALTH RESTORED`);},onUse:actor=>{if(actor&&typeof actor==='object')npcSystem?.signal('picked-up-item',actor.position,18);else if(actor==='sidearm'){const target=(npcSystem?.npcs||[]).filter(n=>!n.collapse&&n.faction==='demon'&&n.position.distanceTo(player.position)<55&&(n.position.x-player.position.x)*Math.sin(yaw)-(n.position.z-player.position.z)*Math.cos(yaw)>2).sort((a,b)=>a.position.distanceToSquared(player.position)-b.position.distanceToSquared(player.position))[0];if(target){target.health=Math.max(0,(target.health??100)-30);target.state='fear';target.emotionUntil=performance.now()+2400;target.event={type:'JC-sidearm',position:player.position.clone(),time:performance.now()};npcSystem?.signal('gunfire',player.position,42);feedback(`SIDEARM HIT · ${target.name}`);}else feedback('SIDEARM · NO HOSTILE TARGET IN FRONT');}else npcSystem?.signal('flare',player.position,70);},onStatus:text=>feedback(text)});
   npcSystem=createNpcSystem({scene:game.scene,player,groundAt,canSee:visibleToNpc,isSafe:(x,z,r=2)=>!blockedAt(x,groundAt(x,z)+1.55,z,r),isRoadway:(x,z)=>game.roads?.isRoadway?.(x,z)||false,count:500,getInfluencer:()=>devilMode?'satan':'jesus',camera:game.camera,vehicleAt:(x,z,r)=>game.traffic?.vehicleAt?.(x,z,r)||null,onVehicleHit:npc=>{pickups?.drop(npc.position);npcSystem?.signal('traffic-impact',npc.position,28);},onReport:text=>{npcReadout.textContent=text;}});
+  systemicWorld=createSystemicWorld({player,npcSystem,fireSystem,groundAt,clearSpot,onStatus:text=>feedback(text),getFaction:()=>devilMode?'satan':'jc'});window.JC_SYSTEMIC_WORLD=systemicWorld;
   explorableWorld=createExplorableWorld(game,{scene:game.scene,player,groundAt,clearSpot,onStatus:text=>feedback(text),pickupsRef:()=>pickups,npcRef:()=>npcSystem,velocity,getFlight:()=>({flying,height:flightHeight}),setFlight:(value,height)=>{flying=!!value;flightHeight=height;}});
   addBackgroundMusic(document.body);
   cityMissions=createCityMissions({scene:game.scene,player,npcs:npcSystem.npcs,population:npcSystem.population,onReward:reward=>{grace=Math.min(100,grace+reward);}});
-  window.addEventListener('jc:building-destroyed',event=>{const detail=event.detail;if(!playing||!detail)return;const p=detail.position;const n=npcSystem?.collapseAt({position:p,heightMetres:detail.heightMetres},devilMode?'satan':'jesus');if(n)npcReadout.textContent=devilMode?'INFERNAL COLLAPSE · '+n+' CIVILIANS LOST':'MIRACLE RESCUE · '+n+' CIVILIANS FALLING TO SAFETY';});
+  window.addEventListener('jc:building-destroyed',event=>{const detail=event.detail;if(!playing||!detail)return;systemicWorld?.onDestruction(detail,devilMode?'satan':'jc');const p=detail.position;const n=npcSystem?.collapseAt({position:p,heightMetres:detail.heightMetres},devilMode?'satan':'jesus');if(n)npcReadout.textContent=devilMode?'INFERNAL COLLAPSE · '+n+' CIVILIANS LOST':'MIRACLE RESCUE · '+n+' CIVILIANS FALLING TO SAFETY';});
   game.player=player;game.npcs=npcSystem;
   npcReadout.textContent=`${npcSystem.npcs.length} LIVING NPCS · MOVE CLOSE TO TALK`;
   const devilButton=document.createElement('button');devilButton.type='button';devilButton.id='jcDevilMode';devilButton.textContent='PLAY AS DEVIL';devilButton.setAttribute('aria-pressed','false');hud.querySelector('.jc-score').append(devilButton);
