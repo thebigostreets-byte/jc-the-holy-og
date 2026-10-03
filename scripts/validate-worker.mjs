@@ -13,14 +13,16 @@ const originalFetch = globalThis.fetch;
 let forwarded;
 globalThis.fetch = async (url, options) => {
   forwarded = {url, options};
-  return Response.json({reply:'A real service response.'});
+  return Response.json({choices:[{message:{content:'{\"reply\":\"A real service response.\"}'}}]});
 };
 try {
   const body = JSON.stringify({npc:{name:'Mara'},message:'Hello'});
   const response = await worker.fetch(new Request(`${origin}/api/npc-chat`, {method:'POST',headers:{origin,'content-type':'application/json'},body}), {GROQ_API_KEY:'test-key'});
   assert.equal(response.status, 200);
   assert.equal((await response.json()).reply, 'A real service response.');
-  assert.equal(forwarded.options.body, body);
+  assert.equal(forwarded.url,'https://api.groq.com/openai/v1/chat/completions');
+  assert.equal(forwarded.options.headers.authorization,'Bearer test-key');
+  assert.match(JSON.stringify(JSON.parse(forwarded.options.body).messages),/Hello/);
   assert.equal(forwarded.options.headers.origin, origin);
 } finally {globalThis.fetch = originalFetch;}
 console.log('Main game Worker passed asset routing, origin protection, and NPC forwarding checks.');
