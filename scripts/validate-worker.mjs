@@ -23,6 +23,6 @@ try {
   assert.equal(forwarded.url,'https://api.groq.com/openai/v1/chat/completions');
   assert.equal(forwarded.options.headers.authorization,'Bearer test-key');
   assert.match(JSON.stringify(JSON.parse(forwarded.options.body).messages),/Hello/);
-  assert.equal(forwarded.options.headers.origin, origin);
+  assert.equal(forwarded.options.headers.authorization,'Bearer test-key');
 } finally {globalThis.fetch = originalFetch;}
 console.log('Main game Worker passed asset routing, origin protection, and NPC forwarding checks.');

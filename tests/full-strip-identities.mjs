@@ -4,6 +4,8 @@ import vm from 'node:vm';
 
 const source=readFileSync(new URL('../physical-building-materials.js',import.meta.url),'utf8')
   .replace("import * as THREE from './three.module.js';","const THREE = {};")
+  .replace("import {generatedBuildingKind} from './generated-materials.js';","const generatedBuildingKind=()=>null;")
+  .replace("import {identityPalette} from './building-identities.js';","const identityPalette=()=>null;")
   .replace(/export /g,'')+
   '\n globalThis.__testExports={CASINO_PROPERTIES,classifyBuilding};';
 const context=vm.createContext({setTimeout,clearTimeout});
