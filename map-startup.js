@@ -3,7 +3,7 @@ window.jcOpenLiteFallback=function(reason){
  const url=new URL('./play-lite.html',location.href);
  url.searchParams.set('from','full3d');
  url.searchParams.set('reason',String(reason||'graphics').slice(0,80));
- url.searchParams.set('v','loadfix-539165c');
+ url.searchParams.set('v','bootfix-playerfirst-20261003d');
  location.replace(url.href);
 };
 window.jcReleaseGraphics=function(){
@@ -31,9 +31,9 @@ window.jcLoadingRecovery=function(message){
  let recovery=document.getElementById('jcRecovery');if(recovery){recovery.querySelector('p').textContent=message;const fallback=recovery.querySelector('[data-lite-fallback]');if(fallback)fallback.onclick=()=>window.jcOpenLiteFallback(message);return;}
  recovery=document.createElement('div');recovery.id='jcRecovery';recovery.style.cssText='position:fixed;inset:0;z-index:999;background:#091018ed;color:white;display:grid;place-content:center;padding:24px;text-align:center;font:16px Arial;gap:16px';
  const text=document.createElement('p');text.textContent=message;recovery.append(text);
- const retry=document.createElement('button');retry.textContent='Close 3D context and retry';retry.onclick=()=>{window.jcReleaseGraphics();const url=new URL(location.href);url.searchParams.set('retry3d',Date.now().toString());url.searchParams.set('v','loadfix-539165c');location.replace(url.href);};recovery.append(retry);const lite=document.createElement('button');lite.dataset.liteFallback='1';lite.textContent='Open mobile/lite play mode';lite.style.marginLeft='8px';lite.onclick=()=>window.jcOpenLiteFallback(message);recovery.append(lite);if(/WebGL|graphics|3D graphics|context/i.test(message)){setTimeout(()=>{if(window.JC_BOOT_FAILED)window.jcOpenLiteFallback(message);},1800);}
+ const retry=document.createElement('button');retry.textContent='Close 3D context and retry';retry.onclick=()=>{window.jcReleaseGraphics();const url=new URL(location.href);url.searchParams.set('retry3d',Date.now().toString());url.searchParams.set('v','bootfix-playerfirst-20261003d');location.replace(url.href);};recovery.append(retry);const lite=document.createElement('button');lite.dataset.liteFallback='1';lite.textContent='Open mobile/lite play mode';lite.style.marginLeft='8px';lite.onclick=()=>window.jcOpenLiteFallback(message);recovery.append(lite);if(/WebGL|graphics|3D graphics|context/i.test(message)){setTimeout(()=>{if(window.JC_BOOT_FAILED)window.jcOpenLiteFallback(message);},1800);}
  document.body.append(recovery);
 };
 addEventListener('error',event=>{if(event.error||event.target?.tagName==='SCRIPT')window.jcLoadingRecovery(event.message?.includes('WebGL')?'This browser could not open its 3D graphics connection. Close other game tabs and retry.':'The 3D game could not start. Please retry.');},true);
 addEventListener('unhandledrejection',event=>{window.jcLoadingRecovery(event.reason?.message||'The city could not finish loading. Please retry.');});
-setTimeout(()=>{if(window.JC_BOOT_FAILED)return;const play=new URLSearchParams(location.search).get('play')==='1';if(!window.JC_CITY_READY||(play&&!window.JC_PLAYER_READY)){window.jcLoadingRecovery('The city is still loading. Opening mobile/lite play mode.');setTimeout(()=>window.jcOpenLiteFallback('startup-timeout'),900);}},25000);
+setTimeout(()=>{if(window.JC_BOOT_FAILED)return;const play=new URLSearchParams(location.search).get('play')==='1';if(!window.JC_CITY_READY||(play&&!window.JC_PLAYER_READY)){const stage=window.JC_BOOT_STAGE||(!window.JC_CITY_READY?'city':'player');window.jcLoadingRecovery('Full 3D startup is taking too long at '+stage+'. You can retry full 3D or choose lite mode.');}},45000);
