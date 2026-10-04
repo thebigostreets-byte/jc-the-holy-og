@@ -66,6 +66,7 @@ export function buildingSurface(id,height,photos,physical,identity=null,generate
  const traits=facadeTraits(id,identity),signature=traits.signature,palette=identityPalette(identity?.name);
  if(palette&&photos.length){map=photos[palette.photo%photos.length];color=palette.color;roughness=palette.roughness;kind='landmark facade';scale=[9,10];}
  const generatedKind=generatedBuildingKind(identity,height);
+ if(generatedKind==='casino'&&generated.casino){map=generated.casino;scale=[8.5,8.5];roughness=.58;metalness=.10;color=palette?.color||'#ffffff';kind='generated casino';}
  // Generated residential is intentionally reserved for low homes. Named
  // properties and normal commercial buildings keep their own deterministic
  // facade signature instead of collapsing onto one shared generated skin.
