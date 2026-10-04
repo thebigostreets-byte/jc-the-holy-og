@@ -845,5 +845,8 @@
   "systemic-world.js",
   "data/vegas-flood-conveyances.geojson",
   "data/nellis-flood-conveyances.geojson",
-  "world-catalog.js"
+  "world-catalog.js",
+  "facades/generated-v2/residential.webp",
+  "facades/generated-v2/casino.webp",
+  "facades/generated-v2/roof.webp"
 ]
