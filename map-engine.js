@@ -32,6 +32,8 @@ async function fetchBytes(url){
 const payload=JSON.parse(new TextDecoder().decode(await fetchBytes('./city-manifest.json')));
 const scene=new THREE.Scene();scene.background=new THREE.Color('#080c1b');scene.fog=new THREE.Fog('#080c1b',18000,76000);
 const mobileMap=matchMedia('(pointer:coarse), (max-width:800px)').matches || navigator.maxTouchPoints>1 || new URLSearchParams(location.search).get('quality')==='mobile';
+const deviceMemory=Number(navigator.deviceMemory)||8,hardwareThreads=Number(navigator.hardwareConcurrency)||8;
+const lowSpec=mobileMap||deviceMemory<=4||hardwareThreads<=4;
 const startInPlay=new URLSearchParams(location.search).get('play')==='1';
 let renderer;
 try{
@@ -46,7 +48,7 @@ try{
  window.jcLoadingRecovery(`JC could not start WebGL 2 or WebGL 1. ${error?.message||'Turn on graphics acceleration and retry.'}`);
  throw error;
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio,mobileMap?.75:1.25));
+renderer.setPixelRatio(Math.min(devicePixelRatio,lowSpec?.72:1.15));
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();window.jcLoadingRecovery('The 3D scene lost its graphics connection. Close other game tabs and retry.');});
 renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.16;
 const camera=new THREE.PerspectiveCamera(42,1,.5,90000), controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.maxPolarAngle=Math.PI*.49;controls.minDistance=8;controls.maxDistance=65000;
@@ -71,7 +73,7 @@ async function loadBytes(name){
  })();
  return request;
 }
-const prefetchedBytes=createPrefetchCache(loadBytes,{maxBytes:(mobileMap?64:128)*1024*1024,maxEntries:mobileMap?20:32,maxConcurrent:mobileMap?2:3});
+const prefetchedBytes=createPrefetchCache(loadBytes,{maxBytes:(lowSpec?48:deviceMemory<=8?96:144)*1024*1024,maxEntries:lowSpec?12:deviceMemory<=8?24:36,maxConcurrent:lowSpec?1:3});
 function bytes(name){return prefetchedBytes.get(name);}
 function pathRelative(basePath,path){const a=(basePath.slice(0,basePath.lastIndexOf('/')+1)+path).split('/'),o=[];for(const s of a){if(s==='..')o.pop();else if(s!=='.')o.push(s);}return o.join('/');}
 async function textureFrom(data,mime,sampler){
@@ -158,6 +160,16 @@ let streamSample=null;
 function available(name){if(payload.resources[name]||files.has(name))return true;const match=/^tiles\/(C\d{2}_R\d{2})\.glb$/.exec(name);return location.protocol!=='file:'&&!!match&&PACKAGED_CITY_TILE_IDS.has(match[1]);}
 function removeTile(id){const group=loaded.get(id);if(!group)return;if(selected?.parent===group){select(null);$('selectedName').textContent='Click a building';$('coords').textContent='Each object has a permanent source ID.';}for(const ob of group.children){const bid=ob.userData.buildingId;if(bid){clearChunks(bid);buildings.delete(bid);}}world.remove(group);group.traverse(x=>{if(x.isMesh){x.geometry.dispose();if(Array.isArray(x.material))x.material.forEach(m=>m.dispose());else x.material?.dispose?.();}});group.userData.textures?.forEach(t=>t.dispose());loaded.delete(id);tileRevision++;}
 function sectionCenter(section){const b=section.boundsEPSG32611||section.bounds||base;const x=(b[0]+b[2])/2-origin[0],z=origin[1]-(b[1]+b[3])/2;return {x:Number.isFinite(x)?x:0,z:Number.isFinite(z)?z:0};}
+function applyTileLod(position){
+ const centerId=sectionAt(position.x,position.z),detailDistance=lowSpec?1150:1650;
+ for(const [id,group] of loaded){
+  const section=byId.get(id);if(!section)continue;
+  const c=sectionCenter(section),distance=Math.hypot(c.x-position.x,c.z-position.z);
+  const visible=id===centerId||distance<=detailDistance;
+  if(group.visible!==visible)group.visible=visible;
+  group.userData.jcLod=visible?'detail':'distant-city';
+ }
+}
 function seeded(id){let h=2166136261;for(let i=0;i<id.length;i++){h^=id.charCodeAt(i);h=Math.imul(h,16777619);}return ()=>((h=Math.imul(h^h>>>15,2246822507),h=Math.imul(h^h>>>13,3266489909),(h^h>>>16)>>>0)/4294967295);}
 function createMissingTileFallback(section){const group=new THREE.Group();group.name='Generated fallback '+section.id;group.userData.generatedFallback=true;const center=sectionCenter(section);group.position.set(center.x,0,center.z);const rng=seeded(section.id),groundMat=new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL(.095+rng()*.035,.18,.16+rng()*.08),roughness:.92,metalness:.02});const ground=new THREE.Mesh(new THREE.PlaneGeometry(998,998,1,1),groundMat);ground.rotation.x=-Math.PI/2;ground.position.y=-.35;ground.receiveShadow=true;group.add(ground);const roadMat=new THREE.MeshStandardMaterial({color:0x151820,roughness:.88,metalness:.01}),lineMat=new THREE.MeshBasicMaterial({color:0xd8c47a});for(const rot of [0,Math.PI/2]){const road=new THREE.Mesh(new THREE.BoxGeometry(86,.08,998),roadMat);road.rotation.y=rot;road.position.y=.02;group.add(road);const stripe=new THREE.Mesh(new THREE.BoxGeometry(4,.09,900),lineMat);stripe.rotation.y=rot;stripe.position.y=.08;group.add(stripe);}const colors=[0x806342,0x7d8792,0x9a7340,0x4f6685,0x6f4d45,0x9d8c6d];for(let i=0;i<18;i++){const w=38+rng()*90,d=38+rng()*90,h=22+rng()*180;const mat=new THREE.MeshStandardMaterial({color:colors[Math.floor(rng()*colors.length)],roughness:.66,metalness:.08,emissive:0x181018,emissiveIntensity:.25+rng()*.35});const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);b.position.set((rng()-.5)*850,h/2,(rng()-.5)*850);b.rotation.y=(rng()-.5)*.16;b.name=`${section.id} generated building ${i+1}`;b.userData={buildingId:`${section.id}_GEN_${i}`,sourceId:`${section.id}_GEN_${i}`,heightMetres:h,identity:{name:b.name,type:'generated city fill'},generatedFallback:true};group.add(b);buildings.set(b.userData.buildingId,b);}return group;}
 let buildingListDirty=true;
@@ -175,6 +187,7 @@ function movement(dt){if(window.JC_MAP_PLAYING||!keys.size)return;const forward=
 function streamingTick(t,dt){
  movement(dt);if(!window.JC_CITY_READY||!streamEnabled||t<retryAt||t-lastStreamCheck<400)return;lastStreamCheck=t;
  const position={x:controls.target.x,z:controls.target.z},ahead=predictTravel(position,streamSample,streamSample?t-streamSample.t:0,16);streamHeading={x:ahead.x-position.x,z:ahead.z-position.z};streamSample={...position,t};
+ applyTileLod(position);
  const id=centerSection();if(id!==lastWanted&&!loading)loadArea(id,window.JC_HYPERFLIGHT?0:streamRadius,false);
  const connection=navigator.connection;
  if(connection?.saveData||['slow-2g','2g'].includes(connection?.effectiveType))return;
@@ -201,7 +214,7 @@ function exportEdits(){return {format:'illco-vegas-building-edits',version:1,sou
 $('save').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(exportEdits(),null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='Vegas_Building_Edits.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);};$('loadEdits').onclick=()=>$('editsFile').click();$('editsFile').onchange=async e=>{try{importEdits(JSON.parse(await e.target.files[0].text()));}catch(err){status(err.message);}};
 function resize(){const r=$('viewport').getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}new ResizeObserver(resize).observe($('viewport'));resize();if(mobileMap) $('streamRange').value='0';
 function animate(t){requestAnimationFrame(animate);const dt=Math.min((t-last)/1000,.04);last=t;if(!window.studio?.paused){tick(dt*Math.max(0,Math.min(1,window.JC_WORLD_SCALE??1)));streamingTick(t,dt);}if(!window.JC_MAP_PLAYING)controls.update();window.studio?.distantCity?.update();window.studio?.environment?.update(t,dt);window.studio?.traffic?.update(dt);window.studio?.buildingViews?.update(t,dt,document.body.classList.contains('jc-playing'));if(!mobileMap||!startInPlay||window.JC_PLAYER_READY){if(window.studio?.renderFrame)window.studio.renderFrame();else renderer.render(scene,camera);}}requestAnimationFrame(animate);
-window.studio={sections,cityBounds:base,mobileMap,scene,camera,renderer,controls,buildings,chunks,edits,loaded,origin,centerSection,ensureContext,streamingTick,streamInfo:()=>({enabled:streamEnabled,radius:streamRadius,loading,current,lastWanted,context:!!contextGround,availableFiles:files.size}),tileRevision:()=>tileRevision,prefetchInfo:()=>prefetchedBytes.stats(),loadArea,select,focus,view,destroy,rebuild,updateEdit,exportEdits,importEdits,tick,stats:()=>({buildings:buildings.size,tiles:loaded.size,chunks:particles.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),proof:()=>{document.body.classList.add('proof');resize();}};
+window.studio={sections,cityBounds:base,mobileMap,lowSpec,deviceMemory,scene,camera,renderer,controls,buildings,chunks,edits,loaded,origin,centerSection,ensureContext,streamingTick,streamInfo:()=>({enabled:streamEnabled,radius:streamRadius,loading,current,lastWanted,context:!!contextGround,availableFiles:files.size,lowSpec,deviceMemory}),tileRevision:()=>tileRevision,prefetchInfo:()=>prefetchedBytes.stats(),loadArea,select,focus,view,destroy,rebuild,updateEdit,exportEdits,importEdits,tick,stats:()=>({buildings:buildings.size,tiles:loaded.size,visibleTiles:[...loaded.values()].filter(g=>g.visible).length,chunks:particles.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),proof:()=>{document.body.classList.add('proof');resize();}};
 window.studio.roads=createRoadNetwork(window.studio);
 window.studio.traffic=createCityTraffic(window.studio);
 window.studio.distantCity=createDistantCity(window.studio);
