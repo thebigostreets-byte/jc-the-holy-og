@@ -20,7 +20,7 @@ export function terrainSampler(group){
 }
 export function roadWidth(kind){return ({FREEWAY:13,INTERSTATE:13,'MAJOR STREET':18,COLLECTOR:12,'COUNTY HIGHWAY':12,RAMP:7,LOCAL:8,ALLEY:4,'PRIVATE STREET':7})[kind]||7;}
 export function isPointWithinRoadway(segment,x,z,margin=1.4){const dx=segment.x2-segment.x1,dz=segment.z2-segment.z1,length=dx*dx+dz*dz,t=length?THREE.MathUtils.clamp(((x-segment.x1)*dx+(z-segment.z1)*dz)/length,0,1):0;return Math.hypot(x-(segment.x1+t*dx),z-(segment.z1+t*dz))<segment.width/2+margin;}
-export async function buildRoadGeometry(records,sample,{origin=[0,0],yieldEvery=32}={}){
+export async function buildRoadGeometry(records,sample,{origin=[0,0],yieldEvery=32,segmentLength=10}={}){
  const layers=[[],[],[],[]],uvs=[[],[],[],[]];let quads=0;
  function strip(a,b,half,offset,layer,height=.1){
   const dx=b[0]-a[0],dz=b[1]-a[1],length=Math.hypot(dx,dz);if(length<.05)return;
@@ -46,7 +46,7 @@ export async function buildRoadGeometry(records,sample,{origin=[0,0],yieldEvery=
   const points=road.points.map(p=>[p[0]-origin[0],origin[1]-p[1]]);
   const total=points.slice(1).reduce((sum,p,i)=>sum+Math.hypot(p[0]-points[i][0],p[1]-points[i][1]),0);
   for(let i=1;i<points.length;i++){
-   const a=points[i-1],b=points[i],len=Math.hypot(b[0]-a[0],b[1]-a[1]),steps=Math.ceil(len/10);
+   const a=points[i-1],b=points[i],len=Math.hypot(b[0]-a[0],b[1]-a[1]),steps=Math.ceil(len/Math.max(8,segmentLength));
    for(let j=0;j<steps;j++){
     const lerp=t=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t],p=lerp(j/steps),q=lerp((j+1)/steps),d=travelled+(j+.5)*len/steps;
     strip(p,q,width/2,0,0);
@@ -81,14 +81,14 @@ export function createRoadNetwork(game){
  async function sync(){
   if(disposed)return;
   const token=++revision;
-  for(const [id,root]of active)if(game.loaded.get(id)!==root.userData.sourceGroup){game.scene.remove(root);root.children.forEach(m=>m.geometry.dispose());active.delete(id);removeRoadTile(id);}
+  for(const [id,root]of active){const source=game.loaded.get(id);if(source!==root.userData.sourceGroup){game.scene.remove(root);root.children.forEach(m=>m.geometry.dispose());active.delete(id);removeRoadTile(id);}else root.visible=source.visible!==false;}
   for(const [id,group]of game.loaded){
    if(active.has(id)||pending.has(id))continue;
    pending.add(id);
    try{
     const response=await fetch(`./data/roads/${id}.json.gz`,{signal:AbortSignal.timeout(12000)});if(!response.ok)throw Error('Road tile '+response.status);
     let bytes=new Uint8Array(await response.arrayBuffer());if(bytes[0]===31&&bytes[1]===139)bytes=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());const rows=JSON.parse(new TextDecoder().decode(bytes));const fn=terrainSampler(group);if(!fn)continue;
-    const geometry=await buildRoadGeometry(rows,(x,z)=>{const value=sample(x,z);for(const group of game.loaded.values()){const mesh=group.children.find(o=>o.name==='ground_inferred')?.children.find(o=>o.isMesh);if(mesh?.userData.craters?.length&&Number.isFinite(terrainSampler(group)?.(x,z)))return value+craterDepth(x,z,mesh.userData.craters);}return value;},{origin:game.origin});
+    const geometry=await buildRoadGeometry(rows,(x,z)=>{const value=sample(x,z);for(const group of game.loaded.values()){const mesh=group.children.find(o=>o.name==='ground_inferred')?.children.find(o=>o.isMesh);if(mesh?.userData.craters?.length&&Number.isFinite(terrainSampler(group)?.(x,z)))return value+craterDepth(x,z,mesh.userData.craters);}return value;},{origin:game.origin,segmentLength:game.lowSpec?16:10,yieldEvery:game.lowSpec?16:32});
     if(disposed||game.loaded.get(id)!==group)continue;
     indexRoads(id,rows);
     const root=new THREE.Group();root.name='Mapped roads '+id;
