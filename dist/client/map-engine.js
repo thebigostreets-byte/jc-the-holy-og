@@ -37,7 +37,7 @@ const deviceMemory=Number(navigator.deviceMemory)||8,hardwareThreads=Number(navi
 const maxQuality=params.get('quality')==='max';
 const lowSpec=mobileMap||deviceMemory<=4||hardwareThreads<=4;
 const stable3D=!maxQuality;
-const bootBuildingLimit=stable3D?(mobileMap?220:320):Infinity;
+const bootBuildingLimit=Infinity;
 const startInPlay=params.get('play')==='1';
 let renderer;
 try{
@@ -164,7 +164,7 @@ function destroy(ob,mode,save=true){if(!ob)return;rebuild(ob,false);const id=ob.
  ob.children.forEach(m=>m.visible=false);chunks.set(id,frags);if(save){const e=edits.get(id)||{};e.state=mode;edits.set(id,e);persist();}if(selected===ob&&box){scene.remove(box);box.geometry.dispose();box.material.dispose();box=null;}status(`${id} · ${mode} · ${frags.length} moving fragments`);return frags.length;}
 function tick(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];if(p.sleep){const owned=chunks.get(p.buildingId),index=owned?.indexOf(p)??-1;if(index>=0)owned.splice(index,1);disposeParticle(p);continue;}p.age+=dt;p.vel.y-=9.81*dt;p.mesh.position.addScaledVector(p.vel,dt);p.mesh.rotation.x+=p.spin.x*dt;p.mesh.rotation.y+=p.spin.y*dt;p.mesh.rotation.z+=p.spin.z*dt;if(p.mesh.position.y<p.floor){p.mesh.position.y=p.floor;p.vel.y=-p.vel.y*.2;p.vel.x*=.75;p.vel.z*=.75;p.spin.multiplyScalar(.65);if(p.vel.length()<.5||p.age>12)p.sleep=true;}if(p.age>25)p.sleep=true;}}
 function disposeLoaded(){select(null);for(const id of chunks.keys())clearChunks(id);for(const group of loaded.values()){world.remove(group);group.traverse(x=>{if(x.isMesh){x.geometry.dispose();x.material.dispose();}});group.userData.textures?.forEach(t=>t.dispose());}loaded.clear();buildings.clear();}
-let streamEnabled=true,streamRadius=mobileMap?1:1,loadQueue=Promise.resolve(),desiredRequest=0,lastWanted='',retryAt=0,contextGround=null,contextPromise=null,lastStreamCheck=0,streamHeading=null;
+let streamEnabled=true,streamRadius=mobileMap?0:1,loadQueue=Promise.resolve(),desiredRequest=0,lastWanted='',retryAt=0,contextGround=null,contextPromise=null,lastStreamCheck=0,streamHeading=null;
 const keys=new Set();
 function sectionAt(x,z){const e=origin[0]+x,n=origin[1]-z,c=Math.max(0,Math.min(34,Math.floor((e-base[0])/1000))),r=Math.max(0,Math.min(34,Math.floor((n-base[1])/1000)));return `C${String(c).padStart(2,'0')}_R${String(r).padStart(2,'0')}`;}
 function centerSection(){return sectionAt(controls.target.x,controls.target.z);}
@@ -228,7 +228,6 @@ function resize(){const r=$('viewport').getBoundingClientRect();renderer.setSize
 function animate(t){requestAnimationFrame(animate);const dt=Math.min((t-last)/1000,.04);last=t;if(!window.studio?.paused){tick(dt*Math.max(0,Math.min(1,window.JC_WORLD_SCALE??1)));streamingTick(t,dt);}if(!window.JC_MAP_PLAYING)controls.update();window.studio?.distantCity?.update();window.studio?.environment?.update(t,dt);window.studio?.traffic?.update(dt);window.studio?.buildingViews?.update(t,dt,document.body.classList.contains('jc-playing'));if(!mobileMap||!startInPlay||window.JC_PLAYER_READY){if(window.studio?.renderFrame)window.studio.renderFrame();else renderer.render(scene,camera);}}requestAnimationFrame(animate);
 window.studio={sections,cityBounds:base,mobileMap,lowSpec,stable3D,deviceMemory,scene,camera,renderer,controls,buildings,chunks,edits,loaded,origin,centerSection,ensureContext,streamingTick,streamInfo:()=>({enabled:streamEnabled,radius:streamRadius,loading,current,lastWanted,context:!!contextGround,availableFiles:files.size,lowSpec,stable3D,deviceMemory}),tileRevision:()=>tileRevision,prefetchInfo:()=>prefetchedBytes.stats(),loadArea,select,focus,view,destroy,rebuild,updateEdit,exportEdits,importEdits,tick,stats:()=>({buildings:buildings.size,tiles:loaded.size,visibleTiles:[...loaded.values()].filter(g=>g.visible).length,chunks:particles.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),proof:()=>{document.body.classList.add('proof');resize();}};
 window.studio.roads=createRoadNetwork(window.studio);
-window.JC_BOOT_STAGE='core-roads';
 window.studio.traffic=createCityTraffic(window.studio);
 window.studio.distantCity=createDistantCity(window.studio);
 window.studio.environment=createCityEnvironment(window.studio,{mobile:mobileMap});
@@ -238,10 +237,8 @@ window.studio.ready=loadArea('C15_R14',0);
 await window.studio.ready;
 lastWanted='';
 if(!loaded.has('C15_R14'))throw Error('The Strip tile could not load: '+(window.JC_TILE_LOAD_ERROR||'No city geometry was returned.'));
-await window.studio.roads.sync().catch(error=>console.warn('Core road sync deferred',error));
-window.JC_ROADS_READY=window.studio.roads.stats().tiles>0;
 window.JC_CITY_READY=true;
 window.JC_CITY_BOOT_MODE=stable3D?'stability-first':'maximum';
 window.JC_CITY_BOOT_BUILDINGS=loaded.get('C15_R14')?.children.length||0;
 window.JC_CITY_SOURCE_BUILDINGS=loaded.get('C15_R14')?.userData?.totalBuildings||window.JC_CITY_BOOT_BUILDINGS;
-status(`Playable Strip ready · ${window.JC_CITY_BOOT_BUILDINGS.toLocaleString()} buildings active · stability streaming on`);
+status(`Playable Strip ready · ${window.JC_CITY_BOOT_BUILDINGS.toLocaleString()} buildings active · mapped roads restoring`);
