@@ -233,7 +233,7 @@ window.studio.distantCity=createDistantCity(window.studio);
 window.studio.environment=createCityEnvironment(window.studio,{mobile:mobileMap});
 window.studio.buildingViews=createBuildingImpostors(window.studio,{mobile:mobileMap,enabled:params.get('buildingViews')==='on'&&!stable3D});
 $('fullCityProof').src=payload.fullCityProof;
-window.studio.ready=loadArea('C15_R14',0);
+window.studio.ready=loadArea('C15_R14',streamRadius);
 await window.studio.ready;
 lastWanted='';
 if(!loaded.has('C15_R14'))throw Error('The Strip tile could not load: '+(window.JC_TILE_LOAD_ERROR||'No city geometry was returned.'));
