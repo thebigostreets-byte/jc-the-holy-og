@@ -37,7 +37,7 @@ const deviceMemory=Number(navigator.deviceMemory)||8,hardwareThreads=Number(navi
 const maxQuality=params.get('quality')==='max';
 const lowSpec=mobileMap||deviceMemory<=4||hardwareThreads<=4;
 const stable3D=!maxQuality;
-const bootBuildingLimit=Infinity;
+const bootBuildingLimit=maxQuality?Infinity:(mobileMap?(lowSpec?96:128):(lowSpec?160:240));
 const startInPlay=params.get('play')==='1';
 let renderer;
 try{
