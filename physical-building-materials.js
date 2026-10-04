@@ -70,6 +70,7 @@ export function buildingSurface(id,height,photos,physical,identity=null,generate
  // properties and normal commercial buildings keep their own deterministic
  // facade signature instead of collapsing onto one shared generated skin.
  if(generatedKind==='residential'&&generated.residential&&!palette){map=generated.residential;scale=[3.4,2.8];roughness=.96;metalness=0;color=paint[(h>>>5)%paint.length];kind='generated residential';}
+ if(generatedKind==='apartment'&&generated.apartment&&!palette){map=generated.apartment;scale=[5.4,4.2];roughness=.93;metalness=0;color=paint[(h>>>7)%paint.length];kind='generated apartment';}
  const isCasino=identity&&identity.type==='casino';
  if(isCasino){roughness=kind==='generated casino'?.58:.52;metalness=kind==='generated casino'?.10:.16;}
  else {roughness=.93;metalness=0;}
