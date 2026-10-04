@@ -35,8 +35,12 @@ assert.ok(!impostorUpdate.includes('signature(r.ob)'),'building signatures are n
 assert.match(impostorSource,/if\(!captureLights\)[\s\S]*?scene\.traverse/,'impostor baking caches lights instead of rescanning the whole city for every image');
 assert.match(impostorSource,/nextCaptureAt=now\+\(mobile\?160:60\)/,'impostor captures are rate-limited to avoid continuous render spikes');
 assert.match(lookSource,/let width=0,height=0,enabled=!mobile/,'mobile gameplay skips costly multi-pass glow rendering');
-assert.match(engineSource,/particleCap=mobileMap\?72:180/,'destruction has a strict mobile and desktop debris ceiling');
+assert.match(engineSource,/particleCap=stable3D\?48:\(mobileMap\?72:180\)/,'stable 3D mode tightens the debris ceiling while max quality keeps bounded mobile/desktop limits');
 assert.match(engineSource,/particles\.length>=particleCap/,'new destruction respects the global debris ceiling');
+assert.doesNotMatch(source,/const generatedFacades=await Promise\.all/,'gameplay boot does not wait for the 16 facade images');
+assert.match(source,/const facadeUpgradePromise=Promise\.all/,'facade quality upgrades asynchronously after bootstrap');
+assert.match(source,/window\.JC_PLAYER_READY=true;[\s\S]*?createNpcSystem/,'player readiness is declared before population enhancement work');
+assert.doesNotMatch(engineSource,/Connecting city tiles…';\}await ensureContext\(\);for/,'optional terrain context never blocks the first playable city tile');
 const debris={sleep:true,buildingId:'building-1',mesh:{geometry:{disposed:false,dispose(){this.disposed=true;}},material:{disposed:false,dispose(){this.disposed=true;}}}};
 const liveParticles=[debris],ownedDebris=[debris],debrisChunks=new Map([['building-1',ownedDebris]]),removed=[];
 const debrisContext=vm.createContext({particles:liveParticles,chunks:debrisChunks,world:{remove(mesh){removed.push(mesh);}}});
