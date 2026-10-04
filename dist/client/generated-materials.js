@@ -1,7 +1,7 @@
 import * as THREE from './three.module.js';
 let pending;
 export function loadGeneratedMaterials(){
- return pending ||= Promise.all(['casino','residential','asphalt','roof','entrance','sidewalk'].map(async name=>{
+ return pending ||= Promise.all(['casino','residential','apartment','asphalt','roof','entrance','sidewalk'].map(async name=>{
   try {
    const image=await new Promise((resolve,reject)=>{const im=new Image(),timer=setTimeout(()=>reject(Error('Texture timeout')),8000);im.onload=()=>{clearTimeout(timer);resolve(im);};im.onerror=()=>{clearTimeout(timer);reject(Error('Texture unavailable'));};im.src=`./facades/generated-v2/${name}.webp`;});
    const map=new THREE.Texture(image);map.colorSpace=THREE.SRGBColorSpace;map.wrapS=map.wrapT=THREE.RepeatWrapping;map.anisotropy=2;map.needsUpdate=true;return [name,map];
@@ -13,6 +13,7 @@ export function generatedBuildingKind(identity,height){
  if(/Bellagio|Caesars|Venetian|Palazzo|Paris|Holy Crown|Kingdom/i.test(name))return 'casino';
  // Keep known commercial landmarks and taller buildings on their existing skins.
  if(!name&&height>0&&height<=8)return 'residential';
+ if(!name&&height>8&&height<=28)return 'apartment';
  return null;
 }
 // Ground-floor doorway overlay follows wall UVs, leaving upper floors intact.
