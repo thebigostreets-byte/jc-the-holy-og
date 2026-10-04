@@ -62,7 +62,7 @@ async function loadBytes(name){
  if(name==='assets/generated_stucco.png')name='assets/generated_stucco.webp';
  if(files.has(name))return new Uint8Array(await files.get(name).arrayBuffer());
  const request=(async()=>{
-  const url=/^tiles\/C\d{2}_R\d{2}\.glb$/.test(name)?name+'.br':payload.resources[name]||name;
+  const url=/^tiles\/C\d{2}_R\d{2}\.glb$/.test(name)?name+'.gz':payload.resources[name]||name;
   const data=await fetchBytes(url);
   // Hosts may already decode Content-Encoding: gzip. Inspect bytes before inflating.
   if(data[0]===31&&data[1]===139){
