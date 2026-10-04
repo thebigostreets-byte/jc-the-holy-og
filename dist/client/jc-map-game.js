@@ -894,7 +894,7 @@ function cast(id = selectedAbility) {
   spawnMiracleSprite(id);
   if(!runActive&&!runFinished)runActive=true;
   npcSystem?.signal(id,player.position,id==='redemption-wave'?120:85);
-  grace-=ability.cost;cityMissions?.usePower(id);
+  grace-=ability.cost;cityMissions?.usePower(id);systemicWorld?.onAbility(id,player.position,devilMode?'satan':'jc');
   cooldowns.set(id,performance.now()+ability.cooldown*1000);
   if(!flightAbilities.has(id))castingUntil=performance.now()+450;
   const near=(radius=55,count=1)=>nearbyBuildings(radius,count);
