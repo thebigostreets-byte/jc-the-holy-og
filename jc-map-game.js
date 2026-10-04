@@ -1204,18 +1204,36 @@ game = await studioReady;
 await game.ready;
 if(!game.loaded.has('C15_R14'))throw Error('The Strip has not loaded. Retry the 3D city.');
 installVegasNight();
+window.JC_BOOT_STAGE='player-bootstrap';
 const imageLoader=new THREE.TextureLoader();
-const generatedFacades=await Promise.all(Array.from({length:16},(_,i)=>loadTextureSafe(imageLoader, `./facades/vegas-cell-${String(i).padStart(2,'0')}.webp`, fallbackFacadeTexture)));
-neutralTexture=generatedFacades[7];
-cursedTextures=await loadPhotoFacades().catch(()=>generatedFacades.slice(0,9));
-restoredTextures=generatedFacades.slice(9);
-for(const texture of generatedFacades){
-  texture.colorSpace=THREE.SRGBColorSpace;
-  texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
-  texture.repeat.set(1,1);
-  texture.anisotropy=Math.min(4,game.renderer.capabilities.getMaxAnisotropy());
-}
-  // Ability art loads the first time that miracle is used instead of blocking startup.
+// Gameplay must never wait for cosmetic facade downloads. Start with one small
+// in-memory material, then hot-swap the real facade library after JC is playable.
+const bootstrapFacade=fallbackFacadeTexture();
+const generatedFacades=Array(16).fill(bootstrapFacade);
+neutralTexture=bootstrapFacade;
+cursedTextures=[bootstrapFacade];
+restoredTextures=[bootstrapFacade];
+const facadeUpgradePromise=Promise.all(Array.from({length:16},(_,i)=>loadTextureSafe(imageLoader,`./facades/vegas-cell-${String(i).padStart(2,'0')}.webp`,fallbackFacadeTexture)))
+  .then(async textures=>{
+    for(let i=0;i<textures.length;i++)generatedFacades[i]=textures[i];
+    neutralTexture=generatedFacades[7]||bootstrapFacade;
+    restoredTextures=generatedFacades.slice(9).filter(Boolean);
+    if(!restoredTextures.length)restoredTextures=[neutralTexture];
+    const photo=await loadPhotoFacades().catch(()=>null);
+    cursedTextures=photo?.length?photo:generatedFacades.slice(0,9).filter(Boolean);
+    if(!cursedTextures.length)cursedTextures=[neutralTexture];
+    for(const texture of generatedFacades){
+      if(!texture)continue;
+      texture.colorSpace=THREE.SRGBColorSpace;
+      texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+      texture.repeat.set(1,1);
+      texture.anisotropy=Math.min(2,game.renderer.capabilities.getMaxAnisotropy());
+    }
+    for(const group of game.loaded.values())group.userData.jcThemeApplied=false;
+    wallpaperStrip();
+    window.JC_COSMETICS_READY=true;
+  }).catch(error=>console.warn('Facade upgrade stayed on bootstrap materials',error));
+// Ability art loads the first time that miracle is used instead of blocking startup.
 
 // Tile groups and wall materials are built asynchronously by the city loader.
 function wallpaperStrip() {
@@ -1258,10 +1276,14 @@ const group = game.loaded.get('C15_R14');
   // player never sees the placeholder low-poly body.
   portrait.visible = false;
   player.add(portrait);
-  const realisticTexture = await loadTextureSafe(imageLoader,'./jc-realistic.webp',fallbackMiracleTexture);
-  realisticTexture.colorSpace = THREE.SRGBColorSpace;
-  const realisticMaterial = new THREE.SpriteMaterial({map: realisticTexture, transparent:true, depthWrite:false, depthTest:true});
+  const realisticMaterial = new THREE.SpriteMaterial({map: fallbackMiracleTexture(), transparent:true, depthWrite:false, depthTest:true});
   realisticAvatar = new THREE.Sprite(realisticMaterial);
+  loadTextureSafe(imageLoader,'./jc-realistic.webp',fallbackMiracleTexture).then(texture=>{
+    texture.colorSpace=THREE.SRGBColorSpace;
+    const old=realisticMaterial.map;
+    realisticMaterial.map=texture;realisticMaterial.needsUpdate=true;
+    if(old&&old!==bootstrapFacade)old.dispose?.();
+  }).catch(error=>console.warn('JC portrait stayed on bootstrap texture',error));
   realisticAvatar.name = 'JC realistic player avatar';
   realisticAvatar.scale.set(2.42, 3.63, 1);
   realisticAvatar.position.set(0, 1.82, 0);
@@ -1273,6 +1295,11 @@ const group = game.loaded.get('C15_R14');
   player.position.set(x, terrainY, z);
   spawnPoint=player.position.clone();
   game.scene.add(player);
+  // Core readiness is city + controllable player. NPC population, audio and
+  // cosmetic assets are enhancements and must not trip the startup watchdog.
+  window.JC_PLAYER_READY=true;
+  window.JC_BOOT_STAGE='player-ready';
+  document.getElementById('jcRecovery')?.remove();
   {const [carX,carZ]=clearSpot(x+6,z+3);jcCar=createJCCar(game.scene,carX,carZ,groundAt(carX,carZ));}
   createSouls(x, z);
   fireSystem=createFireSystem(game.scene);pickups=createStreetPickups(game.scene,player,groundAt,clearSpot,{onCharge:amount=>{electricCharge=Math.min(100,electricCharge+amount);feedback(`LIGHTNING CHARGED · ${Math.round(electricCharge)}%`);},onHeal:amount=>{grace=Math.min(100,grace+12);feedback(`FIRST AID · ${amount} HEALTH RESTORED`);},onUse:actor=>{if(actor&&typeof actor==='object')npcSystem?.signal('picked-up-item',actor.position,18);else if(actor==='sidearm'){const target=(npcSystem?.npcs||[]).filter(n=>!n.collapse&&n.faction==='demon'&&n.position.distanceTo(player.position)<55&&(n.position.x-player.position.x)*Math.sin(yaw)-(n.position.z-player.position.z)*Math.cos(yaw)>2).sort((a,b)=>a.position.distanceToSquared(player.position)-b.position.distanceToSquared(player.position))[0];if(target){target.health=Math.max(0,(target.health??100)-30);target.state='fear';target.emotionUntil=performance.now()+2400;target.event={type:'JC-sidearm',position:player.position.clone(),time:performance.now()};npcSystem?.signal('gunfire',player.position,42);feedback(`SIDEARM HIT · ${target.name}`);}else feedback('SIDEARM · NO HOSTILE TARGET IN FRONT');}else npcSystem?.signal('flare',player.position,70);},onStatus:text=>feedback(text)});
@@ -1384,6 +1411,6 @@ const group = game.loaded.get('C15_R14');
   renderWheel();
   playReturn.textContent = 'PLAY AS JC';
   setMode(startQueued || new URLSearchParams(location.search).get('play') === '1');
-  window.JC_PLAYER_READY=true;document.getElementById('jcRecovery')?.remove();
+  window.JC_BOOT_STAGE='gameplay-ready';
   requestAnimationFrame(frame);
 }
