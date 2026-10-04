@@ -31,6 +31,16 @@ export async function buildRoadGeometry(records,sample,{origin=[0,0],yieldEvery=
   for(const i of [0,1,2,1,3,2]){const p=points[i];layers[layer].push(p[0],(Number.isFinite(ys[i])?ys[i]:mid)+height,p[1]);uvs[layer].push(p[0]/4,p[1]/4);}
   quads++;
  }
+ function sidewalkSlab(a,b,half,offset,height=.19,thickness=.18){
+  const dx=b[0]-a[0],dz=b[1]-a[1],length=Math.hypot(dx,dz);if(length<.05)return;
+  const nx=-dz/length,nz=dx/length;
+  const points=[[a[0]+nx*(offset-half),a[1]+nz*(offset-half)],[a[0]+nx*(offset+half),a[1]+nz*(offset+half)],[b[0]+nx*(offset-half),b[1]+nz*(offset-half)],[b[0]+nx*(offset+half),b[1]+nz*(offset+half)]];
+  const sampled=points.map(p=>sample(p[0],p[1])),mid=sample((a[0]+b[0])/2,(a[1]+b[1])/2);if(!Number.isFinite(mid))return;
+  const top=sampled.map(y=>(Number.isFinite(y)?y:mid)+height),bottom=top.map(y=>y-thickness),push=(index,y)=>{const p=points[index];layers[1].push(p[0],y,p[1]);uvs[1].push(p[0]/3,p[1]/3);};
+  for(const i of [0,1,2,1,3,2])push(i,top[i]);
+  for(const edge of [[0,2],[1,3]]){const [u,v]=edge;for(const [i,y] of [[u,top[u]],[u,bottom[u]],[v,top[v]],[v,top[v]],[u,bottom[u]],[v,bottom[v]]])push(i,y);}
+  quads+=3;
+ }
  for(let r=0;r<records.length;r++){
   const road=records[r],width=roadWidth(road.kind);let travelled=0;
   const points=road.points.map(p=>[p[0]-origin[0],origin[1]-p[1]]);
@@ -43,7 +53,7 @@ export async function buildRoadGeometry(records,sample,{origin=[0,0],yieldEvery=
     // Junction approaches remain clear of painted lines and sidewalk strips.
     if(d>10&&d<total-10){
      if(!['FREEWAY','INTERSTATE','RAMP','ALLEY'].includes(road.kind)){
-      for(const side of [-1,1])strip(p,q,.9,side*(width/2+1),1,.16);
+      for(const side of [-1,1])sidewalkSlab(p,q,1.15,side*(width/2+1.2),.20,.18);
      }
      if(['MAJOR STREET','COLLECTOR','COUNTY HIGHWAY'].includes(road.kind)){
       for(const side of [-1,1])strip(p,q,.07,side*.2,2,.125);
