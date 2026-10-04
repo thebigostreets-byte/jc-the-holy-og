@@ -894,7 +894,7 @@ function cast(id = selectedAbility) {
   spawnMiracleSprite(id);
   if(!runActive&&!runFinished)runActive=true;
   npcSystem?.signal(id,player.position,id==='redemption-wave'?120:85);
-  grace-=ability.cost;cityMissions?.usePower(id);
+  grace-=ability.cost;cityMissions?.usePower(id);systemicWorld?.onAbility(id,player.position,devilMode?'satan':'jc');
   cooldowns.set(id,performance.now()+ability.cooldown*1000);
   if(!flightAbilities.has(id))castingUntil=performance.now()+450;
   const near=(radius=55,count=1)=>nearbyBuildings(radius,count);
@@ -1308,7 +1308,7 @@ const group = game.loaded.get('C15_R14');
   {const [carX,carZ]=clearSpot(x+6,z+3);jcCar=createJCCar(game.scene,carX,carZ,groundAt(carX,carZ));}
   createSouls(x, z);
   fireSystem=createFireSystem(game.scene);pickups=createStreetPickups(game.scene,player,groundAt,clearSpot,{onCharge:amount=>{electricCharge=Math.min(100,electricCharge+amount);feedback(`LIGHTNING CHARGED · ${Math.round(electricCharge)}%`);},onHeal:amount=>{grace=Math.min(100,grace+12);feedback(`FIRST AID · ${amount} HEALTH RESTORED`);},onUse:actor=>{if(actor&&typeof actor==='object')npcSystem?.signal('picked-up-item',actor.position,18);else if(actor==='sidearm'){const target=(npcSystem?.npcs||[]).filter(n=>!n.collapse&&n.faction==='demon'&&n.position.distanceTo(player.position)<55&&(n.position.x-player.position.x)*Math.sin(yaw)-(n.position.z-player.position.z)*Math.cos(yaw)>2).sort((a,b)=>a.position.distanceToSquared(player.position)-b.position.distanceToSquared(player.position))[0];if(target){target.health=Math.max(0,(target.health??100)-30);target.state='fear';target.emotionUntil=performance.now()+2400;target.event={type:'JC-sidearm',position:player.position.clone(),time:performance.now()};npcSystem?.signal('gunfire',player.position,42);feedback(`SIDEARM HIT · ${target.name}`);}else feedback('SIDEARM · NO HOSTILE TARGET IN FRONT');}else npcSystem?.signal('flare',player.position,70);},onStatus:text=>feedback(text)});
-  npcSystem=createNpcSystem({scene:game.scene,player,groundAt,canSee:visibleToNpc,isSafe:(x,z,r=2)=>!blockedAt(x,groundAt(x,z)+1.55,z,r),isRoadway:(x,z)=>game.roads?.isRoadway?.(x,z)||false,count:(game.stable3D?(game.mobileMap?24:48):500),getInfluencer:()=>devilMode?'satan':'jesus',camera:game.camera,vehicleAt:(x,z,r)=>game.traffic?.vehicleAt?.(x,z,r)||null,onVehicleHit:npc=>{pickups?.drop(npc.position);npcSystem?.signal('traffic-impact',npc.position,28);},onReport:text=>{npcReadout.textContent=text;}});
+  npcSystem=createNpcSystem({scene:game.scene,player,groundAt,canSee:visibleToNpc,isSafe:(x,z,r=2)=>!blockedAt(x,groundAt(x,z)+1.55,z,r),isRoadway:(x,z)=>game.roads?.isRoadway?.(x,z)||false,count:500,crowdCount:(game.stable3D?(game.mobileMap?180:320):500),getInfluencer:()=>devilMode?'satan':'jesus',camera:game.camera,vehicleAt:(x,z,r)=>game.traffic?.vehicleAt?.(x,z,r)||null,onVehicleHit:npc=>{pickups?.drop(npc.position);npcSystem?.signal('traffic-impact',npc.position,28);},onReport:text=>{npcReadout.textContent=text;}});
   systemicWorld=createSystemicWorld({player,npcSystem,fireSystem,groundAt,clearSpot,onStatus:text=>feedback(text),getFaction:()=>devilMode?'satan':'jc'});window.JC_SYSTEMIC_WORLD=systemicWorld;
   explorableWorld=createExplorableWorld(game,{scene:game.scene,player,groundAt,clearSpot,onStatus:text=>feedback(text),pickupsRef:()=>pickups,npcRef:()=>npcSystem,velocity,getFlight:()=>({flying,height:flightHeight}),setFlight:(value,height)=>{flying=!!value;flightHeight=height;}});
   addBackgroundMusic(document.body);
