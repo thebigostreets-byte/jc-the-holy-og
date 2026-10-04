@@ -1,4 +1,4 @@
-import {loadGeneratedMaterials,generatedBuildingKind,addCasinoEntrance} from './generated-materials.js';
+import {loadGeneratedMaterials,generatedBuildingKind,addCasinoEntrance} from './generated-materials.js?v=earlier-skins-20261003h';
 import {createDistantCity} from './distant-city.js';
 import {decodeCityTile} from './city-tile-decoder.js';
 import {loadPhotoFacades} from './photo-facades.js';
@@ -6,7 +6,7 @@ import {createRoadNetwork} from './city-roads.js';
 import {createCityTraffic} from './city-traffic.js';
 import {createCityEnvironment} from './city-environment.js';
 import {loadBuildingIdentities,resolveBuildingIdentity} from './building-identities.js';
-import {loadPhysicalMaterials,buildingSurface,wallUV} from './physical-building-materials.js';
+import {loadPhysicalMaterials,buildingSurface,wallUV} from './physical-building-materials.js?v=earlier-skins-20261003h';
 import * as THREE from './three.module.js';
 import { OrbitControls } from './map-controls.js';
 import {createBuildingImpostors} from './building-impostors.js';
