@@ -10,7 +10,7 @@ export function loadGeneratedMaterials(){
 }
 export function generatedBuildingKind(identity,height){
  const name=identity?.name||'';
- if(/Bellagio|Caesars|Venetian|Palazzo|Paris|Holy Crown|Kingdom/i.test(name))return 'casino';
+ if(identity?.type==='casino'||/Bellagio|Caesars|Venetian|Palazzo|Paris|MGM|New York|Excalibur|Luxor|Mandalay|Wynn|Encore|Flamingo|Cosmopolitan|Resorts World|Circus Circus|Treasure Island|STRAT|Palms|Holy Crown|Kingdom/i.test(name))return 'casino';
  // Keep known commercial landmarks and taller buildings on their existing skins.
  if(!name&&height>0&&height<=8)return 'residential';
  if(!name&&height>8&&height<=28)return 'apartment';
