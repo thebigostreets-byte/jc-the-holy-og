@@ -32,18 +32,24 @@ const LANDMARK_FACADES=[
  [/Wynn|Encore/i,0xd6c094,0xc68c45,2],
  [/Flamingo/i,0xe7c6cf,0xff83ba,3],
  [/Cosmopolitan/i,0xaabac9,0xa07ed5,2],
- [/New York New York/i,0xb97c71,0x94bdd7,1],
+ [/New York[- ]New York/i,0xb97c71,0x94bdd7,1],
  [/Excalibur/i,0xd2b98f,0xb684db,3],
  [/Circus Circus/i,0xa4b77a,0xf1675a,0],
  [/Resorts World/i,0x8b4144,0xeea56d,2],
  [/Treasure Island/i,0x8d9ca1,0x75e3c7,1],
  [/Strat/i,0xbebbb3,0xffd265,3],
+ [/Palms/i,0xa9b9c6,0x79b8dc,2],
+ [/Sphere/i,0x5f6570,0x74b8ff,3],
+ [/Allegiant/i,0x171b20,0xb9c2ca,2],
+ [/T-Mobile/i,0x9ba6b1,0x7aa7cc,1],
 ];
 export function facadeTraits(id,identity={}){
  const signature=buildingHash(String(id)+':identity');
  const landmark=LANDMARK_FACADES.find(([pattern])=>pattern.test(identity?.name||''));
  const accents=[0x61cce7,0xe7b75e,0xbd8ee1,0xe88486,0x82ce9d,0xd5d9e8,0x72aaa8,0xe49f70];
- return {signature,accent:landmark?.[2]??accents[(signature>>>9)%accents.length],pattern:landmark?.[3]??(signature%4),verticalFrequency:1+((signature>>>4)%3),horizontalFrequency:1+((signature>>>7)%3),detailFrequency:2+((signature>>>12)%4),landmark:!!landmark};
+ // More facade signatures than the four shared atlas cells: mullion spacing,
+ // floor banding and accent placement vary per footprint while remaining stable.
+ return {signature,accent:landmark?.[2]??accents[(signature>>>9)%accents.length],pattern:landmark?.[3]??(signature%8),verticalFrequency:2+((signature>>>4)%7),horizontalFrequency:2+((signature>>>7)%9),detailFrequency:4+((signature>>>12)%9),landmark:!!landmark};
 }
 // Appearance is a fictional, deterministic art assignment, not surveyed paint.
 export function buildingSurface(id,height,photos,physical,identity=null,generated={}){
@@ -60,7 +66,10 @@ export function buildingSurface(id,height,photos,physical,identity=null,generate
  const traits=facadeTraits(id,identity),signature=traits.signature,palette=identityPalette(identity?.name);
  if(palette&&photos.length){map=photos[palette.photo%photos.length];color=palette.color;roughness=palette.roughness;kind='landmark facade';scale=[9,10];}
  const generatedKind=generatedBuildingKind(identity,height);
- if(generatedKind&&generated[generatedKind]&&!palette){map=generated[generatedKind];scale=generatedKind==='casino'?[9,10]:[8,9];roughness=generatedKind==='casino'?.65:.96;metalness=0;color='#ffffff';kind='generated '+generatedKind;}
+ // Generated residential is intentionally reserved for low homes. Named
+ // properties and normal commercial buildings keep their own deterministic
+ // facade signature instead of collapsing onto one shared generated skin.
+ if(generatedKind==='residential'&&generated.residential&&!palette){map=generated.residential;scale=[3.4,2.8];roughness=.96;metalness=0;color=paint[(h>>>5)%paint.length];kind='generated residential';}
  const isCasino=identity&&identity.type==='casino';
  if(isCasino){roughness=kind==='generated casino'?.58:.52;metalness=kind==='generated casino'?.10:.16;}
  else {roughness=.93;metalness=0;}

@@ -22,7 +22,7 @@ const FALLBACK_LANDMARKS=[
  {name:'Palms',type:'casino',longitude:-115.1982,latitude:36.1155,radius:230,address:'Flamingo Road'},
  {name:'Sphere',type:'landmark',longitude:-115.1602,latitude:36.1208,radius:160,address:'Sands Avenue'},
  {name:'Allegiant Stadium',type:'stadium',longitude:-115.183952,latitude:36.090794,radius:300,address:'Russell Road'},
- {name:'Dee Mobile Center',type:'arena',longitude:-115.1783,latitude:36.1029,radius:190,address:'Las Vegas Boulevard'}
+ {name:'T-Mobile Arena',type:'arena',longitude:-115.1783,latitude:36.1029,radius:190,address:'Las Vegas Boulevard'}
 ];
 function distanceMetres(lon,lat,target){const y=(lat-target.latitude)*111320,x=(lon-target.longitude)*111320*Math.cos(lat*Math.PI/180);return Math.hypot(x,y);}
 export function resolveBuildingIdentity(id,extras={},identities={}){
@@ -33,7 +33,7 @@ export function resolveBuildingIdentity(id,extras={},identities={}){
  return best?{name:best.name,type:best.type,address:best.address,sourceUpdated:'built-in geographic landmark match'}:null;
 }
 export function loadBuildingIdentities(){
- return pending ||= fetch('./data/building-identities.json',{signal:AbortSignal.timeout(8000)}).then(r=>{if(!r.ok)throw Error('Building identities unavailable');return r.json();}).then(data=>{const arena=data.buildings?.['NGA14-538100'];if(arena)arena.name='Dee Mobile Center';return data.buildings;}).catch(error=>{console.warn(error.message);return {};});
+ return pending ||= fetch('./data/building-identities.json',{signal:AbortSignal.timeout(8000)}).then(r=>{if(!r.ok)throw Error('Building identities unavailable');return r.json();}).then(data=>{const arena=data.buildings?.['NGA14-538100'];if(arena)arena.name='T-Mobile Arena';return data.buildings;}).catch(error=>{console.warn(error.message);return {};});
 }
 // Color directions are game art choices inspired by the named properties.
 // Only the name/address relationship is sourced from the county footprint match.
@@ -48,6 +48,9 @@ export function identityPalette(name=''){
  if(/Excalibur/i.test(name))return {photo:1,color:'#d8c5a4',roughness:.82};
  if(/Resorts World/i.test(name))return {photo:0,color:'#743b42',roughness:.42};
  if(/Treasure Island|STRAT/i.test(name))return {photo:0,color:'#9caab4',roughness:.38};
- if(/Palms/i.test(name))return {photo:0,color:'#a5b7c2',roughness:.4};
+ if(/Palms/i.test(name))return {photo:2,color:'#a5b7c2',roughness:.4};
+ if(/Sphere/i.test(name))return {photo:2,color:'#5f6570',roughness:.28};
+ if(/Allegiant/i.test(name))return {photo:2,color:'#1b2026',roughness:.38};
+ if(/T-Mobile/i.test(name))return {photo:2,color:'#9ba6b1',roughness:.4};
  return null;
 }
