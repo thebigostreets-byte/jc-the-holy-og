@@ -124,9 +124,17 @@ async function parseGLB(raw,name){const dv=new DataView(raw.buffer,raw.byteOffse
       float jcVertical=1.0-step(0.055,min(jcVCell,1.0-jcVCell));
       float jcHorizontal=1.0-step(0.035,min(jcHCell,1.0-jcHCell));
       float jcFine=1.0-step(0.022,min(fract(vMapUv.x*jcFacadeDetail),1.0-fract(vMapUv.x*jcFacadeDetail)));
-      float jcPattern=jcFacadePattern<0.5?jcHorizontal:jcFacadePattern<1.5?jcVertical:jcFacadePattern<2.5?max(jcVertical,jcHorizontal):mix(jcVertical,jcHorizontal,step(0.5,fract(vMapUv.y*0.5)));
+      float jcDiag=step(0.84,fract(jcU*jcFacadeV+jcY*jcFacadeH));
+      float jcChecker=step(0.5,fract(floor(jcU*jcFacadeV)+floor(jcY*jcFacadeH))*0.5);
+      float jcPattern=jcFacadePattern<0.5?jcHorizontal:
+        jcFacadePattern<1.5?jcVertical:
+        jcFacadePattern<2.5?max(jcVertical,jcHorizontal):
+        jcFacadePattern<3.5?mix(jcVertical,jcHorizontal,step(0.5,fract(vMapUv.y*0.5))):
+        jcFacadePattern<4.5?max(jcHorizontal,jcFine):
+        jcFacadePattern<5.5?max(jcVertical,jcFine):
+        jcFacadePattern<6.5?jcDiag:max(max(jcVertical,jcHorizontal),jcChecker*0.32);
       float jcDetail=jcFacadePattern>2.5?jcFine:0.0;
-      diffuseColor.rgb=mix(diffuseColor.rgb,jcFacadeAccent,clamp(jcPattern*0.06+jcDetail*0.04,0.0,0.12));
+      diffuseColor.rgb=mix(diffuseColor.rgb,jcFacadeAccent,clamp(jcPattern*0.075+jcDetail*0.035,0.0,0.15));
     #endif`);
    };
    ma.customProgramCacheKey=()=>`jc-building-facade-${surface.pattern}-${surface.verticalFrequency}-${surface.horizontalFrequency}-${surface.detailFrequency}-${surface.accent}`;
