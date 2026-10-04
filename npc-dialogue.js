@@ -19,11 +19,13 @@ export async function requestNpcDialogue(npc, history, {message = '', greeting =
   const timer = setTimeout(abort,22000);
   const witnessMemories=(npc.witnessMemory?.entries||[]).slice(-6).map(item=>item.text);
   const observedPlayer=npc.observedPlayer||null;
+  const playerIdentity=npc.playerIdentity||{id:'jc-player',name:'Jesus (JC)',role:'the player character',isConversationPartner:true};
+  const identityContext=`The person speaking to you right now is the same player you can see in front of you: ${playerIdentity.name}. In this game world, that player character IS Jesus/JC. Any memory saying you saw JC or Jesus flying, hovering, performing a miracle, or standing nearby refers to this same conversation partner, not a separate third person. Never deny that the speaker is JC because of real-world skepticism; maintain the game's fictional character identity. You may react according to your personality, but distinguish doubting his motives from failing to recognize who the game identifies him as.`;
   const memoryContext=[...witnessMemories,observedPlayer?.state?`Currently seeing the player ${observedPlayer.state}, appearance: ${observedPlayer.appearance}.`:''].filter(Boolean).join(' | ').slice(0,1600);
   try {
     const response = await fetch(ENDPOINT,{
       method:'POST',mode:'same-origin',credentials:'same-origin',headers:{'content-type':'application/json'},signal:controller.signal,
-      body:JSON.stringify({npc:{gender:npc.gender,allegiance:npc.allegiance,alignmentScore:npc.alignmentScore,id:npc.id,personality:[npc.personality,memoryContext?'Personally witnessed (do not invent unseen events): '+memoryContext:''].filter(Boolean).join('. '),witnessMemories,observedPlayer,occupation:npc.occupation,decision:npc.decision,memories:npc.lifeMemory?.memories,trust:npc.lifeMemory?.trust,name:npc.name,faction:npc.faction,state:npc.state || 'calm',recentEvent:[npc.event?.type || npc.memory?.type || '',memoryContext].filter(Boolean).join(' · ')},world,history:history.slice(-8),message,greeting,...(sessionApiKey?{apiKey:sessionApiKey}:{})}),
+      body:JSON.stringify({playerIdentity,npc:{gender:npc.gender,allegiance:npc.allegiance,alignmentScore:npc.alignmentScore,id:npc.id,personality:[npc.personality,identityContext,memoryContext?'Personally witnessed (do not invent unseen events): '+memoryContext:''].filter(Boolean).join('. '),witnessMemories,observedPlayer,occupation:npc.occupation,decision:npc.decision,memories:npc.lifeMemory?.memories,trust:npc.lifeMemory?.trust,name:npc.name,faction:npc.faction,state:npc.state || 'calm',recentEvent:[npc.event?.type || npc.memory?.type || '',memoryContext].filter(Boolean).join(' · ')},world,history:history.slice(-8),message,greeting,...(sessionApiKey?{apiKey:sessionApiKey}:{})}),
     });
     let data;
     try {data = await response.json();} catch {throw new Error('NPC dialogue returned an unreadable response. Your message is saved.');}
