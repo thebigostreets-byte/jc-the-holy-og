@@ -1,4 +1,5 @@
 import * as THREE from './three.module.js';
+import {createVegasStreetNetwork} from './vegas-streets.js';
 import {craterDepth} from './crater-system.js';
 import {loadGeneratedMaterials} from './generated-materials.js';
 // The shipped terrain uses a regular grid, triangulated along b--c.
@@ -81,7 +82,21 @@ export function createRoadNetwork(game){
  async function sync(){
   if(disposed)return;
   const token=++revision;
-  for(const [id,root]of active){const source=game.loaded.get(id);if(source!==root.userData.sourceGroup){game.scene.remove(root);root.children.forEach(m=>m.geometry.dispose());active.delete(id);removeRoadTile(id);}else root.visible=source.visible!==false;}
+  // The packaged per-tile road JSON is optional. Keep the core Vegas road
+  // network visible even when data/roads/*.json.gz was not published.
+  if(!active.has('__vegas_core__')){
+   const net=createVegasStreetNetwork({anchorX:0,anchorZ:0});
+   const rows=net.routes.map(route=>({name:route.name,kind:route.kind==='freeway'?'FREEWAY':route.kind==='arterial'?'MAJOR STREET':'LOCAL',points:route.points.map(([x,z])=>[game.origin[0]+x,game.origin[1]-z])}));
+   const geometry=await buildRoadGeometry(rows,(x,z)=>{const y=sample(x,z);return Number.isFinite(y)?y:0;},{origin:game.origin,segmentLength:game.lowSpec?20:12,yieldEvery:16});
+   if(!disposed){
+    indexRoads('__vegas_core__',rows);
+    const root=new THREE.Group();root.name='Core Vegas roads';
+    geometry.layers.forEach((layer,i)=>{if(!layer.positions.length)return;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(layer.positions,3));g.setAttribute('uv',new THREE.BufferAttribute(layer.uv,2));g.computeVertexNormals();g.computeBoundingSphere();root.add(new THREE.Mesh(g,mats[i]));});
+    root.userData.sourceGroup=root;root.userData.roadRecords=rows.length;game.scene.add(root);active.set('__vegas_core__',root);
+    window.dispatchEvent(new CustomEvent('jc-roads-loaded',{detail:{tile:'__vegas_core__',records:rows}}));
+   }
+  }
+  for(const [id,root]of active){if(id==='__vegas_core__')continue;const source=game.loaded.get(id);if(source!==root.userData.sourceGroup){game.scene.remove(root);root.children.forEach(m=>m.geometry.dispose());active.delete(id);removeRoadTile(id);}else root.visible=source.visible!==false;}
   for(const [id,group]of game.loaded){
    if(active.has(id)||pending.has(id))continue;
    pending.add(id);
