@@ -33,7 +33,12 @@ state.grace=100;state.cast('heavenly-spear');assert.equal(destroyed.at(-1)[1],'e
 state.grace=100;state.cast('sonic-boom');assert.equal(flight.hypersonic,true,'Sonic Boom preserves boost instead of toggling it off');
 assert.ok(source.includes("if (e.code === 'KeyT' && !e.repeat) {cast(devilMode?'portal':'teleport');}"),'keyboard teleport commits a locked destination');
 assert.ok(source.includes("hud.querySelector('[data-action=\"teleport\"]').onclick=()=>{cast(devilMode?'portal':'teleport');};"),'mobile teleport follows the active JC/Devil mode');
-console.log('PASS: bounded effects, rain instancing, cleanup, teleport selection, rejected casts, storm limits, cooldowns and Sonic Boom state.');
+assert.match(source,/function ensureJCGlow\(\)/,'JC has a persistent glow owner independent of pose art');
+assert.match(source,/function syncJCGlowToPose\(\)/,'JC glow silhouette follows the active pose texture');
+assert.match(source,/function applyCharacterFrame\(index\)[\s\S]*?ensureJCGlow\(\)/,'every pose application restores JC glow state');
+assert.match(source,/applyCharacterFrame\(pose\);\s*updateJCGlow\(now\);/,'the render loop refreshes JC glow after every pose update');
+assert.match(source,/boostJCGlow\(/,'miracles can temporarily intensify the persistent JC aura');
+console.log('PASS: bounded effects, JC persistent glow, rain instancing, cleanup, teleport selection, rejected casts, storm limits, cooldowns and Sonic Boom state.');
 
 // Every catalog entry executes in a valid world, with enough grace and a fresh cooldown.
 let abilityCount=0;
