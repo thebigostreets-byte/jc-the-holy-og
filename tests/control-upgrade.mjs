@@ -21,8 +21,9 @@ assert.match(source,/const look=advanceLook\(yaw,viewPitch,lookX,lookY,dt\)/,'mo
 assert.match(source,/const speed=\(diving\?52:boost\?1800:flying\?95:sprint\?11:5\.4\)/,'movement uses tuned ground, flight and hyperflight speeds');
 assert.match(source,/steering = braking\?52:desired\.lengthSq\(\)<\.01\?\(flying\?18:34\):flying\?\(boost\?60:46\):48/,'movement responds quickly with stronger flight and hyperflight steering');
 assert.match(source,/const open=extras\.classList\.toggle\('open'\)/,'small screens can reveal secondary controls on demand');
-assert.match(source,/addEventListener\('pointermove',e=>\{/,'global stick tracking survives pointer-capture loss');
-assert.doesNotMatch(source,/\['pointerup','pointercancel','lostpointercapture'\]/,'lost pointer capture must not terminate a held mobile stick');
+const stickStart=source.indexOf("const stick=hud.querySelector('#jcStick')"),stickEnd=source.indexOf("hud.querySelector('#jcRestart')",stickStart),stickSource=source.slice(stickStart,stickEnd);
+assert.match(stickSource,/addEventListener\('pointermove',e=>\{/,'global stick tracking survives pointer-capture loss');
+assert.doesNotMatch(stickSource,/lostpointercapture/,'lost pointer capture must not terminate a held mobile stick');
 const start=source.indexOf('function blockedAt('),end=source.indexOf('\nlet flying',start);
 const player={position:new THREE.Vector3(0,0,0)},velocity=new THREE.Vector3(72,0,0);
 const box=new THREE.Box3(new THREE.Vector3(5,-2,-10),new THREE.Vector3(6,10,10));
