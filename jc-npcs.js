@@ -20,7 +20,7 @@ function chooseOpen(x,z,isSafe) {
   return [x,z];
 }
 
-export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,findPickup=()=>null,onReport,count=8,crowdCount=500,mobile=false,camera=null}) {
+export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,findPickup=()=>null,findIncident=()=>null,onIncidentResponse=()=>null,onReport,count=8,crowdCount=500,mobile=false,camera=null}) {
   const root=new THREE.Group();root.name='JC responsive NPC crowd';scene.add(root);
   root.visible=false;
   const npcs=[];
@@ -58,7 +58,7 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,fi
     root.add(sprite);npc.sprite=sprite;
   }
 
-  autonomy=createNpcAutonomy({npcs,player,groundAt,isSafe,findPickup,remember:(npc,text)=>{memoryStore.remember(npc,{key:`action:${String(text).slice(0,80)}:${Math.floor(Date.now()/5000)}`,kind:'action',text:String(text).slice(0,220),at:Date.now()});refreshMemory(npc);},onReport:text=>onReport?.(text)});
+  autonomy=createNpcAutonomy({npcs,player,groundAt,isSafe,findPickup,findIncident,onIncidentResponse,remember:(npc,text)=>{memoryStore.remember(npc,{key:`action:${String(text).slice(0,80)}:${Math.floor(Date.now()/5000)}`,kind:'action',text:String(text).slice(0,220),at:Date.now()});refreshMemory(npc);},onReport:text=>onReport?.(text)});
 
   const eventWitnessText={flight:'saw JC take flight above the street',hypersonic:'saw JC streak through the sky at hypersonic speed',hover:'saw JC hover above the street',glide:'saw JC glide over the city','sky-lift':'saw JC rise into the air',leap:'saw JC leap high above the ground',teleport:'saw JC vanish and reappear nearby','phase-step':'saw JC pass through an obstacle','beam-down':'saw JC descend in a flash of light',rain:'saw JC call rain over the street',lightning:'saw lightning strike near JC',heal:'saw JC heal someone nearby',bless:'saw JC bless someone nearby',shield:'saw JC shield people nearby',cleanse:'saw JC cleanse the area',sunrise:'saw a wave of light spread from JC',sanctuary:'saw JC create a place of safety','redemption-wave':'saw JC send a bright wave through the street',rebuild:'saw JC repair the surroundings','dive-impact':'saw JC dive hard into the street','traffic-impact':'saw a traffic collision nearby'};
   function refreshMemory(npc){npc.lifeMemory=memoryStore.get(npc.id);return npc.lifeMemory;}
