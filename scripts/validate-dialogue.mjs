@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import {requestNpcDialogue} from '../npc-dialogue.js';
+import {requestNpcDialogue,localNpcGreeting,localNpcReply} from '../npc-dialogue.js';
+assert.equal(localNpcReply({name:'Mara'},"what's your name"),"I'm Mara.");
+assert.equal(localNpcReply({occupation:'medic'},"what is your job"),"I work as medic.");
+assert.match(localNpcReply({decision:'patrol-area'},'what are you doing'),/patrol area/);
+assert.match(localNpcGreeting({name:'Rae',faction:'authority',state:'idle'}),/need|alert|duty/i);
 const originalFetch = globalThis.fetch;
 let sent;
 try {
