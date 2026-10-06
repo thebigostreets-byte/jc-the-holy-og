@@ -108,50 +108,35 @@ async function parseGLB(raw,name){const dv=new DataView(raw.buffer,raw.byteOffse
  const mats=g.materials.map(m=>{
   const p=m.pbrMetallicRoughness||{},f=p.baseColorFactor||[1,1,1,1],isWall=m.name.endsWith('_walls');
   const id=m.name.replace(/_(walls|roof)$/,''),identity=resolvedIdentities.get(id),surface=isWall?buildingSurface(id,heights.get(id)||0,facadeMaps,physicalMaps,identity,generated):null;
-  const ma=new THREE.MeshStandardMaterial({name:m.name,color:surface?.map?new THREE.Color(surface.color):new THREE.Color(f[0],f[1],f[2]),map:surface?.map||textures[p.baseColorTexture?.index]||null,roughness:surface?.roughness??.94,metalness:surface?.metalness??0,side:m.doubleSided?THREE.DoubleSide:THREE.FrontSide});
-  if(surface){
-   applyPhotorealMaterial(THREE,ma,photorealDetailMaps,{casino:identity?.type==='casino',buildingHeight:heights.get(id)||12});
-   const accent=new THREE.Color(surface.accent);
-   ma.onBeforeCompile=shader=>{
-    shader.uniforms.jcFacadeAccent={value:accent};
-    shader.uniforms.jcFacadePattern={value:surface.pattern};
-    shader.uniforms.jcFacadeV={value:surface.verticalFrequency};
-    shader.uniforms.jcFacadeH={value:surface.horizontalFrequency};
-    shader.uniforms.jcFacadeDetail={value:surface.detailFrequency};
-    shader.fragmentShader='uniform vec3 jcFacadeAccent;\nuniform float jcFacadePattern;\nuniform float jcFacadeV;\nuniform float jcFacadeH;\nuniform float jcFacadeDetail;\n'+shader.fragmentShader;
-    shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
-    #ifdef USE_MAP
-      float jcU=fract(vMapUv.x),jcY=fract(vMapUv.y);
-      float jcVCell=fract(jcU*jcFacadeV),jcHCell=fract(jcY*jcFacadeH);
-      float jcVertical=1.0-step(0.055,min(jcVCell,1.0-jcVCell));
-      float jcHorizontal=1.0-step(0.035,min(jcHCell,1.0-jcHCell));
-      float jcFine=1.0-step(0.022,min(fract(vMapUv.x*jcFacadeDetail),1.0-fract(vMapUv.x*jcFacadeDetail)));
-      float jcDiag=step(0.84,fract(jcU*jcFacadeV+jcY*jcFacadeH));
-      float jcChecker=step(0.5,fract(floor(jcU*jcFacadeV)+floor(jcY*jcFacadeH))*0.5);
-      float jcPattern=jcFacadePattern<0.5?jcHorizontal:
-        jcFacadePattern<1.5?jcVertical:
-        jcFacadePattern<2.5?max(jcVertical,jcHorizontal):
-        jcFacadePattern<3.5?mix(jcVertical,jcHorizontal,step(0.5,fract(vMapUv.y*0.5))):
-        jcFacadePattern<4.5?max(jcHorizontal,jcFine):
-        jcFacadePattern<5.5?max(jcVertical,jcFine):
-        jcFacadePattern<6.5?jcDiag:max(max(jcVertical,jcHorizontal),jcChecker*0.32);
-      float jcDetail=jcFacadePattern>2.5?jcFine:0.0;
-      diffuseColor.rgb=mix(diffuseColor.rgb,jcFacadeAccent,clamp(jcPattern*0.075+jcDetail*0.035,0.0,0.15));
-    #endif`);
-   };
-   ma.customProgramCacheKey=()=>`jc-building-facade-${surface.pattern}-${surface.verticalFrequency}-${surface.horizontalFrequency}-${surface.detailFrequency}-${surface.accent}`;
-  }
+  const authoredMap=textures[p.baseColorTexture?.index]||null;
+  const useArtSurface=!!(isWall&&surface?.map&&(identity||!authoredMap));
+  const activeMap=useArtSurface?surface.map:(authoredMap||surface?.map||null);
+  const sourceColor=new THREE.Color(f[0],f[1],f[2]);
+  const sourceDark=Math.max(f[0]??0,f[1]??0,f[2]??0)<.08;
+  if(activeMap&&sourceDark)sourceColor.set(0xffffff);
+  else if(!activeMap&&sourceDark)sourceColor.set(0xb9b2a6);
+  const ma=new THREE.MeshStandardMaterial({
+   name:m.name,
+   color:useArtSurface?new THREE.Color(surface.color):sourceColor,
+   map:activeMap,
+   roughness:isWall?(surface?.roughness??p.roughnessFactor??.94):(p.roughnessFactor??.94),
+   metalness:isWall?(surface?.metalness??p.metallicFactor??0):(p.metallicFactor??0),
+   side:m.doubleSided?THREE.DoubleSide:THREE.FrontSide
+  });
+  if(isWall&&surface)applyPhotorealMaterial(THREE,ma,photorealDetailMaps,{casino:identity?.type==='casino',buildingHeight:heights.get(id)||12});
   const generatedRoof=m.name.endsWith('_roof')&&generatedBuildingKind(identity,heights.get(id)||0)==='residential'&&generated.roof;
   if(generatedRoof){ma.map=generated.roof;ma.color.set('#ffffff');ma.roughness=.95;ma.userData.generatedRoof=true;}
-  if(surface?.kind==='generated casino')addCasinoEntrance(ma,generated.entrance);
+  if(useArtSurface&&surface?.kind==='generated casino')addCasinoEntrance(ma,generated.entrance);
   if(!isWall&&!generatedRoof&&!mobileMap&&!stable3D&&physicalMaps[4]){ma.bumpMap=physicalMaps[4];ma.bumpScale=.025;}
   ma.userData.original={color:ma.color.clone(),map:ma.map,bumpMap:ma.bumpMap,roughness:ma.roughness};
-  ma.userData.wallpapered=!!surface?.map;
-  if(surface?.map){ma.userData.physicalSurface=surface.kind;ma.userData.surfaceScale=surface.scale;ma.userData.identitySignature=surface.signature;}
+  ma.userData.wallpapered=useArtSurface;
+  ma.userData.forceWallUV=!!(useArtSurface&&surface?.scale);
+  ma.userData.physicalSurface=useArtSurface?surface?.kind:(authoredMap?'authored GLB material':surface?.kind||'neutral fallback');
+  if(surface){ma.userData.surfaceScale=useArtSurface?surface.scale:null;ma.userData.identitySignature=surface.signature;}
   return ma;
  });
  const group=new THREE.Group();group.userData.origin=g.asset.extras;group.userData.textures=textures;group.userData.totalBuildings=g.nodes.length;group.userData.bootBuildingLimit=Math.min(g.nodes.length,bootBuildingLimit);
- const buildNode=n=>{if(n.mesh===undefined)return null;const ob=new THREE.Group();ob.name=n.name;ob.userData={...n.extras};const identity=resolvedIdentities.get(n.name);if(identity)ob.userData.identity=identity;ob.position.fromArray(n.translation||[0,0,0]);for(const p of g.meshes[n.mesh].primitives){const geom=new THREE.BufferGeometry();for(const [key,i]of Object.entries(p.attributes)){const map={POSITION:'position',NORMAL:'normal',TEXCOORD_0:'uv'};if(map[key])geom.setAttribute(map[key],acc(i));}if(p.indices!==undefined)geom.setIndex(acc(p.indices));if(mats[p.material].userData.generatedRoof){const pos=geom.getAttribute('position'),uv=new Float32Array(pos.count*2);for(let i=0;i<pos.count;i++){uv[i*2]=pos.getX(i)/3;uv[i*2+1]=pos.getZ(i)/3;}geom.setAttribute('uv',new THREE.BufferAttribute(uv,2));}const scale=mats[p.material].userData.surfaceScale;if(!stable3D&&scale&&geom.getAttribute('normal'))geom.setAttribute('uv',new THREE.BufferAttribute(wallUV(geom.getAttribute('position'),geom.getAttribute('normal'),...scale),2));if(!stable3D&&mats[p.material].bumpMap){const pos=geom.getAttribute('position'),detail=new Float32Array(pos.count*2);for(let i=0;i<pos.count;i++){detail[i*2]=pos.getX(i)/2;detail[i*2+1]=pos.getZ(i)/2;}geom.setAttribute('uv1',new THREE.BufferAttribute(detail,2));}geom.computeBoundingSphere();const mesh=new THREE.Mesh(geom,mats[p.material]);mesh.userData.owner=ob;ob.add(mesh);}return ob;};
+ const buildNode=n=>{if(n.mesh===undefined)return null;const ob=new THREE.Group();ob.name=n.name;ob.userData={...n.extras};const identity=resolvedIdentities.get(n.name);if(identity)ob.userData.identity=identity;ob.position.fromArray(n.translation||[0,0,0]);for(const p of g.meshes[n.mesh].primitives){const geom=new THREE.BufferGeometry();for(const [key,i]of Object.entries(p.attributes)){const map={POSITION:'position',NORMAL:'normal',TEXCOORD_0:'uv'};if(map[key])geom.setAttribute(map[key],acc(i));}if(p.indices!==undefined)geom.setIndex(acc(p.indices));if(mats[p.material].userData.generatedRoof){const pos=geom.getAttribute('position'),uv=new Float32Array(pos.count*2);for(let i=0;i<pos.count;i++){uv[i*2]=pos.getX(i)/3;uv[i*2+1]=pos.getZ(i)/3;}geom.setAttribute('uv',new THREE.BufferAttribute(uv,2));}const scale=mats[p.material].userData.surfaceScale;if(scale&&mats[p.material].userData.forceWallUV&&geom.getAttribute('normal'))geom.setAttribute('uv',new THREE.BufferAttribute(wallUV(geom.getAttribute('position'),geom.getAttribute('normal'),...scale),2));if(!stable3D&&mats[p.material].bumpMap){const pos=geom.getAttribute('position'),detail=new Float32Array(pos.count*2);for(let i=0;i<pos.count;i++){detail[i*2]=pos.getX(i)/2;detail[i*2+1]=pos.getZ(i)/2;}geom.setAttribute('uv1',new THREE.BufferAttribute(detail,2));}geom.computeBoundingSphere();const mesh=new THREE.Mesh(geom,mats[p.material]);mesh.userData.owner=ob;ob.add(mesh);}return ob;};
  let built=0;for(const n of g.nodes){if(built>=bootBuildingLimit)break;built++;if(built%8===0||built===group.userData.bootBuildingLimit){statusText('Preparing playable city '+built+' / '+group.userData.bootBuildingLimit+'…');await new Promise(resolve=>setTimeout(resolve,0));}const ob=buildNode(n);if(ob)group.add(ob);}
  group.userData.continueBuild=()=>{if(group.userData.progressiveStarted||built>=g.nodes.length)return;group.userData.progressiveStarted=true;const step=()=>{if(!group.parent){group.userData.progressiveStarted=false;return;}let made=0;while(built<g.nodes.length&&made<4){const n=g.nodes[built++],ob=buildNode(n);if(ob){group.add(ob);if(ob.userData.buildingId){buildings.set(ob.userData.buildingId,ob);const edit=edits.get(ob.userData.buildingId)||{};setAppearance(ob,edit);if(edit.state)destroy(ob,edit.state,false);}}made++;}window.JC_CITY_PROGRESSIVE_BUILDINGS=built;if(built<g.nodes.length)requestAnimationFrame(step);else{group.userData.progressiveComplete=true;window.dispatchEvent(new CustomEvent('jc-tile-progressive-complete',{detail:{tile:name,buildings:built}}));updateBuildingList();}};requestAnimationFrame(step);};
  const e=g.asset.extras;group.position.set(e.originEasting-origin[0],0,origin[1]-e.originNorthing);return group;}
