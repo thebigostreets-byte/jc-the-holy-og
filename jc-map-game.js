@@ -1447,19 +1447,37 @@ const group = game.loaded.get('C15_R14');
   const stick=hud.querySelector('#jcStick'),lookStick=hud.querySelector('#jcLookStick');
   function readStick(e,element,state,pointer){
     if(e.pointerId!==pointer)return;
-    const r=element.getBoundingClientRect(),travel=r.width*.30;
+    const r=element.getBoundingClientRect(),travel=Math.max(24,r.width*.34);
     let x=(e.clientX-r.left-r.width/2)/travel,y=(e.clientY-r.top-r.height/2)/travel;
     const magnitude=Math.hypot(x,y);if(magnitude>1){x/=magnitude;y/=magnitude;}
     state.x=x;state.y=y;
     element.querySelector('i').style.transform=`translate(${x*travel}px,${y*travel}px)`;
   }
+  const releaseStick=(e,isLook)=>{
+    const pointer=isLook?lookStickPointer:stickPointer;if(e.pointerId!==pointer)return false;
+    const state=isLook?touchLookStick:touchStick,element=isLook?lookStick:stick;
+    if(isLook)lookStickPointer=null;else stickPointer=null;
+    state.x=state.y=0;element.querySelector('i').style.transform='';
+    return true;
+  };
   for(const [element,state,isLook] of [[stick,touchStick,false],[lookStick,touchLookStick,true]]){
-    const pointer=()=>isLook?lookStickPointer:stickPointer;
-    const begin=e=>{e.preventDefault();if(isLook)lookStickPointer=e.pointerId;else stickPointer=e.pointerId;element.setPointerCapture(e.pointerId);readStick(e,element,state,e.pointerId);};
-    const move=e=>readStick(e,element,state,pointer());
-    const end=e=>{if(e.pointerId!==pointer())return;if(isLook)lookStickPointer=null;else stickPointer=null;state.x=state.y=0;element.querySelector('i').style.transform='';};
-    element.addEventListener('pointerdown',begin);element.addEventListener('pointermove',move);
-    for(const type of ['pointerup','pointercancel','lostpointercapture'])element.addEventListener(type,end);
+    element.addEventListener('pointerdown',e=>{
+      e.preventDefault();e.stopPropagation();
+      if(isLook)lookStickPointer=e.pointerId;else stickPointer=e.pointerId;
+      // Pointer capture is only an optimization. Global handlers below keep
+      // the stick alive on mobile browsers even if capture is dropped.
+      try{element.setPointerCapture(e.pointerId);}catch{}
+      readStick(e,element,state,e.pointerId);
+    },{passive:false});
+  }
+  addEventListener('pointermove',e=>{
+    let handled=false;
+    if(e.pointerId===stickPointer){readStick(e,stick,touchStick,stickPointer);handled=true;}
+    if(e.pointerId===lookStickPointer){readStick(e,lookStick,touchLookStick,lookStickPointer);handled=true;}
+    if(handled)e.preventDefault();
+  },{passive:false});
+  for(const type of ['pointerup','pointercancel']){
+    addEventListener(type,e=>{releaseStick(e,false);releaseStick(e,true);},{passive:true});
   }
   hud.querySelector('#jcRestart').onclick=()=>{resetRun();hud.querySelector('#jcRestart').blur();};
   hud.querySelector('[data-action="boost"]').onclick=()=>cast('hypersonic');
