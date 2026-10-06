@@ -173,4 +173,4 @@ export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true
   return {update,react,command,commandFromText,localActionFromText,get actions(){return [...ACTIONS];}};
 }
 
-export {localActionFromText,NPC_AUTONOMY_ACTIONS:ACTIONS};
+export {localActionFromText,ACTIONS as NPC_AUTONOMY_ACTIONS};
