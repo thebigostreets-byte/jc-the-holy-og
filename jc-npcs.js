@@ -2,6 +2,7 @@ import * as THREE from './three.module.js';
 import {createCharacter3D} from './jc-character3d.js';
 import {createAmbientCrowd} from './jc-crowd.js';
 import {createNpcMemoryStore} from './npc-memory.js';
+import {createNpcAutonomy} from './npc-autonomy.js';
 
 const AVATARS = [
   ['civilian-01','civilian'],['civilian-02','civilian'],['civilian-03','civilian'],['civilian-04','civilian'],
@@ -27,7 +28,7 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,on
   const size=Math.max(6,Math.min(16,Math.round(count||8)));
   let trackedId=null;
   const crowd=createAmbientCrowd({scene,player,camera,groundAt,isSafe,count:crowdCount,mobile});
-  let lastReport=0;
+  let lastReport=0,autonomy=null;
   const restorative=new Set(['heal','shield','cleanse','sunrise','sanctuary','restore','grace-surge','rain','rebuild','bless','redemption-wave']);
   const travel=new Set(['flight','hypersonic','hover','glide','sky-lift','leap','teleport','beam-down','recall','phase-step']);
   const labels={civilian:'CIVILIANS',authority:'RESPONDERS',angel:'ANGELS',demon:'DEMONS'};
@@ -55,6 +56,8 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,on
     trackerRingMesh.name='NPC contact tracking ring';trackerRingMesh.rotation.x=Math.PI/2;trackerRingMesh.position.y=.07;trackerRingMesh.visible=false;sprite.add(trackerRingMesh);npc.trackerRing=trackerRingMesh;
     root.add(sprite);npc.sprite=sprite;
   }
+
+  autonomy=createNpcAutonomy({npcs,player,groundAt,isSafe,remember:(npc,text)=>{memoryStore.remember(npc,{key:`action:${String(text).slice(0,80)}:${Math.floor(Date.now()/5000)}`,kind:'action',text:String(text).slice(0,220),at:Date.now()});refreshMemory(npc);},onReport:text=>onReport?.(text)});
 
   const eventWitnessText={flight:'saw JC take flight above the street',hypersonic:'saw JC streak through the sky at hypersonic speed',hover:'saw JC hover above the street',glide:'saw JC glide over the city','sky-lift':'saw JC rise into the air',leap:'saw JC leap high above the ground',teleport:'saw JC vanish and reappear nearby','phase-step':'saw JC pass through an obstacle','beam-down':'saw JC descend in a flash of light',rain:'saw JC call rain over the street',lightning:'saw lightning strike near JC',heal:'saw JC heal someone nearby',bless:'saw JC bless someone nearby',shield:'saw JC shield people nearby',cleanse:'saw JC cleanse the area',sunrise:'saw a wave of light spread from JC',sanctuary:'saw JC create a place of safety','redemption-wave':'saw JC send a bright wave through the street',rebuild:'saw JC repair the surroundings','dive-impact':'saw JC dive hard into the street','traffic-impact':'saw a traffic collision nearby'};
   function refreshMemory(npc){npc.lifeMemory=memoryStore.get(npc.id);return npc.lifeMemory;}
@@ -91,6 +94,7 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,on
       npc.sprite?.userData && (npc.sprite.userData.emotion=npc.state);
     }
     crowd.signal(type,center,radius);
+    autonomy?.react(type,center,radius);
     report(now);
   }
 
@@ -115,6 +119,7 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,on
   }
 
   function update(dt,now=performance.now()) {
+    autonomy?.update(now);
     const playerPosition=player.position;
     for(const npc of npcs) {
       if(!npc.sprite)continue;
@@ -179,7 +184,7 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,on
     if(npc.sprite?.userData)npc.sprite.userData.emotion='fear';
   }
 
-  return {npcs,signal,update,observePlayer,setTracked,trafficImpact,memorySummary:id=>memoryStore.summary(id),get trackedId(){return trackedId;},totalPopulation:npcs.length+crowd.count,crowd,
+  return {npcs,signal,update,observePlayer,setTracked,trafficImpact,memorySummary:id=>memoryStore.summary(id),command:(npc,action,source='script')=>autonomy?.command(npc,action,source)||null,commandFromText:(npc,message,source='player')=>autonomy?.commandFromText(npc,message,source)||null,get trackedId(){return trackedId;},totalPopulation:npcs.length+crowd.count,crowd,
     setVisible(value){root.visible=!!value;crowd.setVisible(value);},
     dispose(){scene.remove(root);crowd.dispose();for(const npc of npcs)npc.sprite?.userData.dispose?.();const materials=new Set();root.traverse(o=>{if(o.material)materials.add(o.material);});for(const material of materials){material.map?.dispose();material.dispose();}}};
 }
