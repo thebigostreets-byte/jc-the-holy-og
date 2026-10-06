@@ -205,6 +205,57 @@ function createJCCar(scene,x,z,y){const group=new THREE.Group();group.name='JC p
 const characterFrames = Array(39).fill(null);
 let rearWalkReady=false;
 const sheetOverrides=new Set();
+let jcAura=null,jcSilhouetteGlow=null,jcGlowLight=null,jcGlowTexture=null,jcGlowBoostUntil=0;
+
+function makeJCGlowTexture(){
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=256;
+  const ctx=canvas.getContext('2d');
+  const glow=ctx.createRadialGradient(128,128,8,128,128,128);
+  glow.addColorStop(0,'rgba(255,255,245,.98)');
+  glow.addColorStop(.20,'rgba(255,241,190,.88)');
+  glow.addColorStop(.48,'rgba(255,215,112,.48)');
+  glow.addColorStop(.78,'rgba(255,196,70,.16)');
+  glow.addColorStop(1,'rgba(255,190,55,0)');
+  ctx.fillStyle=glow;ctx.fillRect(0,0,256,256);
+  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.minFilter=THREE.LinearFilter;texture.generateMipmaps=false;
+  return texture;
+}
+function syncJCGlowToPose(){
+  if(!realisticAvatar||!jcSilhouetteGlow)return;
+  if(jcSilhouetteGlow.material.map!==realisticAvatar.material.map){jcSilhouetteGlow.material.map=realisticAvatar.material.map;jcSilhouetteGlow.material.needsUpdate=true;}
+  jcSilhouetteGlow.scale.copy(realisticAvatar.scale).multiplyScalar(1.105);
+  jcSilhouetteGlow.position.copy(realisticAvatar.position);jcSilhouetteGlow.position.z-=.025;
+}
+function ensureJCGlow(){
+  if(!player||!realisticAvatar)return;
+  jcGlowTexture ||= makeJCGlowTexture();
+  if(!jcAura){
+    jcAura=new THREE.Sprite(new THREE.SpriteMaterial({map:jcGlowTexture,color:0xffdda0,transparent:true,opacity:.66,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true}));
+    jcAura.name='JC persistent divine aura';jcAura.renderOrder=2;player.add(jcAura);
+  }
+  if(!jcSilhouetteGlow){
+    jcSilhouetteGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:realisticAvatar.material.map,color:0xffd56d,transparent:true,opacity:.20,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true}));
+    jcSilhouetteGlow.name='JC pose-synced silhouette glow';jcSilhouetteGlow.renderOrder=3;player.add(jcSilhouetteGlow);
+  }
+  if(!jcGlowLight){
+    jcGlowLight=new THREE.PointLight(0xffe4a3,1.05,13,2);jcGlowLight.name='JC persistent divine light';jcGlowLight.position.set(0,2.15,.25);player.add(jcGlowLight);
+  }
+  const visible=!devilMode;
+  jcAura.visible=visible;jcSilhouetteGlow.visible=visible;jcGlowLight.visible=visible;
+  if(visible)syncJCGlowToPose();
+}
+function boostJCGlow(ms=1300){if(!devilMode)jcGlowBoostUntil=Math.max(jcGlowBoostUntil,performance.now()+Math.max(0,ms));}
+function updateJCGlow(now){
+  ensureJCGlow();if(!jcAura||devilMode)return;
+  const pulse=Math.sin(now*.0046),boost=now<jcGlowBoostUntil?1:0;
+  const bodyHeight=Math.max(3.1,realisticAvatar?.scale?.y||3.63),bodyWidth=Math.max(2.2,realisticAvatar?.scale?.x||2.42);
+  jcAura.position.set(realisticAvatar.position.x,realisticAvatar.position.y+.08,-.06);
+  jcAura.scale.set(bodyWidth*2.15+(pulse*.08)+(boost*.5),bodyHeight*1.82+(pulse*.12)+(boost*.62),1);
+  jcAura.material.opacity=.58+pulse*.055+boost*.18;
+  syncJCGlowToPose();
+  jcSilhouetteGlow.material.opacity=.17+pulse*.025+boost*.13;
+  jcGlowLight.intensity=1.0+pulse*.12+boost*.9;
+}
 function installPoseSheet(url,columns,rows,indices){
   loadPoseSheet(url,columns,rows,indices.map((_,i)=>i),frames=>{
     frames.forEach((canvas,i)=>{
@@ -261,6 +312,7 @@ function loadCharacterFrames(){
 }
 function applyCharacterFrame(index){
   if(!realisticAvatar)return;
+  ensureJCGlow();
   if(devilMode&&devilTexture){if(realisticAvatar.material.map!==devilTexture){realisticAvatar.material.map=devilTexture;realisticAvatar.material.needsUpdate=true;}return;}
   const frame=characterFrames[index]||characterFrames[0];
   if(!frame)return;
@@ -269,6 +321,7 @@ function applyCharacterFrame(index){
   const height=index>=14&&index<=22?3.05:3.63;
   realisticAvatar.scale.set(height*frame.aspect,height,1);
   realisticAvatar.position.y=height*.5;
+  syncJCGlowToPose();
 }
 function setFlight(action){
   const next=transitionFlight({flying,hypersonic,glide,diving,height:flightHeight,descending},action);
@@ -891,6 +944,7 @@ function cast(id = selectedAbility) {
   if(id==='rebuild'&&!nearbyRuins()){feedback('No collapsed building in range');return;}
   if(id==='teleport'&&teleportTarget&&(!Number.isFinite(teleportTarget.x)||!Number.isFinite(teleportTarget.z)||(!flying&&!(lockedBuilding&&game.buildings?.get(lockedBuilding.userData.buildingId)===lockedBuilding)&&(!openSpace(teleportTarget.x,teleportTarget.z,2)||blockedAt(teleportTarget.x,teleportTarget.y,teleportTarget.z,2))))){teleportTarget=null;clearTeleportMarker();feedback('Choose a clear landing point');return;}
   feedback(ability.name);
+  if(!devilMode)boostJCGlow(['judgment-storm','redemption-wave','divine-beam','radiance-nova'].includes(id)?2200:1300);
   const flightAbilities=new Set(['flight','hypersonic','hover','leap','glide','sky-lift','skydive','beam-down']);
   if(!flightAbilities.has(id))showPose(miraclePose[id] ?? 5, id === 'redemption-wave' ? 2400 : 800);
   spawnMiracleSprite(id);
@@ -1144,6 +1198,7 @@ function frameStep(now) {
   if (pose !== poseIndex) poseIndex=pose;
   portrait.userData.character.setPose(pose,playerStepPhase,horizontalSpeed,now,flying);
   applyCharacterFrame(pose);
+  updateJCGlow(now);
   if(realisticAvatar){
     const bank=flying?THREE.MathUtils.clamp(-lateral*.16,-.16,.16):0;
     realisticAvatar.material.rotation=THREE.MathUtils.lerp(realisticAvatar.material.rotation,bank,response(8,dt));
@@ -1287,6 +1342,7 @@ const group = game.loaded.get('C15_R14');
     texture.colorSpace=THREE.SRGBColorSpace;
     const old=realisticMaterial.map;
     realisticMaterial.map=texture;realisticMaterial.needsUpdate=true;
+    ensureJCGlow();syncJCGlowToPose();
     if(old&&old!==bootstrapFacade)old.dispose?.();
   }).catch(error=>console.warn('JC portrait stayed on bootstrap texture',error));
   realisticAvatar.name = 'JC realistic player avatar';
@@ -1294,6 +1350,7 @@ const group = game.loaded.get('C15_R14');
   realisticAvatar.position.set(0, 1.82, 0);
   realisticAvatar.renderOrder = 4;
   player.add(realisticAvatar);
+  ensureJCGlow();
   devilWings=createDevilWings(player);
   loadCharacterFrames();
   terrainY=groundAt(x,z);
