@@ -1445,7 +1445,7 @@ const group = game.loaded.get('C15_R14');
     for (const type of ['pointerup','pointercancel','lostpointercapture']) button.addEventListener(type, () => keys.delete(key));
   });
   const stick=hud.querySelector('#jcStick'),lookStick=hud.querySelector('#jcLookStick');
-  const hasTouchInput=('ontouchstart' in window)||(navigator.maxTouchPoints||0)>0;
+  const pointerEventsSupported='PointerEvent' in window;
   function setStickPoint(clientX,clientY,element,state){
     const r=element.getBoundingClientRect(),knob=element.querySelector('i');
     const knobSize=Math.max(knob?.offsetWidth||0,knob?.offsetHeight||0,r.width*.36);
@@ -1474,45 +1474,59 @@ const group = game.loaded.get('C15_R14');
     clearStick(isLook);return true;
   };
   const touchById=(list,id)=>{if(id==null)return null;for(const touch of list)if(touch.identifier===id)return touch;return null;};
+
   for(const [element,state,isLook] of [[stick,touchStick,false],[lookStick,touchLookStick,true]]){
     element.addEventListener('pointerdown',e=>{
-      if(hasTouchInput&&e.pointerType==='touch')return;
       e.preventDefault();e.stopPropagation();
-      const current=isLook?lookStickPointer:stickPointer;if(current!=null&&current!==e.pointerId)return;
+      const current=isLook?lookStickPointer:stickPointer;
+      if(current!=null&&current!==e.pointerId)return;
       if(isLook)lookStickPointer=e.pointerId;else stickPointer=e.pointerId;
       try{element.setPointerCapture(e.pointerId);}catch{}
       readStick(e,element,state,e.pointerId);
     },{passive:false});
-    element.addEventListener('touchstart',e=>{
+
+    element.addEventListener('pointermove',e=>{
+      const pointer=isLook?lookStickPointer:stickPointer;
+      if(e.pointerId!==pointer)return;
       e.preventDefault();e.stopPropagation();
-      const current=isLook?lookStickTouchIdentifier:stickTouchIdentifier;if(current!=null)return;
-      const touch=e.changedTouches[0]||e.touches[0];if(!touch)return;
-      if(isLook)lookStickTouchIdentifier=touch.identifier;else stickTouchIdentifier=touch.identifier;
-      setStickPoint(touch.clientX,touch.clientY,element,state);
+      readStick(e,element,state,pointer);
     },{passive:false});
+
+    for(const type of ['pointerup','pointercancel','lostpointercapture']){
+      element.addEventListener(type,e=>{
+        const pointer=isLook?lookStickPointer:stickPointer;
+        if(type==='lostpointercapture'&&e.pointerId!==pointer)return;
+        if(releaseStick(e.pointerId,isLook)){e.stopPropagation();}
+      },{passive:true});
+    }
   }
-  addEventListener('pointermove',e=>{
-    if(hasTouchInput&&e.pointerType==='touch')return;
-    let handled=false;
-    if(e.pointerId===stickPointer){readStick(e,stick,touchStick,stickPointer);handled=true;}
-    if(e.pointerId===lookStickPointer){readStick(e,lookStick,touchLookStick,lookStickPointer);handled=true;}
-    if(handled)e.preventDefault();
-  },{passive:false});
-  addEventListener('touchmove',e=>{
-    let handled=false;
-    const move=touchById(e.touches,stickTouchIdentifier);if(move){setStickPoint(move.clientX,move.clientY,stick,touchStick);handled=true;}
-    const look=touchById(e.touches,lookStickTouchIdentifier);if(look){setStickPoint(look.clientX,look.clientY,lookStick,touchLookStick);handled=true;}
-    if(handled)e.preventDefault();
-  },{passive:false});
-  for(const type of ['pointerup','pointercancel']){
-    addEventListener(type,e=>{releaseStick(e.pointerId,false);releaseStick(e.pointerId,true);},{passive:true});
-  }
-  for(const type of ['touchend','touchcancel']){
-    addEventListener(type,e=>{
-      for(const touch of e.changedTouches){releaseTouchStick(touch.identifier,false);releaseTouchStick(touch.identifier,true);}
-      if(stickTouchIdentifier!=null&&!touchById(e.touches,stickTouchIdentifier)){clearStick(false);stickTouchIdentifier=null;}
-      if(lookStickTouchIdentifier!=null&&!touchById(e.touches,lookStickTouchIdentifier)){clearStick(true);lookStickTouchIdentifier=null;}
-    },{passive:true});
+
+  // Pointer capture is the primary mobile path. Legacy touch events are only a
+  // fallback for browsers without Pointer Events; running both causes brief
+  // ownership drops on iOS during dual-stick movement.
+  if(!pointerEventsSupported){
+    for(const [element,state,isLook] of [[stick,touchStick,false],[lookStick,touchLookStick,true]]){
+      element.addEventListener('touchstart',e=>{
+        e.preventDefault();e.stopPropagation();
+        const current=isLook?lookStickTouchIdentifier:stickTouchIdentifier;if(current!=null)return;
+        const touch=e.changedTouches[0]||e.touches[0];if(!touch)return;
+        if(isLook)lookStickTouchIdentifier=touch.identifier;else stickTouchIdentifier=touch.identifier;
+        setStickPoint(touch.clientX,touch.clientY,element,state);
+      },{passive:false});
+    }
+    addEventListener('touchmove',e=>{
+      let handled=false;
+      const move=touchById(e.touches,stickTouchIdentifier);if(move){setStickPoint(move.clientX,move.clientY,stick,touchStick);handled=true;}
+      const look=touchById(e.touches,lookStickTouchIdentifier);if(look){setStickPoint(look.clientX,look.clientY,lookStick,touchLookStick);handled=true;}
+      if(handled)e.preventDefault();
+    },{passive:false});
+    for(const type of ['touchend','touchcancel']){
+      addEventListener(type,e=>{
+        for(const touch of e.changedTouches){releaseTouchStick(touch.identifier,false);releaseTouchStick(touch.identifier,true);}
+        if(stickTouchIdentifier!=null&&!touchById(e.touches,stickTouchIdentifier)){clearStick(false);stickTouchIdentifier=null;}
+        if(lookStickTouchIdentifier!=null&&!touchById(e.touches,lookStickTouchIdentifier)){clearStick(true);lookStickTouchIdentifier=null;}
+      },{passive:true});
+    }
   }
   hud.querySelector('#jcRestart').onclick=()=>{resetRun();hud.querySelector('#jcRestart').blur();};
   hud.querySelector('[data-action="boost"]').onclick=()=>cast('hypersonic');
