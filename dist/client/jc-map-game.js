@@ -42,9 +42,9 @@ body.jc-playing #viewport{inset:0}
 body.jc-playing #status{display:none}
 #jcHud{display:none;position:fixed;inset:0;z-index:6;pointer-events:none;color:#fff;font:600 14px Arial,sans-serif}
 body.jc-playing #jcHud{display:block}
-#jcStick,#jcLookStick{width:min(23vw,92px);height:min(23vw,92px);min-width:68px;min-height:68px;border:2px solid #f9d87880;border-radius:50%;background:#091018a8;pointer-events:auto;touch-action:none;position:relative;flex-shrink:0}
+#jcStick,#jcLookStick{width:clamp(76px,24vw,104px);height:clamp(76px,24vw,104px);border:2px solid #f9d87899;border-radius:50%;background:#091018c7;box-shadow:inset 0 0 0 1px #ffffff14,0 6px 18px #0008;pointer-events:auto;touch-action:none;overscroll-behavior:none;position:relative;flex-shrink:0}
 #jcLookStick{border-color:#a9dfff88;background:#071520ad}
-#jcStick i,#jcLookStick i{position:absolute;left:32%;top:32%;width:36%;height:36%;border-radius:50%;background:#ffe4a6aa;pointer-events:none}
+#jcStick i,#jcLookStick i{position:absolute;left:32%;top:32%;width:36%;height:36%;border-radius:50%;background:#ffe4a6dd;box-shadow:0 2px 12px #0009;pointer-events:none;will-change:transform;transform:translate3d(0,0,0)}
 #jcLookStick i{background:#a9dfffbb}
 #jcFeedback{position:absolute;top:28%;left:50%;transform:translateX(-50%);background:#091018df;padding:10px 16px;border-bottom:2px solid #f9d878;opacity:0;transition:opacity .15s;text-align:center}
 #jcRun{font-size:14px;color:#ffdf91}#jcAbilityReady{display:block;margin-top:6px;color:#b8eddf}
@@ -101,7 +101,7 @@ body.jc-playing #jcHud{display:block}
 #jcPlayReturn{display:none;position:fixed;top:12px;right:12px;z-index:7}
 body:not(.jc-playing) #jcPlayReturn{display:block}
 #jcHud .jc-mini-label{position:absolute;left:20px;top:129px;color:#e5d5aa;font-size:8px;letter-spacing:.14em;text-shadow:0 1px 4px #000}
-@media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{display:grid;bottom:calc(env(safe-area-inset-bottom) + 12px)}#jcHud .jc-hint{display:none}#jcHud .jc-score{font-size:12px}#jcHud .jc-score strong{font-size:15px}#jcHud .jc-ability{top:76px;right:8px;font-size:12px}#jcHud .jc-ability button{min-height:44px}#jcHud .jc-actions{width:min(37vw,146px);max-height:42vh;gap:5px}#jcHud .jc-actions button{padding:7px 5px;font-size:12px;min-height:46px}}
+@media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{display:block;bottom:calc(env(safe-area-inset-bottom) + 10px);height:clamp(88px,25vw,112px);left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));touch-action:none;overscroll-behavior:none}#jcStick{position:absolute!important;left:0;bottom:0}#jcLookStick{position:absolute!important;right:0;bottom:0}#jcHud .jc-hint{display:none}#jcHud .jc-score{font-size:12px}#jcHud .jc-score strong{font-size:15px}#jcHud .jc-ability{top:76px;right:8px;font-size:12px}#jcHud .jc-ability button{min-height:44px}#jcHud .jc-actions{position:absolute!important;right:0;bottom:calc(clamp(76px,24vw,104px) + 10px);width:min(37vw,146px);max-height:42vh;gap:5px}#jcHud .jc-actions button{padding:7px 5px;font-size:12px;min-height:46px}}
 `;
 style.textContent += '@media(max-width:800px){#jcMissionPanel{left:12px!important;top:306px!important;max-width:calc(100vw - 24px)}}#jcHud,#jcHud *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#jcTalk input,#jcTalk textarea{-webkit-user-select:text;user-select:text}#jcHud button,#jcStick,#jcLookStick{touch-action:none}@media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{z-index:12;pointer-events:none}#jcStick,#jcLookStick,#jcHud .jc-actions{position:relative;z-index:13;pointer-events:auto}#jcNpcReadout{pointer-events:none!important;bottom:calc(env(safe-area-inset-bottom) + 230px)!important;max-width:46vw!important}#jcPeople{z-index:8}#jcWorldPrompt{z-index:9}}';
 document.head.append(style);
@@ -357,7 +357,7 @@ const coarseDevice = matchMedia('(pointer:coarse), (max-width:800px)').matches |
 const maximumDpr = coarseDevice ? .9 : Math.min(1.25, devicePixelRatio || 1);
 let adaptiveDpr = Math.min(maximumDpr, coarseDevice ? .75 : 1);
 let dashCooldown = 0, pulseCooldown = 0, lastTiles = -1, dragging = false;
-let pointerX = 0, pointerY = 0, lookPointer = null, stickPointer = null, lookStickPointer = null;
+let pointerX = 0, pointerY = 0, lookPointer = null, stickPointer = null, lookStickPointer = null, stickTouchIdentifier = null, lookStickTouchIdentifier = null;
 const analog = {x:0,y:0}, touchStick = {x:0,y:0}, touchLookStick = {x:0,y:0};
 let lockedSoul = null, lockedBuilding = null, teleportAim = false, teleportTarget = null, teleportMarker = null, feedbackUntil = 0, nextHud = 0, runTime = 0, runActive = false, runFinished = false;
 let chain = {count:0,last:0,points:0}, personalBest = 0;
@@ -423,7 +423,7 @@ function chooseTeleportPoint(clientX,clientY){
   teleportMarker.rotation.x=-Math.PI/2;teleportMarker.position.set(teleportTarget.x,groundAt(teleportTarget.x,teleportTarget.z)+.14,teleportTarget.z);game.scene.add(teleportMarker);
   teleportAim=false;feedback(selectedBuilding&&hits.length?`BUILDING DESTINATION · ${selectedBuilding.userData.identity?.name||selectedBuilding.userData.buildingId} · CAST TELEPORT`:'DESTINATION LOCKED · click TELEPORT again or press T');
 }
-function resetInput(){keys.clear();padKeys.clear();analog.x=analog.y=touchStick.x=touchStick.y=touchLookStick.x=touchLookStick.y=0;dragging=false;lookPointer=null;stickPointer=lookStickPointer=null;hud.querySelector('#jcStick i').style.transform='';hud.querySelector('#jcLookStick i').style.transform='';}
+function resetInput(){keys.clear();padKeys.clear();analog.x=analog.y=touchStick.x=touchStick.y=touchLookStick.x=touchLookStick.y=0;dragging=false;lookPointer=null;stickPointer=lookStickPointer=null;stickTouchIdentifier=lookStickTouchIdentifier=null;hud.querySelector('#jcStick i').style.transform='';hud.querySelector('#jcLookStick i').style.transform='';}
 function toggleWheel(){
   const opening=!wheel.classList.contains('open');
   if(opening){const catalog=activeMiracles();if(!catalog.some(a=>a.id===selectedAbility))setActiveMiracle(catalog[0].id);const selected=catalog.find(ability=>ability.id===selectedAbility);selectedGroup=selected?.group||'Travel';const groupItems=catalog.filter(ability=>ability.group===selectedGroup),index=groupItems.findIndex(ability=>ability.id===selectedAbility);wheelPage=Math.max(0,Math.floor(index/8));wheelFocusId=selectedAbility;renderWheel();}
@@ -1121,8 +1121,8 @@ function frameStep(now) {
   if (!playing) {window.JC_WORLD_SCALE=1;return;}
   const paused=wheel.classList.contains('open');
   const pad=Array.from(navigator.getGamepads?.()||[]).find(Boolean);
-  analog.x=stickAxis(touchStick.x,.12);analog.y=stickAxis(touchStick.y,.12);
-  let lookX=stickAxis(touchLookStick.x,.12),lookY=stickAxis(touchLookStick.y,.12);
+  analog.x=stickAxis(touchStick.x,.08);analog.y=stickAxis(touchStick.y,.08);
+  let lookX=stickAxis(touchLookStick.x,.08),lookY=stickAxis(touchLookStick.y,.08);
   if(pad){
     if(!paused){
       analog.x=THREE.MathUtils.clamp(analog.x+stickAxis(pad.axes[0]||0),-1,1);
@@ -1445,39 +1445,74 @@ const group = game.loaded.get('C15_R14');
     for (const type of ['pointerup','pointercancel','lostpointercapture']) button.addEventListener(type, () => keys.delete(key));
   });
   const stick=hud.querySelector('#jcStick'),lookStick=hud.querySelector('#jcLookStick');
-  function readStick(e,element,state,pointer){
-    if(e.pointerId!==pointer)return;
-    const r=element.getBoundingClientRect(),travel=Math.max(24,r.width*.34);
-    let x=(e.clientX-r.left-r.width/2)/travel,y=(e.clientY-r.top-r.height/2)/travel;
+  const hasTouchInput=('ontouchstart' in window)||(navigator.maxTouchPoints||0)>0;
+  function setStickPoint(clientX,clientY,element,state){
+    const r=element.getBoundingClientRect(),knob=element.querySelector('i');
+    const knobSize=Math.max(knob?.offsetWidth||0,knob?.offsetHeight||0,r.width*.36);
+    const travel=Math.max(20,(Math.min(r.width,r.height)-knobSize)/2-4);
+    let x=(clientX-r.left-r.width/2)/travel,y=(clientY-r.top-r.height/2)/travel;
     const magnitude=Math.hypot(x,y);if(magnitude>1){x/=magnitude;y/=magnitude;}
     state.x=x;state.y=y;
-    element.querySelector('i').style.transform=`translate(${x*travel}px,${y*travel}px)`;
+    knob.style.transform=`translate3d(${x*travel}px,${y*travel}px,0)`;
   }
-  const releaseStick=(e,isLook)=>{
-    const pointer=isLook?lookStickPointer:stickPointer;if(e.pointerId!==pointer)return false;
+  function readStick(e,element,state,pointer){
+    if(e.pointerId!==pointer)return;
+    setStickPoint(e.clientX,e.clientY,element,state);
+  }
+  const clearStick=isLook=>{
     const state=isLook?touchLookStick:touchStick,element=isLook?lookStick:stick;
-    if(isLook)lookStickPointer=null;else stickPointer=null;
     state.x=state.y=0;element.querySelector('i').style.transform='';
-    return true;
   };
+  const releaseStick=(pointerId,isLook)=>{
+    const pointer=isLook?lookStickPointer:stickPointer;if(pointerId!==pointer)return false;
+    if(isLook)lookStickPointer=null;else stickPointer=null;
+    clearStick(isLook);return true;
+  };
+  const releaseTouchStick=(identifier,isLook)=>{
+    const owner=isLook?lookStickTouchIdentifier:stickTouchIdentifier;if(identifier!==owner)return false;
+    if(isLook)lookStickTouchIdentifier=null;else stickTouchIdentifier=null;
+    clearStick(isLook);return true;
+  };
+  const touchById=(list,id)=>{if(id==null)return null;for(const touch of list)if(touch.identifier===id)return touch;return null;};
   for(const [element,state,isLook] of [[stick,touchStick,false],[lookStick,touchLookStick,true]]){
     element.addEventListener('pointerdown',e=>{
+      if(hasTouchInput&&e.pointerType==='touch')return;
       e.preventDefault();e.stopPropagation();
+      const current=isLook?lookStickPointer:stickPointer;if(current!=null&&current!==e.pointerId)return;
       if(isLook)lookStickPointer=e.pointerId;else stickPointer=e.pointerId;
-      // Pointer capture is only an optimization. Global handlers below keep
-      // the stick alive on mobile browsers even if capture is dropped.
       try{element.setPointerCapture(e.pointerId);}catch{}
       readStick(e,element,state,e.pointerId);
     },{passive:false});
+    element.addEventListener('touchstart',e=>{
+      e.preventDefault();e.stopPropagation();
+      const current=isLook?lookStickTouchIdentifier:stickTouchIdentifier;if(current!=null)return;
+      const touch=e.changedTouches[0]||e.touches[0];if(!touch)return;
+      if(isLook)lookStickTouchIdentifier=touch.identifier;else stickTouchIdentifier=touch.identifier;
+      setStickPoint(touch.clientX,touch.clientY,element,state);
+    },{passive:false});
   }
   addEventListener('pointermove',e=>{
+    if(hasTouchInput&&e.pointerType==='touch')return;
     let handled=false;
     if(e.pointerId===stickPointer){readStick(e,stick,touchStick,stickPointer);handled=true;}
     if(e.pointerId===lookStickPointer){readStick(e,lookStick,touchLookStick,lookStickPointer);handled=true;}
     if(handled)e.preventDefault();
   },{passive:false});
+  addEventListener('touchmove',e=>{
+    let handled=false;
+    const move=touchById(e.touches,stickTouchIdentifier);if(move){setStickPoint(move.clientX,move.clientY,stick,touchStick);handled=true;}
+    const look=touchById(e.touches,lookStickTouchIdentifier);if(look){setStickPoint(look.clientX,look.clientY,lookStick,touchLookStick);handled=true;}
+    if(handled)e.preventDefault();
+  },{passive:false});
   for(const type of ['pointerup','pointercancel']){
-    addEventListener(type,e=>{releaseStick(e,false);releaseStick(e,true);},{passive:true});
+    addEventListener(type,e=>{releaseStick(e.pointerId,false);releaseStick(e.pointerId,true);},{passive:true});
+  }
+  for(const type of ['touchend','touchcancel']){
+    addEventListener(type,e=>{
+      for(const touch of e.changedTouches){releaseTouchStick(touch.identifier,false);releaseTouchStick(touch.identifier,true);}
+      if(stickTouchIdentifier!=null&&!touchById(e.touches,stickTouchIdentifier)){clearStick(false);stickTouchIdentifier=null;}
+      if(lookStickTouchIdentifier!=null&&!touchById(e.touches,lookStickTouchIdentifier)){clearStick(true);lookStickTouchIdentifier=null;}
+    },{passive:true});
   }
   hud.querySelector('#jcRestart').onclick=()=>{resetRun();hud.querySelector('#jcRestart').blur();};
   hud.querySelector('[data-action="boost"]').onclick=()=>cast('hypersonic');
