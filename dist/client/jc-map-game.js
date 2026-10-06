@@ -103,7 +103,7 @@ body:not(.jc-playing) #jcPlayReturn{display:block}
 #jcHud .jc-mini-label{position:absolute;left:20px;top:129px;color:#e5d5aa;font-size:8px;letter-spacing:.14em;text-shadow:0 1px 4px #000}
 @media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{display:grid;bottom:calc(env(safe-area-inset-bottom) + 12px)}#jcHud .jc-hint{display:none}#jcHud .jc-score{font-size:12px}#jcHud .jc-score strong{font-size:15px}#jcHud .jc-ability{top:76px;right:8px;font-size:12px}#jcHud .jc-ability button{min-height:44px}#jcHud .jc-actions{width:min(37vw,146px);max-height:42vh;gap:5px}#jcHud .jc-actions button{padding:7px 5px;font-size:12px;min-height:46px}}
 `;
-style.textContent += '@media(max-width:800px){#jcMissionPanel{left:12px!important;top:306px!important;max-width:calc(100vw - 24px)}}#jcHud,#jcHud *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#jcTalk input,#jcTalk textarea{-webkit-user-select:text;user-select:text}#jcHud button,#jcStick,#jcLookStick{touch-action:none}';
+style.textContent += '@media(max-width:800px){#jcMissionPanel{left:12px!important;top:306px!important;max-width:calc(100vw - 24px)}}@media(max-width:440px){#jcHud .jc-top{top:8px;left:8px;right:8px;gap:6px}#jcHud .jc-score{max-width:55vw;padding:7px 9px;font-size:10px;line-height:1.35}#jcHud .jc-score strong{font-size:13px}#jcHud .jc-score button{padding:5px 6px;font-size:9px}#jcHud .jc-ability{top:68px;right:8px;max-width:40vw;padding:7px 8px;font-size:9px}#jcHud .jc-ability button{min-height:34px!important;padding:6px 7px!important;font-size:9px}#jcMinimap{top:132px;width:112px;height:112px}#jcStreetReadout{top:250px;max-width:112px}#jcHud .jc-mini-label{top:117px}#jcNpcReadout{bottom:calc(env(safe-area-inset-bottom) + 118px)!important;max-width:50vw!important;font-size:9px!important;padding:5px 7px!important}}#jcHud,#jcHud *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#jcTalk input,#jcTalk textarea{-webkit-user-select:text;user-select:text}#jcHud button,#jcStick,#jcLookStick{touch-action:none}';
 document.head.append(style);
 
 const hud = document.createElement('div');
@@ -115,7 +115,7 @@ const npcReadout=document.createElement('div');npcReadout.id='jcNpcReadout';npcR
 const worldStateReadout=document.createElement('div');worldStateReadout.id='jcWorldState';worldStateReadout.textContent='SIN CITY SYSTEMS · INITIALIZING';worldStateReadout.style.cssText='margin-top:6px;max-width:min(520px,82vw);padding:5px 0;color:#ffe9b0;font-size:10px;line-height:1.35;letter-spacing:.35px;pointer-events:none';(hud.querySelector('.jc-score')||hud).append(worldStateReadout);
 const livingWorldReadout=document.createElement('div');livingWorldReadout.id='jcLivingWorld';livingWorldReadout.textContent='LIVING WORLD · INITIALIZING';livingWorldReadout.style.cssText='margin-top:3px;max-width:min(560px,84vw);color:#c4ffee;font-size:10px;line-height:1.35;letter-spacing:.3px;pointer-events:none';(hud.querySelector('.jc-score')||hud).append(livingWorldReadout);
   const npcTalkButton=document.createElement('button');npcTalkButton.id='jcNpcTalkButton';npcTalkButton.type='button';npcTalkButton.textContent='TALK';npcTalkButton.setAttribute('aria-label','Talk to nearby character');hud.append(npcTalkButton);
-const peopleUI=document.createElement('div');peopleUI.id='jcPeople';peopleUI.innerHTML='<button id=jcPeopleToggle type=button>PEOPLE · 0</button><div id=jcPeoplePanel aria-label=Saved people></div>';hud.append(peopleUI);
+const peopleUI=document.createElement('div');peopleUI.id='jcPeople';peopleUI.innerHTML='<button id=jcPeopleToggle type=button>CONTACTS · 0</button><div id=jcPeoplePanel aria-label=Saved contacts></div>';hud.append(peopleUI);
 const worldPrompt=document.createElement('button');worldPrompt.id='jcWorldPrompt';worldPrompt.type='button';worldPrompt.hidden=true;worldPrompt.style.cssText='position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 92px);transform:translateX(-50%);z-index:5;padding:10px 14px;background:#08131ef2;color:#ffe6a4;border:1px solid #f1d17e;border-radius:9px;font-weight:800;pointer-events:auto';worldPrompt.onclick=()=>{const state=explorableWorld?.update(performance.now());if(state?.canTransit)explorableWorld.linkedZone(explorableWorld.catalog.places.get('military:groom-lake'));else if(explorableWorld?.active)explorableWorld.exit();else if(state?.nearby?.kind==='storm-drain-game-access')explorableWorld.enterDrain(state.nearby);else if(state?.canEnter&&state.nearby?.id==='military:nellis')explorableWorld.linkedZone(state.nearby);else if(state?.canEnter)explorableWorld.enter(state.nearby);};hud.append(worldPrompt);
 
 const personMarker=document.createElement('div');personMarker.id='jcPersonMarker';personMarker.setAttribute('aria-live','polite');hud.append(personMarker);
@@ -131,7 +131,7 @@ soundToggle.onclick=()=>{const state=jcAudio.set('muted',!jcAudio.getSettings().
 const timeToggle=hud.querySelector('#jcTimeToggle');
 const refreshTimeToggle=()=>{timeToggle.textContent=worldTimeMode==='day'?'SWITCH TO NIGHT':'SWITCH TO DAY';timeToggle.setAttribute('aria-pressed',String(worldTimeMode==='day'));};
 refreshTimeToggle();
-timeToggle.onclick=()=>{worldTimeMode=worldTimeMode==='day'?'night':'day';try{localStorage.setItem('jc-map-time-of-day',worldTimeMode);}catch{}cinematicLook?.setTimeOfDay(worldTimeMode);refreshTimeToggle();feedback(worldTimeMode==='day'?'DAYLIGHT ACTIVE':'NIGHT ACTIVE');};
+timeToggle.onclick=()=>{worldTimeMode=worldTimeMode==='day'?'night':'day';try{localStorage.setItem('jc-map-time-of-day',worldTimeMode);}catch{}cinematicLook?.setTimeOfDay(worldTimeMode);for(const group of game?.loaded?.values?.()||[])group.userData.jcThemeApplied=false;wallpaperStrip();refreshTimeToggle();feedback(worldTimeMode==='day'?'DAYLIGHT ACTIVE':'NIGHT ACTIVE');};
 
 hud.querySelector('#jcKeyApply').onclick=()=>{const input=hud.querySelector('#jcGroqKey'),ok=setNpcApiKey(input.value);input.value='';hud.querySelector('#jcKeyStatus').textContent=ok?'Personal Groq key active for this tab':'Enter a Groq key first';};
 hud.querySelector('#jcKeyClear').onclick=()=>{clearNpcApiKey();hud.querySelector('#jcGroqKey').value='';hud.querySelector('#jcKeyStatus').textContent='Using game key if configured';};
@@ -167,7 +167,7 @@ function observeNpcPlayer(){
  const appearance=devilMode?'red devil form with bat wings':'white hooded robe and long dark hair';
  npcSystem.observePlayer({state,appearance});
 }
-function renderPeople(){const panel=hud.querySelector('#jcPeoplePanel');hud.querySelector('#jcPeopleToggle').textContent=`PEOPLE · ${contacts.length}`;panel.replaceChildren();if(!contacts.length){const p=document.createElement('p');p.textContent='Tap a person in the city to talk and save them here.';p.className='jc-hint';panel.append(p);return;}for(const contact of contacts){const row=document.createElement('button');row.type='button';row.textContent=`${String(contact.id)===String(selectedPerson?.contactId)?'✦ ':''}${contact.name} · ${contact.faction}`;const memories=npcSystem?.memorySummary(contact.id)||[];if(memories.length){const detail=document.createElement('small');detail.style.cssText='display:block;font-size:10px;color:#d8c8a0';detail.textContent='REMEMBERS · '+memories.at(-1);row.append(detail);}row.addEventListener('click',()=>{const npc=npcSystem?.npcs.find(n=>String(n.contactId)===String(contact.id))||contact;selectedPerson=npc;openNpcTalk(npc);});panel.append(row);}}
+function renderPeople(){const panel=hud.querySelector('#jcPeoplePanel');hud.querySelector('#jcPeopleToggle').textContent=`CONTACTS · ${contacts.length}`;panel.replaceChildren();if(!contacts.length){const p=document.createElement('p');p.textContent='Tap a person in the city to talk and save them here.';p.className='jc-hint';panel.append(p);return;}for(const contact of contacts){const row=document.createElement('button');row.type='button';row.textContent=`${String(contact.id)===String(selectedPerson?.contactId)?'✦ ':''}${contact.name} · ${contact.faction}`;const memories=npcSystem?.memorySummary(contact.id)||[];if(memories.length){const detail=document.createElement('small');detail.style.cssText='display:block;font-size:10px;color:#d8c8a0';detail.textContent='REMEMBERS · '+memories.at(-1);row.append(detail);}row.addEventListener('click',()=>{const npc=npcSystem?.npcs.find(n=>String(n.contactId)===String(contact.id))||contact;selectedPerson=npc;openNpcTalk(npc);});panel.append(row);}}
 function openNpcTalk(npc=nearNpc){if(npc&&playing){observeNpcPlayer();persistContact(npc);livingWorld?.onNpcInteraction(npc);selectedPerson=npc;renderPeople();conversation.open(npc);}}
 function pickPerson(clientX,clientY){if(!npcSystem||!game?.camera||!game?.renderer)return null;const rect=game.renderer.domElement.getBoundingClientRect(),limit=matchMedia('(pointer:coarse)').matches?48:34;let best=null,bestScore=Infinity;game.camera.updateMatrixWorld();for(const npc of npcSystem.npcs){if(!npc.sprite||npc.collapse)continue;const distance=npc.position.distanceTo(player.position);if(distance>180)continue;const point=npc.position.clone().add(new THREE.Vector3(0,.9,0)).project(game.camera);if(point.z< -1||point.z>1)continue;const x=rect.left+(point.x+1)*rect.width/2,y=rect.top+(1-point.y)*rect.height/2,screenDistance=Math.hypot(x-clientX,y-clientY);if(screenDistance>limit)continue;const score=screenDistance+distance*.035;if(score<bestScore){best=npc;bestScore=score;}}return best;}
 hud.querySelector('#jcPeopleToggle').addEventListener('click',()=>hud.querySelector('#jcPeoplePanel').classList.toggle('open'));
@@ -230,15 +230,15 @@ function ensureJCGlow(){
   if(!player||!realisticAvatar)return;
   jcGlowTexture ||= makeJCGlowTexture();
   if(!jcAura){
-    jcAura=new THREE.Sprite(new THREE.SpriteMaterial({map:jcGlowTexture,color:0xffdda0,transparent:true,opacity:.66,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true}));
+    jcAura=new THREE.Sprite(new THREE.SpriteMaterial({map:jcGlowTexture,color:0xffdda0,transparent:true,opacity:.80,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true,toneMapped:false}));
     jcAura.name='JC persistent divine aura';jcAura.renderOrder=2;player.add(jcAura);
   }
   if(!jcSilhouetteGlow){
-    jcSilhouetteGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:realisticAvatar.material.map,color:0xffd56d,transparent:true,opacity:.20,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true}));
+    jcSilhouetteGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:realisticAvatar.material.map,color:0xffd56d,transparent:true,opacity:.30,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true,toneMapped:false}));
     jcSilhouetteGlow.name='JC pose-synced silhouette glow';jcSilhouetteGlow.renderOrder=3;player.add(jcSilhouetteGlow);
   }
   if(!jcGlowLight){
-    jcGlowLight=new THREE.PointLight(0xffe4a3,1.05,13,2);jcGlowLight.name='JC persistent divine light';jcGlowLight.position.set(0,2.15,.25);player.add(jcGlowLight);
+    jcGlowLight=new THREE.PointLight(0xffe4a3,1.75,18,2);jcGlowLight.name='JC persistent divine light';jcGlowLight.position.set(0,2.15,.25);player.add(jcGlowLight);
   }
   const visible=!devilMode;
   jcAura.visible=visible;jcSilhouetteGlow.visible=visible;jcGlowLight.visible=visible;
@@ -250,11 +250,11 @@ function updateJCGlow(now){
   const pulse=Math.sin(now*.0046),boost=now<jcGlowBoostUntil?1:0;
   const bodyHeight=Math.max(3.1,realisticAvatar?.scale?.y||3.63),bodyWidth=Math.max(2.2,realisticAvatar?.scale?.x||2.42);
   jcAura.position.set(realisticAvatar.position.x,realisticAvatar.position.y+.08,-.06);
-  jcAura.scale.set(bodyWidth*2.15+(pulse*.08)+(boost*.5),bodyHeight*1.82+(pulse*.12)+(boost*.62),1);
-  jcAura.material.opacity=.58+pulse*.055+boost*.18;
+  jcAura.scale.set(bodyWidth*2.55+(pulse*.10)+(boost*.55),bodyHeight*2.08+(pulse*.14)+(boost*.68),1);
+  jcAura.material.opacity=.74+pulse*.06+boost*.16;
   syncJCGlowToPose();
-  jcSilhouetteGlow.material.opacity=.17+pulse*.025+boost*.13;
-  jcGlowLight.intensity=1.0+pulse*.12+boost*.9;
+  jcSilhouetteGlow.material.opacity=.25+pulse*.03+boost*.12;
+  jcGlowLight.intensity=1.65+pulse*.16+boost*.95;
 }
 function installPoseSheet(url,columns,rows,indices){
   loadPoseSheet(url,columns,rows,indices.map((_,i)=>i),frames=>{
@@ -666,40 +666,44 @@ function themedFacade(ownerId, redeemed = false) {
   return base; // Share the GPU image; each building owns its tint and glow.
 }
 
+function buildingIdentity(mesh){
+  let owner=mesh;
+  while(owner){if(owner.userData?.identity)return owner.userData.identity;owner=owner.parent;}
+  return null;
+}
+
 function applyBuildingTheme(mesh, ownerId, redeemed = false) {
-  if(mesh.material?.userData?.customTexture) return;
-  // Physical materials already carry their paint, scale and reflectivity.
-  // Preserve editor paint and uploaded textures when play mode themes the city.
-  if(mesh.material?.userData?.physicalSurface){
-    const material=mesh.material,edit=game.edits?.get(ownerId);
-    const hash=buildingHash(ownerId),nightTexture=cursedTextures[(hash>>>5)%cursedTextures.length],glow=getFacadeEmissiveMap(nightTexture);
-    if(glow&&!Number.isFinite(edit?.glow)){material.emissiveMap=glow;material.emissive.set(redeemed?0xffd8a0:vegasTints[(hash>>>11)%vegasTints.length]);material.emissiveIntensity=redeemed ? .72 : .82+((hash>>>3)&31)/95;}
-    else if(Number.isFinite(edit?.glow)&&edit.glow===0){material.emissive.set(0x000000);material.emissiveIntensity=0;}
-    material.userData.jcBuildingId=ownerId;
-    return;
+  if(mesh.material?.userData?.customTexture)return;
+  const identity=buildingIdentity(mesh),isCasino=identity?.type==='casino',edit=game.edits?.get(ownerId);
+  if(!redeemed&&!isCasino)return;
+  if(!mesh.userData.jcMaterialClone){
+    mesh.material=cloneBuildingMaterial(mesh.material);
+    mesh.userData.jcMaterialClone=true;
   }
-  const hash = buildingHash(ownerId);
-  if (!mesh.userData.jcMaterialClone) {
-    mesh.material = cloneBuildingMaterial(mesh.material);
-    mesh.userData.jcMaterialClone = true;
+  const material=mesh.material,original=material.userData?.original||{};
+  if(original.map!==undefined)material.map=original.map||null;
+  if(original.color?.isColor)material.color.copy(original.color);
+  if(Number.isFinite(original.roughness))material.roughness=original.roughness;
+  material.metalness=isCasino?Math.min(.16,material.metalness??.1):0;
+  const windowGlow=getFacadeEmissiveMap(material.map);
+  const editorGlow=Number.isFinite(edit?.glow)?Math.max(0,edit.glow):0;
+  if(material.emissive){
+    if(redeemed&&windowGlow){
+      material.emissiveMap=windowGlow;
+      material.emissive.set(0xffdfaa);
+      material.emissiveIntensity=worldTimeMode==='night'?.34:.18;
+    }else if(isCasino&&worldTimeMode==='night'&&windowGlow){
+      material.emissiveMap=windowGlow;
+      material.emissive.set(0xffe3bd);
+      material.emissiveIntensity=editorGlow?Math.min(.55,.16+editorGlow*.22):.22;
+    }else{
+      material.emissiveMap=null;
+      material.emissive.set(0x000000);
+      material.emissiveIntensity=0;
+    }
   }
-  const material = mesh.material;
-  material.map = themedFacade(ownerId, redeemed);
-  material.color.setRGB(.86+((hash>>>8)&31)/230, (redeemed?.82:.74)+((hash>>>15)&31)/250, (redeemed?.80:.68)+((hash>>>22)&31)/240);
-  // The bright windows glow; dark masonry stays dark instead of a neon wash.
-  material.emissiveMap=getFacadeEmissiveMap(material.map)||material.map;
-  const heavenly=redeemed || hash%7===0;
-  if(material.emissive)material.emissive.set(heavenly?0xffe1b0:vegasTints[(hash>>>11)%vegasTints.length]);
-  if ('emissiveIntensity' in material) material.emissiveIntensity = .78+((hash>>>3)&31)/95;
-  material.roughness = redeemed ? .58 : .62;
-  material.metalness = .08;
-  material.userData.original ??= {};
-  material.userData.original.map = material.map;
-  material.userData.original.color = material.userData.original.color || new THREE.Color();
-  material.userData.original.color.copy(material.color);
-  material.userData.wallpapered = true;
-  material.userData.jcBuildingId = ownerId;
-  material.needsUpdate = true;
+  material.userData.jcBuildingId=ownerId;
+  material.needsUpdate=true;
 }
 
 function restoredMap(id) {
