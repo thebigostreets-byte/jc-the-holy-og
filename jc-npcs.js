@@ -125,21 +125,24 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,fi
     for(const npc of npcs) {
       if(!npc.sprite)continue;
       let distance=npc.position.distanceTo(playerPosition);
-      if(distance>180&&npc.id!==trackedId&&now>npc.emotionUntil&&now>npc.nextWander){
+      if(!npc.goal&&distance>180&&npc.id!==trackedId&&now>npc.emotionUntil&&now>npc.nextWander){
         const i=npcs.indexOf(npc),angle=i*2.3999632297,radius=18+(i%4)*11;
         const [x,z]=chooseOpen(playerPosition.x+Math.cos(angle)*radius,playerPosition.z+Math.sin(angle)*radius,isSafe);
         npc.position.set(x,groundAt(x,z)+1.55,z);npc.target.copy(npc.position);npc.event=null;npc.state='idle';npc.nextWander=now+1800;distance=npc.position.distanceTo(playerPosition);
       }
-      if(npc.faction==='demon'&&distance<48&&now>npc.emotionUntil) {
+      if(!npc.goal&&npc.faction==='demon'&&distance<48&&now>npc.emotionUntil) {
         npc.state='retreat';npc.event={type:'JC-nearby',position:playerPosition.clone(),time:now};npc.emotionUntil=now+3500;setDestination(npc,playerPosition,38);
       }
-      if(npc.faction==='angel'&&distance<60&&now>npc.emotionUntil) {
+      if(!npc.goal&&npc.faction==='angel'&&distance<60&&now>npc.emotionUntil) {
         npc.state='awe';npc.event={type:'JC-nearby',position:playerPosition.clone(),time:now};npc.emotionUntil=now+2600;setDestination(npc,playerPosition,Math.max(12,Math.min(26,distance*.55)));
       }
       if(npc.event&&now<npc.emotionUntil) {
         // The event target is chosen once in signal(); per-frame work stays light.
+      } else if(npc.goal) {
+        // Autonomous goals own the destination until the task completes.
+        npc.event=null;
       } else {
-        if(npc.actionPose&&!npc.goal&&now>npc.emotionUntil)npc.actionPose=null;
+        if(npc.actionPose&&now>npc.emotionUntil)npc.actionPose=null;
         npc.event=null;
         if(now>npc.nextWander||npc.position.distanceTo(npc.target)<1.5) {
           const angle=Math.random()*Math.PI*2,range=5+Math.random()*13;
