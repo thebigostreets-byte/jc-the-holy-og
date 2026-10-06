@@ -1165,10 +1165,11 @@ function frameStep(now) {
   grace = THREE.MathUtils.clamp(grace + (boost ? -3 : sprint ? -20 : now < graceSurgeUntil ? 24 : now < sanctuaryUntil ? 19 : now < shieldUntil ? 17 : 12) * dt, 0, 100);
   if (boost && grace <= 0) hypersonic=false;
   if(boost&&desired.lengthSq()<.01)desired.copy(flightForward);
-  const speed=(diving?42:boost?1800:flying?75:sprint?9:4.8)*(now<timeScaleUntil?1.5:1),activeSpeed=drivingCar?(desired.lengthSq()>.02?24:0):speed;
-  const steering = braking?38:desired.lengthSq()<.01?(flying?10:24):flying?(boost?20:28):32;
+  const speed=(diving?52:boost?1800:flying?95:sprint?11:5.4)*(now<timeScaleUntil?1.5:1),activeSpeed=drivingCar?(desired.lengthSq()>.02?30:0):speed;
+  // Fast action-game steering: immediate on foot, responsive in cruise, and capable of hard turns at hyperflight speed.
+  const steering = braking?52:desired.lengthSq()<.01?(flying?18:34):flying?(boost?60:46):48;
   if(!flying||drivingCar)desired.y=0;
-  accelerateVelocity(velocity,desired,braking?0:activeSpeed,steering,braking?(flying?3200:28):flying?(boost?1100:110):drivingCar?12:18,dt);
+  accelerateVelocity(velocity,desired,braking?0:activeSpeed,steering,braking?(flying?5000:48):flying?(boost?14000:650):drivingCar?30:42,dt);
   moveSafely(velocity.x*dt,velocity.z*dt,now<phaseUntil);
   const previousHeight=flightHeight;
   if (flying) {
@@ -1434,8 +1435,8 @@ const group = game.loaded.get('C15_R14');
   for(const type of ['pointerup','pointercancel'])addEventListener(type,e=>{if(e.pointerId===lookPointer){dragging=false;lookPointer=null;}});
   addEventListener('pointermove', e => {
     if (!dragging || !playing || e.pointerId!==lookPointer) return;
-    yaw += (e.clientX - pointerX) * (coarseDevice ? 0.0034 : 0.0025);
-    viewPitch=THREE.MathUtils.clamp(viewPitch-(e.clientY-pointerY)*.0025,-.62,.62);
+    yaw += (e.clientX - pointerX) * (coarseDevice ? 0.0062 : 0.0042);
+    viewPitch=THREE.MathUtils.clamp(viewPitch-(e.clientY-pointerY)*(coarseDevice?.0048:.0036),-.72,.72);
     pointerX = e.clientX;pointerY = e.clientY;
   });
   hud.querySelectorAll('[data-move]').forEach(button => {
