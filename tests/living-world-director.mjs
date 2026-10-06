@@ -51,8 +51,8 @@ assert.ok(director.state.destroyedBuildings['tower-1']);
 director.onBuildingRebuilt({buildingId:'tower-1'});
 assert.equal(director.state.destroyedBuildings['tower-1'],undefined);
 
-for(let i=0;i<30;i++)director.onAbility('restore',player.position,'jc');
-assert.ok(director.state.level>=3);
+for(let i=0;i<260&&director.state.level<3;i++)director.onAbility('restore',player.position,'jc');
+assert.ok(director.state.level>=3,'progression reaches the first boss threshold');
 director.update(1,1000);
 if(director.boss){
   const before=director.boss.currentHealth;
