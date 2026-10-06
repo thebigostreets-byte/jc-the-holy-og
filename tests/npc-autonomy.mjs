@@ -42,4 +42,10 @@ assert.equal(follow.type,'follow-player');
 player.position.x=20;
 sys.update(corruptFinish+2000);
 assert.ok(a.target.x>10,'follow routine retargets toward player');
-console.log('PASS: deterministic NPC autonomy executes help, corruption and follow actions without per-frame AI.');
+const hurt={id:'civilian:hurt',name:'Hurt',faction:'civilian',position:new V(0,1.55,0),target:new V(0,1.55,0),state:'idle',emotionUntil:0,health:30};
+const supplySys=createNpcAutonomy({npcs:[hurt],player,groundAt:()=>0,isSafe:()=>true,findPickup:(npc,{kind}={})=>kind==='medkit'?{kind:'medkit',position:new V(8,.9,0),distance:8}:null});
+supplySys.update(1000);
+assert.equal(hurt.goal?.type,'collect-supply','injured NPC independently seeks a medkit');
+assert.ok(hurt.target.x>0,'supply seeking gives the NPC a real movement target');
+
+console.log('PASS: deterministic NPC autonomy executes help, corruption, follow and supply-seeking actions without per-frame AI.');
