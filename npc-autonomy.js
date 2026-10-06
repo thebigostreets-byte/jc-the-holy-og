@@ -34,6 +34,7 @@ export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true
     const npc=npcs[i],r=rngFor(npc.id||i);
     npc.occupation=npc.occupation||OCCUPATIONS[Math.floor(r()*OCCUPATIONS.length)];
     npc.allegiance=npc.allegiance||'neutral';npc.alignmentScore=Number(npc.alignmentScore)||0;npc.health=Number.isFinite(npc.health)?npc.health:100;
+    npc.traits=npc.traits||{bravery:r(),empathy:r(),sociability:r(),duty:r(),faith:r(),susceptibility:r()};
     npc.homeAnchor={x:npc.position.x+(r()-.5)*24,z:npc.position.z+(r()-.5)*24};
     npc.workAnchor={x:npc.position.x+(r()-.5)*55,z:npc.position.z+(r()-.5)*55};
     npc.autonomyCooldown=0;npc.goal=null;npc.decision='living daily life';npc.lastAction=null;
@@ -124,10 +125,10 @@ export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true
     if(npc.faction==='demon'){
       command(npc,'corrupt-nearest','script')||command(npc,'patrol-area','script');return;
     }
-    const r=rngFor(npc.id+':'+Math.floor(now/7000))();
-    if(resolveSelector(npc,'help-nearest')&&r<.28){command(npc,'help-nearest','script');return;}
-    if(r<.48)command(npc,'socialize','script');
-    else if(r<.75)command(npc,'work-shift','script');
+    const roll=rngFor(npc.id+':'+Math.floor(now/7000))(),r=roll(),traits=npc.traits||{};
+    if(resolveSelector(npc,'help-nearest')&&r<(0.10+(traits.empathy||0)*.42)){command(npc,'help-nearest','script');return;}
+    if(r<(0.18+(traits.sociability||0)*.34))command(npc,'socialize','script');
+    else if(r<(0.55+(traits.duty||0)*.28))command(npc,'work-shift','script');
     else command(npc,'errand','script');
   }
   function update(now=performance.now()){
@@ -165,6 +166,12 @@ export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true
       if(npc.faction==='authority')command(npc,{npcAction:dangerous?'investigate-nearby':'help-nearest',position},'event');
       else if(npc.faction==='angel')command(npc,{npcAction:dangerous?'calm-nearest':'help-nearest',position},'event');
       else if(npc.faction==='demon'&&dangerous)command(npc,'corrupt-nearest','event');
+      else if(npc.faction==='civilian'&&dangerous){
+        const traits=npc.traits||{},roll=rngFor(npc.id+':event:'+type+':'+Math.floor(Date.now()/5000))();
+        if((traits.empathy||0)>.72&&resolveSelector(npc,'help-nearest'))command(npc,'help-nearest','event');
+        else if((traits.bravery||0)>.76&&roll>.35)command(npc,{npcAction:'investigate-nearby',position},'event');
+        else command(npc,{npcAction:'flee-area',position},'event');
+      }
     }
   }
   function commandFromText(npc,message,source='player'){
