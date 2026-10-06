@@ -1,4 +1,4 @@
-import {requestNpcDialogue,requestNpcTranscription} from './npc-dialogue.js';
+import {requestNpcDialogue,requestNpcTranscription,localNpcGreeting,localNpcReply} from './npc-dialogue.js';
 
 const CONVERSATION_STORAGE_KEY='jc-npc-conversations-v1';
 const portraits = Object.fromEntries(['civilian','authority','angel','demon'].map(f => [f, `./character-art/${f}-npc-reference-v1.webp`]));
@@ -74,10 +74,11 @@ export function createNpcConversation({panel, log, onOpen = () => {}, onClose = 
     if (message) {line('YOU',message); drafts.set(key,message);}
     try {
       if(message&&!greeting){
-        const local=onWorldAction(null,npc,message);
-        if(typeof local==='string'&&local.trim()){
-          history.push({role:'user',content:message},{role:'assistant',content:local.trim()});
-          conversations.set(key,history.slice(-8));persistConversations();renderHistory();setStatus('ACTING');speakReply(local.trim(),npc);
+        const localAction=onWorldAction(null,npc,message);
+        const localFact=localAction||localNpcReply(npc,message);
+        if(typeof localFact==='string'&&localFact.trim()){
+          history.push({role:'user',content:message},{role:'assistant',content:localFact.trim()});
+          conversations.set(key,history.slice(-8));persistConversations();renderHistory();setStatus(localAction?'ACTING':'READY TO TALK');speakReply(localFact.trim(),npc);
           if(input.value.trim()===message)input.value='';drafts.set(key,input.value);return;
         }
       }
@@ -106,7 +107,13 @@ export function createNpcConversation({panel, log, onOpen = () => {}, onClose = 
     errorBox.hidden = true; panel.classList.add('open'); document.body.classList.add('jc-chat-open'); renderHistory(); placePanel(); onOpen();
     if (!matchMedia('(pointer:coarse)').matches) input.focus({preventScroll:true}); else closeButton.focus({preventScroll:true});
     lastAttempt = {message:'',greeting:true};
-    if (serviceIssue) showError(serviceIssue); else if ((conversations.get(keyFor(npc)) || []).length) setStatus('READY TO TALK'); else void submit('',true);
+    const existing=conversations.get(keyFor(npc))||[];
+    if(serviceIssue)showError(serviceIssue);
+    else if(existing.length)setStatus('READY TO TALK');
+    else{
+      const greeting=localNpcGreeting(npc);
+      conversations.set(keyFor(npc),[{role:'assistant',content:greeting}]);persistConversations();renderHistory();setStatus('READY TO TALK');speakReply(greeting,npc);
+    }
   }
   form.addEventListener('submit',event => {event.preventDefault();void submit(input.value,false);});
   retry.addEventListener('click',() => {const message = input.value.trim();void submit(message || lastAttempt?.message || '',message ? false : (lastAttempt?.greeting ?? true));});
