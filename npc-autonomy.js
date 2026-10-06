@@ -65,18 +65,19 @@ export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true
     const npc=typeof npcOrId==='object'?npcOrId:npcs.find(n=>String(n.id)===String(npcOrId));
     const type=typeof action==='string'?action:String(action?.npcAction||action?.type||'');
     if(!npc||!allowed(npc,type))return null;
-    const targetNpc=resolveSelector(npc,type);
+    let targetNpc=resolveSelector(npc,type);
     let destination=action?.position&&typeof action.position==='object'?action.position:null;
     if(type==='follow-player'||type==='protect-player'||type==='flee-area'||type==='investigate-nearby')destination=player?.position;
     else if(targetNpc)destination=targetNpc.position;
     else if(type==='patrol-area')destination={x:npc.position.x+Math.cos(serial+npcs.indexOf(npc))*24,z:npc.position.z+Math.sin(serial+npcs.indexOf(npc))*24};
     else if(type==='work-shift')destination=npc.workAnchor;
     else if(type==='errand')destination={x:npc.workAnchor.x+12,z:npc.workAnchor.z-10};
-    else if(type==='socialize'){const other=nearest(npcs,npc,n=>!n.collapse,35);if(other){destination=other.position;}}
+    else if(type==='socialize'){const other=nearest(npcs,npc,n=>!n.collapse,35);if(other){targetNpc=other;destination=other.position;}}
     if(!destination&&['help-nearest','calm-nearest','corrupt-nearest','attack-nearest-hostile'].includes(type))return null;
     const priority=source==='event'?8:source==='ai'?7:source==='player'?9:3;
     if(npc.goal&&npc.goal.priority>priority&&npc.goal.expiresAt>Date.now())return null;
     npc.goal={id:'goal-'+(++serial),type,targetNpcId:targetNpc?.id||null,priority,source,phase:'move',startedAt:Date.now(),expiresAt:Date.now()+(type==='follow-player'?45000:18000),performUntil:0};
+    npc.actionPose=null;
     npc.decision=type.replace(/-/g,' ');
     if(destination){
       if(type==='flee-area'){const dx=npc.position.x-(destination.x||0),dz=npc.position.z-(destination.z||0),len=Math.max(1,Math.hypot(dx,dz));setTarget(npc,{x:npc.position.x+dx/len*34,z:npc.position.z+dz/len*34});}
@@ -107,7 +108,7 @@ export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true
       case'flee-area':report=`${npc.name} evacuated the area`;break;
     }
     npc.lastAction={type:goal.type,at:Date.now(),targetNpcId:goal.targetNpcId||null};
-    npc.goal=null;npc.autonomyCooldown=now+1800+hash(npc.id+goal.id)%3200;npc.state='idle';npc.decision='choosing next task';
+    npc.goal=null;npc.actionPose=null;npc.autonomyCooldown=now+1800+hash(npc.id+goal.id)%3200;npc.state='idle';npc.decision='choosing next task';
     if(report)onReport(report.toUpperCase());
   }
   function chooseRoutine(npc,now){
@@ -134,14 +135,26 @@ export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true
     for(const npc of npcs){
       const goal=npc.goal;
       if(!goal){chooseRoutine(npc,now);continue;}
-      if(Date.now()>goal.expiresAt){npc.goal=null;npc.decision='task expired';npc.autonomyCooldown=now+1200;continue;}
+      if(Date.now()>goal.expiresAt){npc.goal=null;npc.actionPose=null;npc.decision='task expired';npc.autonomyCooldown=now+1200;continue;}
       if(goal.type==='follow-player'&&player?.position){
         const d=distance(npc.position,player.position);if(d>5)setTarget(npc,{x:player.position.x+2,z:player.position.z+2});else{npc.target.copy(npc.position);npc.state='awe';}
         continue;
       }
       const arrived=distance(npc.position,npc.target)<1.8;
       if(!arrived)continue;
-      if(goal.phase==='move'){goal.phase='perform';goal.performUntil=now+700+(hash(goal.id)%900);npc.state=['corrupt-nearest','attack-nearest-hostile'].includes(goal.type)?'respond':'awe';npc.decision='performing '+goal.type.replace(/-/g,' ');continue;}
+      if(goal.phase==='move'){
+        goal.phase='perform';goal.performUntil=now+900+(hash(goal.id)%1200);
+        npc.state=['corrupt-nearest','attack-nearest-hostile','investigate-nearby'].includes(goal.type)?'respond':'awe';
+        npc.actionPose=goal.type;
+        npc.decision='performing '+goal.type.replace(/-/g,' ');
+        const target=goal.targetNpcId?npcs.find(n=>n.id===goal.targetNpcId):null;
+        if(target){
+          const dx=target.position.x-npc.position.x,dz=target.position.z-npc.position.z;
+          if(npc.sprite)npc.sprite.rotation.y=Math.atan2(dx,dz);
+          if(goal.type==='socialize'&&!target.goal){target.actionPose='socialize';target.state='awe';target.emotionUntil=now+Math.max(1200,goal.performUntil-now);}
+        }
+        continue;
+      }
       if(goal.phase==='perform'&&now>=goal.performUntil)complete(npc,goal,now);
     }
   }
