@@ -125,7 +125,7 @@ export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true
     if(npc.faction==='demon'){
       command(npc,'corrupt-nearest','script')||command(npc,'patrol-area','script');return;
     }
-    const roll=rngFor(npc.id+':'+Math.floor(now/7000))(),r=roll(),traits=npc.traits||{};
+    const roll=rngFor(npc.id+':'+Math.floor(now/7000)),r=roll(),traits=npc.traits||{};
     if(resolveSelector(npc,'help-nearest')&&r<(0.10+(traits.empathy||0)*.42)){command(npc,'help-nearest','script');return;}
     if(r<(0.18+(traits.sociability||0)*.34))command(npc,'socialize','script');
     else if(r<(0.55+(traits.duty||0)*.28))command(npc,'work-shift','script');
