@@ -103,7 +103,8 @@ async function parseGLB(raw,name){const dv=new DataView(raw.buffer,raw.byteOffse
  const textures=await Promise.all((g.textures||[]).map(async t=>{const im=g.images[t.source],sa=g.samplers?.[t.sampler];if(im.uri)return textureFrom(await bytes(pathRelative(name,im.uri)),im.uri.endsWith('generated_stucco.png')?'image/webp':im.uri.endsWith('.png')?'image/png':'image/jpeg',sa);const v=g.bufferViews[im.bufferView];return textureFrom(raw.subarray(binStart+(v.byteOffset||0),binStart+(v.byteOffset||0)+v.byteLength),im.mimeType,sa);}));
  const [facadeMaps,physicalMaps,identities,generated]=await Promise.all([facadePromise,physicalPromise,identityPromise,generatedPromise]);
  const heights=new Map(g.nodes.map(n=>[n.name,n.extras?.heightMetres||0]));
- const resolvedIdentities=new Map(g.nodes.map(n=>[n.name,resolveBuildingIdentity(n.name,n.extras||{},identities)]));
+ const importedIdentity=id=>{const e=edits.get(id);return e?.identityName?{name:e.identityName,type:e.identityType||'landmark',address:e.identityAddress||'Las Vegas Strip',sourceUpdated:'City Builder imported identity'}:null;};
+ const resolvedIdentities=new Map(g.nodes.map(n=>[n.name,importedIdentity(n.name)||resolveBuildingIdentity(n.name,n.extras||{},identities)]));
  const mats=g.materials.map(m=>{
   const p=m.pbrMetallicRoughness||{},f=p.baseColorFactor||[1,1,1,1],isWall=m.name.endsWith('_walls');
   const id=m.name.replace(/_(walls|roof)$/,''),identity=resolvedIdentities.get(id),surface=isWall?buildingSurface(id,heights.get(id)||0,facadeMaps,physicalMaps,identity,generated):null;
@@ -226,11 +227,73 @@ function nearestGeo(lon,lat){let best=null,d=Infinity;for(const s of sections){c
 $('goGeo').onclick=()=>{try{const a=$('geo').value.trim().split(/[,\s]+/).map(Number);if(a.length!==2||!a.every(Number.isFinite))throw Error('Enter longitude, latitude.');loadArea(nearestGeo(...a));}catch(e){status(e.message);}};
 $('map').src=payload.resources['assets/overview.jpg'];$('map').onclick=e=>{const r=e.target.getBoundingClientRect(),c=Math.min(34,Math.max(0,Math.floor((e.clientX-r.left)/r.width*35))),y=Math.min(34,Math.max(0,34-Math.floor((e.clientY-r.top)/r.height*35)));loadArea(`C${String(c).padStart(2,'0')}_R${String(y).padStart(2,'0')}`);};
 $('openFolder').onclick=()=>$('folder').click();$('folder').onchange=connectFolder;
-function exportEdits(){return {format:'illco-vegas-building-edits',version:1,source:'NGA_Los_Vegas_Buildings_2014',crs:'EPSG:32611',edits:Object.fromEntries(edits)};}function importEdits(obj){if(obj.format!=='illco-vegas-building-edits'||!obj.edits||Array.isArray(obj.edits))throw Error('Not a valid city edit file.');for(const [id,e]of Object.entries(obj.edits)){if(!/^NGA14-\d+$/.test(id))continue;const clean={};for(const k of ['wallColor','roofColor'])if(/^#[0-9a-f]{6}$/i.test(e[k]||''))clean[k]=e[k];if(['plain','textured'].includes(e.surface))clean.surface=e.surface;if(Number.isFinite(e.roughness))clean.roughness=Math.max(0,Math.min(1,e.roughness));if(Number.isFinite(e.glow))clean.glow=Math.max(0,Math.min(2,e.glow));if(['crumble','explode'].includes(e.state))clean.state=e.state;edits.set(id,clean);const ob=buildings.get(id);if(ob){rebuild(ob,false);setAppearance(ob,clean);if(clean.state)destroy(ob,clean.state,false);}}persist();if(selected)select(selected);status('Saved building edits applied.');}
-$('save').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(exportEdits(),null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='Vegas_Building_Edits.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);};$('loadEdits').onclick=()=>$('editsFile').click();$('editsFile').onchange=async e=>{try{importEdits(JSON.parse(await e.target.files[0].text()));}catch(err){status(err.message);}};
+const REAL_STRIP_LANDMARKS=[
+ {name:'Mandalay Bay',type:'casino',longitude:-115.1753,latitude:36.0919,radius:260,maxBuildings:5,roughness:.36,glow:.18},
+ {name:'Luxor',type:'casino',longitude:-115.1761,latitude:36.0955,radius:230,maxBuildings:5,roughness:.34,glow:.22},
+ {name:'Excalibur',type:'casino',longitude:-115.1756,latitude:36.0987,radius:220,maxBuildings:5,roughness:.82,glow:.16},
+ {name:'New York-New York',type:'casino',longitude:-115.1745,latitude:36.1022,radius:200,maxBuildings:7,roughness:.74,glow:.2},
+ {name:'MGM Grand',type:'casino',longitude:-115.1697,latitude:36.1025,radius:240,maxBuildings:7,roughness:.38,glow:.22},
+ {name:'T-Mobile Arena',type:'arena',longitude:-115.1783,latitude:36.1029,radius:190,maxBuildings:3,roughness:.4,glow:0},
+ {name:'Aria Resort',type:'casino',longitude:-115.1761,latitude:36.1074,radius:220,maxBuildings:7,roughness:.32,glow:.2},
+ {name:'The Cosmopolitan',type:'casino',longitude:-115.1761,latitude:36.1097,radius:190,maxBuildings:6,roughness:.32,glow:.24},
+ {name:'Bellagio',type:'casino',longitude:-115.1767,latitude:36.1126,radius:220,maxBuildings:7,roughness:.77,glow:.16},
+ {name:'Paris Las Vegas',type:'casino',longitude:-115.1707,latitude:36.1125,radius:190,maxBuildings:6,roughness:.77,glow:.22},
+ {name:'Caesars Palace',type:'casino',longitude:-115.1745,latitude:36.1162,radius:240,maxBuildings:9,roughness:.77,glow:.2},
+ {name:'Flamingo Las Vegas',type:'casino',longitude:-115.1719,latitude:36.1161,radius:190,maxBuildings:6,roughness:.8,glow:.22},
+ {name:'The Venetian',type:'casino',longitude:-115.1697,latitude:36.1212,radius:220,maxBuildings:8,roughness:.77,glow:.2},
+ {name:'Sphere',type:'landmark',longitude:-115.1602,latitude:36.1208,radius:170,maxBuildings:2,roughness:.28,glow:.3},
+ {name:'The Palazzo',type:'casino',longitude:-115.1686,latitude:36.1240,radius:200,maxBuildings:7,roughness:.77,glow:.18},
+ {name:'Treasure Island',type:'casino',longitude:-115.1728,latitude:36.1247,radius:200,maxBuildings:6,roughness:.38,glow:.2},
+ {name:'Wynn Las Vegas',type:'casino',longitude:-115.1654,latitude:36.1263,radius:230,maxBuildings:7,roughness:.36,glow:.22},
+ {name:'Encore',type:'casino',longitude:-115.1644,latitude:36.1291,radius:200,maxBuildings:6,roughness:.36,glow:.22},
+ {name:'Resorts World',type:'casino',longitude:-115.1677,latitude:36.1354,radius:260,maxBuildings:8,roughness:.42,glow:.24},
+ {name:'Circus Circus',type:'casino',longitude:-115.1665,latitude:36.1379,radius:230,maxBuildings:7,roughness:.74,glow:.2},
+ {name:'The STRAT',type:'casino',longitude:-115.1554,latitude:36.1475,radius:200,maxBuildings:5,roughness:.38,glow:.24},
+ {name:'Palms',type:'casino',longitude:-115.1982,latitude:36.1155,radius:240,maxBuildings:6,roughness:.4,glow:.2},
+ {name:'Allegiant Stadium',type:'stadium',longitude:-115.183952,latitude:36.090794,radius:320,maxBuildings:4,roughness:.38,glow:0}
+];
+function geoDistanceMetres(lon,lat,target){const y=(lat-target.latitude)*111320,x=(lon-target.longitude)*111320*Math.cos(lat*Math.PI/180);return Math.hypot(x,y);}
+async function applyRealStripPreset(list=REAL_STRIP_LANDMARKS){
+ const previous=current,matched=[],seen=new Set();
+ for(const lm of list){
+  const tile=nearestGeo(lm.longitude,lm.latitude);
+  await loadArea(tile,0);
+  const nearby=[...buildings.values()].filter(ob=>Number.isFinite(ob.userData.longitude)&&Number.isFinite(ob.userData.latitude)).map(ob=>({ob,d:geoDistanceMetres(ob.userData.longitude,ob.userData.latitude,lm)})).filter(x=>x.d<=lm.radius).sort((a,b)=>a.d-b.d).slice(0,lm.maxBuildings||1);
+  for(const {ob,d} of nearby){
+   const id=ob.userData.buildingId;if(!id||seen.has(id))continue;seen.add(id);
+   const e={...(edits.get(id)||{}),surface:'textured',roughness:lm.roughness,glow:lm.glow||0,identityName:lm.name,identityType:lm.type,identityAddress:lm.address||'Las Vegas Strip'};
+   edits.set(id,e);matched.push({id,name:lm.name,distance:Math.round(d),tile});
+  }
+ }
+ persist();window.JC_REAL_STRIP_MATCHES=matched;
+ await loadArea(previous,streamRadius);
+ status('Real Strip preset matched '+matched.length+' building footprints. Refresh once to rebuild photoreal landmark materials.');
+ return matched;
+}
+function exportEdits(){return {format:'illco-vegas-building-edits',version:2,source:'NGA_Los_Vegas_Buildings_2014',crs:'EPSG:32611',edits:Object.fromEntries(edits)};}
+async function importEdits(obj){
+ if(obj.format!=='illco-vegas-building-edits')throw Error('Not a valid city edit file.');
+ if(obj.edits&&Array.isArray(obj.edits))throw Error('Not a valid city edit file.');
+ for(const [id,e]of Object.entries(obj.edits||{})){
+  if(!/^NGA14-\d+$/.test(id))continue;const clean={};
+  for(const k of ['wallColor','roofColor'])if(/^#[0-9a-f]{6}$/i.test(e[k]||''))clean[k]=e[k];
+  if(['plain','textured'].includes(e.surface))clean.surface=e.surface;
+  if(Number.isFinite(e.roughness))clean.roughness=Math.max(0,Math.min(1,e.roughness));
+  if(Number.isFinite(e.glow))clean.glow=Math.max(0,Math.min(2,e.glow));
+  if(['crumble','explode'].includes(e.state))clean.state=e.state;
+  if(typeof e.identityName==='string'&&e.identityName.trim())clean.identityName=e.identityName.trim();
+  if(['casino','landmark','stadium','arena'].includes(e.identityType))clean.identityType=e.identityType;
+  if(typeof e.identityAddress==='string'&&e.identityAddress.trim())clean.identityAddress=e.identityAddress.trim();
+  edits.set(id,clean);const ob=buildings.get(id);if(ob){setAppearance(ob,clean);if(clean.state)destroy(ob,clean.state,false);}
+ }
+ if(obj.preset==='real-strip-v1'||Array.isArray(obj.landmarks))await applyRealStripPreset(Array.isArray(obj.landmarks)&&obj.landmarks.length?obj.landmarks:REAL_STRIP_LANDMARKS);
+ persist();if(selected)select(selected);
+ if(obj.preset!=='real-strip-v1'&&!Array.isArray(obj.landmarks))status('Saved building edits applied.');
+}
+$('save').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(exportEdits(),null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='Vegas_Building_Edits.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);};$('loadEdits').onclick=()=>$('editsFile').click();$('editsFile').onchange=async e=>{try{await importEdits(JSON.parse(await e.target.files[0].text()));}catch(err){status(err.message);}};
 function resize(){const r=$('viewport').getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}new ResizeObserver(resize).observe($('viewport'));resize();if(mobileMap) $('streamRange').value='0';
 function animate(t){requestAnimationFrame(animate);const dt=Math.min((t-last)/1000,.04);last=t;if(!window.studio?.paused){tick(dt*Math.max(0,Math.min(1,window.JC_WORLD_SCALE??1)));streamingTick(t,dt);}if(!window.JC_MAP_PLAYING)controls.update();window.studio?.distantCity?.update();window.studio?.environment?.update(t,dt);window.studio?.traffic?.update(dt);window.studio?.buildingViews?.update(t,dt,document.body.classList.contains('jc-playing'));if(!mobileMap||!startInPlay||window.JC_PLAYER_READY){if(window.studio?.renderFrame)window.studio.renderFrame();else renderer.render(scene,camera);}}requestAnimationFrame(animate);
-window.studio={sections,cityBounds:base,mobileMap,lowSpec,stable3D,deviceMemory,scene,camera,renderer,controls,buildings,chunks,edits,loaded,origin,centerSection,ensureContext,streamingTick,streamInfo:()=>({enabled:streamEnabled,radius:streamRadius,loading,current,lastWanted,context:!!contextGround,availableFiles:files.size,lowSpec,stable3D,deviceMemory}),tileRevision:()=>tileRevision,prefetchInfo:()=>prefetchedBytes.stats(),loadArea,select,focus,view,destroy,rebuild,updateEdit,exportEdits,importEdits,tick,stats:()=>({buildings:buildings.size,tiles:loaded.size,visibleTiles:[...loaded.values()].filter(g=>g.visible).length,chunks:particles.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),proof:()=>{document.body.classList.add('proof');resize();}};
+window.studio={sections,cityBounds:base,mobileMap,lowSpec,stable3D,deviceMemory,scene,camera,renderer,controls,buildings,chunks,edits,loaded,origin,centerSection,ensureContext,streamingTick,streamInfo:()=>({enabled:streamEnabled,radius:streamRadius,loading,current,lastWanted,context:!!contextGround,availableFiles:files.size,lowSpec,stable3D,deviceMemory}),tileRevision:()=>tileRevision,prefetchInfo:()=>prefetchedBytes.stats(),loadArea,select,focus,view,destroy,rebuild,updateEdit,exportEdits,importEdits,applyRealStripPreset,tick,stats:()=>({buildings:buildings.size,tiles:loaded.size,visibleTiles:[...loaded.values()].filter(g=>g.visible).length,chunks:particles.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),proof:()=>{document.body.classList.add('proof');resize();}};
 window.studio.roads=createRoadNetwork(window.studio);
 window.studio.traffic=createCityTraffic(window.studio);
 window.studio.distantCity=createDistantCity(window.studio);
