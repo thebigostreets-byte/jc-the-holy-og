@@ -75,7 +75,7 @@ export function createNpcConversation({panel, log, onOpen = () => {}, onClose = 
     try {
       const result = await requestNpcDialogue(npc,history,{message,greeting,signal:controller.signal,world:worldContext()});
       if (id !== requestId || active !== npc) return;
-      const worldDirection=result.action?onWorldAction(result.action,npc,message):null;
+      const worldDirection=onWorldAction(result.action||null,npc,message)||null;
       const reply=[result.reply,worldDirection].filter(Boolean).join(' ');
       if (message) history.push({role:'user',content:message});
       history.push({role:'assistant',content:reply}); conversations.set(key,history.slice(-8));persistConversations();
