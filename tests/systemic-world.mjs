@@ -41,6 +41,17 @@ assert.equal(world.state.incidentsResolved,1);
 assert.ok(world.state.publicReputation>0,'successful rescue changes public reputation');
 assert.ok(world.districtAt(player.position).hope>50,'successful intervention improves local hope');
 
+const crash=world.spawnIncident(2000,'traffic-crash');
+const civicRepBefore=world.state.publicReputation;
+const responder={id:'officer-1',name:'Officer',faction:'authority'};
+const firstResponse=world.npcResponse(crash,responder);
+const secondResponse=world.npcResponse(crash,responder);
+assert.equal(firstResponse.handled,true,'authority can locally respond to a traffic crash');
+assert.equal(secondResponse.handled,true);
+assert.ok(crash.npcResponses>=2,'incident records autonomous responder work');
+assert.equal(crash.phase,'resolved','multiple local responses can resolve a stabilized low-severity incident');
+assert.equal(world.state.publicReputation,civicRepBefore,'autonomous civic response does not award JC reputation');
+
 const before=world.state.publicReputation;
 world.onDestruction({position:player.position,buildingId:'test-tower'},'jc');
 assert.ok(world.state.publicReputation<before,'destructive consequences reduce public reputation');
