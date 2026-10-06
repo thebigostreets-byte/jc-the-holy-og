@@ -48,4 +48,20 @@ supplySys.update(1000);
 assert.equal(hurt.goal?.type,'collect-supply','injured NPC independently seeks a medkit');
 assert.ok(hurt.target.x>0,'supply seeking gives the NPC a real movement target');
 
-console.log('PASS: deterministic NPC autonomy executes help, corruption, follow and supply-seeking actions without per-frame AI.');
+const responderNpc={id:'authority:r',name:'Rae',faction:'authority',position:new V(0,1.55,0),target:new V(0,1.55,0),state:'idle',emotionUntil:0,hasWeapon:true};
+const incident={id:'inc-test',position:new V(12,1,3),phase:'active'};
+let incidentResponses=0;
+const responseSys=createNpcAutonomy({
+  npcs:[responderNpc],player,groundAt:()=>0,isSafe:()=>true,
+  findIncident:()=>({incident,distance:12}),
+  onIncidentResponse:(npc,id)=>{assert.equal(id,'inc-test');incidentResponses++;return {handled:true,resolved:false};}
+});
+const responseGoal=responseSys.command(responderNpc,{npcAction:'investigate-nearby',position:incident.position},'event');
+assert.equal(responseGoal.incidentId,'inc-test');
+assert.equal(responderNpc.target.x,12,'responder travels to the incident instead of the player');
+responderNpc.position.copy(responderNpc.target);
+responseSys.update(1000);
+responseSys.update(responderNpc.goal.performUntil+1);
+assert.equal(incidentResponses,1,'arriving responder changes incident state through local game code');
+
+console.log('PASS: deterministic NPC autonomy executes help, corruption, follow, supply-seeking and incident-response actions without per-frame AI.');
