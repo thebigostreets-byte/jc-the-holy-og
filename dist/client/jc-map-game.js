@@ -103,7 +103,7 @@ body:not(.jc-playing) #jcPlayReturn{display:block}
 #jcHud .jc-mini-label{position:absolute;left:20px;top:129px;color:#e5d5aa;font-size:8px;letter-spacing:.14em;text-shadow:0 1px 4px #000}
 @media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{display:grid;bottom:calc(env(safe-area-inset-bottom) + 12px)}#jcHud .jc-hint{display:none}#jcHud .jc-score{font-size:12px}#jcHud .jc-score strong{font-size:15px}#jcHud .jc-ability{top:76px;right:8px;font-size:12px}#jcHud .jc-ability button{min-height:44px}#jcHud .jc-actions{width:min(37vw,146px);max-height:42vh;gap:5px}#jcHud .jc-actions button{padding:7px 5px;font-size:12px;min-height:46px}}
 `;
-style.textContent += '@media(max-width:800px){#jcMissionPanel{left:12px!important;top:306px!important;max-width:calc(100vw - 24px)}}@media(max-width:440px){#jcHud .jc-top{top:8px;left:8px;right:8px;gap:6px}#jcHud .jc-score{max-width:55vw;padding:7px 9px;font-size:10px;line-height:1.35}#jcHud .jc-score strong{font-size:13px}#jcHud .jc-score button{padding:5px 6px;font-size:9px}#jcHud .jc-ability{top:68px;right:8px;max-width:40vw;padding:7px 8px;font-size:9px}#jcHud .jc-ability button{min-height:34px!important;padding:6px 7px!important;font-size:9px}#jcMinimap{top:132px;width:112px;height:112px}#jcStreetReadout{top:250px;max-width:112px}#jcHud .jc-mini-label{top:117px}#jcNpcReadout{bottom:calc(env(safe-area-inset-bottom) + 118px)!important;max-width:50vw!important;font-size:9px!important;padding:5px 7px!important}}#jcHud,#jcHud *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#jcTalk input,#jcTalk textarea{-webkit-user-select:text;user-select:text}#jcHud button,#jcStick,#jcLookStick{touch-action:none}';
+style.textContent += '@media(max-width:800px){#jcMissionPanel{left:12px!important;top:306px!important;max-width:calc(100vw - 24px)}}#jcHud,#jcHud *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#jcTalk input,#jcTalk textarea{-webkit-user-select:text;user-select:text}#jcHud button,#jcStick,#jcLookStick{touch-action:none}@media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{z-index:12;pointer-events:none}#jcStick,#jcLookStick,#jcHud .jc-actions{position:relative;z-index:13;pointer-events:auto}#jcNpcReadout{pointer-events:none!important;bottom:calc(env(safe-area-inset-bottom) + 230px)!important;max-width:46vw!important}#jcPeople{z-index:8}#jcWorldPrompt{z-index:9}}';
 document.head.append(style);
 
 const hud = document.createElement('div');
@@ -1165,10 +1165,11 @@ function frameStep(now) {
   grace = THREE.MathUtils.clamp(grace + (boost ? -3 : sprint ? -20 : now < graceSurgeUntil ? 24 : now < sanctuaryUntil ? 19 : now < shieldUntil ? 17 : 12) * dt, 0, 100);
   if (boost && grace <= 0) hypersonic=false;
   if(boost&&desired.lengthSq()<.01)desired.copy(flightForward);
-  const speed=(diving?42:boost?1800:flying?75:sprint?9:4.8)*(now<timeScaleUntil?1.5:1),activeSpeed=drivingCar?(desired.lengthSq()>.02?24:0):speed;
-  const steering = braking?38:desired.lengthSq()<.01?(flying?10:24):flying?(boost?20:28):32;
+  const speed=(diving?52:boost?1800:flying?95:sprint?11:5.4)*(now<timeScaleUntil?1.5:1),activeSpeed=drivingCar?(desired.lengthSq()>.02?30:0):speed;
+  // Fast action-game steering: immediate on foot, responsive in cruise, and capable of hard turns at hyperflight speed.
+  const steering = braking?52:desired.lengthSq()<.01?(flying?18:34):flying?(boost?60:46):48;
   if(!flying||drivingCar)desired.y=0;
-  accelerateVelocity(velocity,desired,braking?0:activeSpeed,steering,braking?(flying?3200:28):flying?(boost?1100:110):drivingCar?12:18,dt);
+  accelerateVelocity(velocity,desired,braking?0:activeSpeed,steering,braking?(flying?5000:48):flying?(boost?14000:650):drivingCar?30:42,dt);
   moveSafely(velocity.x*dt,velocity.z*dt,now<phaseUntil);
   const previousHeight=flightHeight;
   if (flying) {
@@ -1434,8 +1435,8 @@ const group = game.loaded.get('C15_R14');
   for(const type of ['pointerup','pointercancel'])addEventListener(type,e=>{if(e.pointerId===lookPointer){dragging=false;lookPointer=null;}});
   addEventListener('pointermove', e => {
     if (!dragging || !playing || e.pointerId!==lookPointer) return;
-    yaw += (e.clientX - pointerX) * (coarseDevice ? 0.0034 : 0.0025);
-    viewPitch=THREE.MathUtils.clamp(viewPitch-(e.clientY-pointerY)*.0025,-.62,.62);
+    yaw += (e.clientX - pointerX) * (coarseDevice ? 0.0062 : 0.0042);
+    viewPitch=THREE.MathUtils.clamp(viewPitch-(e.clientY-pointerY)*(coarseDevice?.0048:.0036),-.72,.72);
     pointerX = e.clientX;pointerY = e.clientY;
   });
   hud.querySelectorAll('[data-move]').forEach(button => {
