@@ -32,6 +32,7 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,on
   const restorative=new Set(['heal','shield','cleanse','sunrise','sanctuary','restore','grace-surge','rain','rebuild','bless','redemption-wave']);
   const travel=new Set(['flight','hypersonic','hover','glide','sky-lift','leap','teleport','beam-down','recall','phase-step']);
   const labels={civilian:'CIVILIANS',authority:'RESPONDERS',angel:'ANGELS',demon:'DEMONS'};
+  const actionPoses={'help-nearest':3,'protect-player':6,'investigate-nearby':7,'patrol-area':0,'calm-nearest':11,'corrupt-nearest':10,'attack-nearest-hostile':2,'flee-area':31,'socialize':9,'work-shift':7,'errand':4,'follow-player':0};
   const characterProfiles={
     civilian:{role:'local resident',personality:'observant, independent, and grounded',goals:'stay safe, understand what is happening, and protect people they care about',speechStyle:'plain, conversational, occasionally skeptical'},
     authority:{role:'local responder',personality:'alert, procedural, and protective',goals:'protect civilians, assess danger, and restore order',speechStyle:'direct, concise, situational'},
@@ -138,6 +139,7 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,on
       if(npc.event&&now<npc.emotionUntil) {
         // The event target is chosen once in signal(); per-frame work stays light.
       } else {
+        if(npc.actionPose&&!npc.goal&&now>npc.emotionUntil)npc.actionPose=null;
         npc.event=null;
         if(now>npc.nextWander||npc.position.distanceTo(npc.target)<1.5) {
           const angle=Math.random()*Math.PI*2,range=5+Math.random()*13;
@@ -162,7 +164,8 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,on
       if(len<=.12)npc.moving=false;
       npc.sprite.position.set(npc.position.x,npc.position.y-1.55,npc.position.z);
       if(len>.12)npc.sprite.rotation.y=Math.atan2(dx,dz);
-      const pose=npc.moving?(running?31+Math.floor(npc.gait/.45)%8:23+Math.floor(npc.gait/.6)%8):npc.state==='respond'?6:npc.state==='awe'?11:0;
+      const actionPose=npc.actionPose?actionPoses[npc.actionPose]:null;
+      const pose=npc.moving?(running?31+Math.floor(npc.gait/.45)%8:23+Math.floor(npc.gait/.6)%8):Number.isInteger(actionPose)?actionPose:npc.state==='respond'?6:npc.state==='awe'?11:0;
       npc.sprite.userData.character.setPose(pose,npc.gait,npc.moving?speed:0,now,false);
       if(npc.trackerRing?.visible)npc.trackerRing.material.opacity=.68+Math.sin(now*.006)*.22;
     }
