@@ -1,5 +1,4 @@
 JC THE HOLY OG redeploy trigger
 branch: main
-source_commit: 9b42058bb098ee5bc54e721959de453648dbddd2
-requested_at: 2026-10-02
-reason: deploy synchronized production client with audio controls, sprite cleanup, saved NPC tracking, world map, street labels, regional travel, Vegas roads, traffic, crowd, Sphere, High Roller, palms, building realism and dialogue updates
+requested_at: 2026-10-05T23:20:00-07:00
+reason: manual GitHub Pages redeploy requested from ChatGPT
