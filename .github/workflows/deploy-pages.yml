@@ -30,6 +30,7 @@ jobs:
           node tests/gameplay-regressions.mjs
           node tests/performance-guardrails.mjs
           node tests/npc-motion.mjs
+          node tests/npc-autonomy.mjs
           node tests/npc-contacts.mjs
           node tests/npc-memory.mjs
           node tests/systemic-world.mjs
