@@ -944,7 +944,7 @@ function cast(id = selectedAbility) {
   if(id==='rebuild'&&!nearbyRuins()){feedback('No collapsed building in range');return;}
   if(id==='teleport'&&teleportTarget&&(!Number.isFinite(teleportTarget.x)||!Number.isFinite(teleportTarget.z)||(!flying&&!(lockedBuilding&&game.buildings?.get(lockedBuilding.userData.buildingId)===lockedBuilding)&&(!openSpace(teleportTarget.x,teleportTarget.z,2)||blockedAt(teleportTarget.x,teleportTarget.y,teleportTarget.z,2))))){teleportTarget=null;clearTeleportMarker();feedback('Choose a clear landing point');return;}
   feedback(ability.name);
-  if(!devilMode)boostJCGlow(['judgment-storm','redemption-wave','divine-beam','radiance-nova'].includes(id)?2200:1300);
+  if((typeof devilMode==='undefined'||!devilMode)&&typeof boostJCGlow==='function')boostJCGlow(['judgment-storm','redemption-wave','divine-beam','radiance-nova'].includes(id)?2200:1300);
   const flightAbilities=new Set(['flight','hypersonic','hover','leap','glide','sky-lift','skydive','beam-down']);
   if(!flightAbilities.has(id))showPose(miraclePose[id] ?? 5, id === 'redemption-wave' ? 2400 : 800);
   spawnMiracleSprite(id);
