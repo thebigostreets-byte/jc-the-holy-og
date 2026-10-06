@@ -13,6 +13,12 @@ export function setFlightForward(target,yaw,pitch){
   return target;
 }
 export function response(rate,dt){return 1-Math.exp(-rate*Math.max(0,dt));}
+export function advancePedal(value,target,dt,rise=14,fall=9){
+  const clampedTarget=Math.max(-1,Math.min(1,target));
+  const rate=Math.abs(clampedTarget)>Math.abs(value)?rise:fall;
+  const next=value+(clampedTarget-value)*response(rate,Math.min(.05,Math.max(0,dt)));
+  return Math.abs(next)<.006&&Math.abs(clampedTarget)<.001?0:Math.max(-1,Math.min(1,next));
+}
 export function advanceGait(phase,speed,dt,sprint=false){
   return (phase+Math.min(sprint?14:10,Math.max(0,speed)*(sprint?1.1:1.35))*Math.min(.05,Math.max(0,dt)))%8;
 }
