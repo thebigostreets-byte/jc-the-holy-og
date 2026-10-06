@@ -23,6 +23,11 @@ assert.equal(poses.at(-1)[2],4.4,'running animation receives its run speed');
 npc.target.copy(npc.position);npc.state='idle';npc.event={type:'settled'};npc.emotionUntil=10000;context.update(.016,40);
 assert.equal(poses.at(-1)[0],0,'stopped NPC returns to its idle pose');
 assert.equal(poses.at(-1)[2],0,'stopped NPC animation receives zero speed');
+
+npc.event=null;npc.emotionUntil=0;npc.goal={type:'work-shift',phase:'move'};npc.nextWander=0;npc.position.set(0,1.55,0);npc.target.set(7,1.55,0);
+context.update(.016,5000);
+assert.equal(npc.target.x,7,'active autonomous goal keeps ownership of its destination when wander timer expires');
+npc.goal=null;
 const crowdSource=readFileSync(new URL('../jc-crowd.js',import.meta.url),'utf8');
 const characterSource=readFileSync(new URL('../jc-character3d.js',import.meta.url),'utf8');
 assert.doesNotMatch(source,/npc-cutouts|createNpcCutout/,'interactive NPCs never use cardboard cutouts');
