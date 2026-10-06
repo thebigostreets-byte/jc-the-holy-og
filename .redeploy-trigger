@@ -1,4 +1,4 @@
 JC THE HOLY OG redeploy trigger
 branch: main
-requested_at: 2026-10-05T23:30:00-07:00
-reason: user requested immediate redeploy from ChatGPT
+requested_at: 2026-10-05T23:40:00-07:00
+reason: redeploy after inspecting uploaded Kaggle JC archive; preserve current source tree and avoid destructive archive overwrite
