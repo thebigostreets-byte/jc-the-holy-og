@@ -25,7 +25,8 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,fi
   root.visible=false;
   const npcs=[];
   const memoryStore=createNpcMemoryStore();
-  const size=Math.max(6,Math.min(16,Math.round(count||8)));
+  const detailedCap=mobile?12:24;
+  const size=Math.max(6,Math.min(detailedCap,Math.round(count||8)));
   let trackedId=null;
   const crowd=createAmbientCrowd({scene,player,camera,groundAt,isSafe,count:crowdCount,mobile});
   let lastReport=0,autonomy=null;
