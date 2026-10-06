@@ -1,5 +1,5 @@
 const clamp=(v,min=-100,max=100)=>Math.max(min,Math.min(max,v));
-const ACTIONS=new Set(['follow-player','help-nearest','protect-player','investigate-nearby','patrol-area','calm-nearest','corrupt-nearest','attack-nearest-hostile','flee-area','socialize','work-shift','errand']);
+const ACTIONS=new Set(['follow-player','help-nearest','protect-player','investigate-nearby','patrol-area','calm-nearest','corrupt-nearest','attack-nearest-hostile','flee-area','socialize','work-shift','errand','collect-supply']);
 const OCCUPATIONS=['casino worker','hotel staff','rideshare driver','restaurant worker','security guard','retail clerk','medic','construction worker','tour guide','local resident'];
 
 function hash(text){
@@ -28,7 +28,7 @@ function localActionFromText(message=''){
   return null;
 }
 
-export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true,remember=()=>{},onReport=()=>{}}={}){
+export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true,findPickup=()=>null,remember=()=>{},onReport=()=>{}}={}){
   let lastUpdate=-Infinity,serial=0;
   for(let i=0;i<npcs.length;i++){
     const npc=npcs[i],r=rngFor(npc.id||i);
@@ -67,17 +67,19 @@ export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true
     const type=typeof action==='string'?action:String(action?.npcAction||action?.type||'');
     if(!npc||!allowed(npc,type))return null;
     let targetNpc=resolveSelector(npc,type);
+    const supply=type==='collect-supply'?findPickup(npc,{max:55,kind:typeof action==='object'?action.kind||null:null}):null;
     let destination=action?.position&&typeof action.position==='object'?action.position:null;
     if(type==='follow-player'||type==='protect-player'||type==='flee-area'||type==='investigate-nearby')destination=player?.position;
     else if(targetNpc)destination=targetNpc.position;
     else if(type==='patrol-area')destination={x:npc.position.x+Math.cos(serial+npcs.indexOf(npc))*24,z:npc.position.z+Math.sin(serial+npcs.indexOf(npc))*24};
     else if(type==='work-shift')destination=npc.workAnchor;
     else if(type==='errand')destination={x:npc.workAnchor.x+12,z:npc.workAnchor.z-10};
+    else if(type==='collect-supply'&&supply)destination=supply.position;
     else if(type==='socialize'){const other=nearest(npcs,npc,n=>!n.collapse,35);if(other){targetNpc=other;destination=other.position;}}
-    if(!destination&&['help-nearest','calm-nearest','corrupt-nearest','attack-nearest-hostile'].includes(type))return null;
+    if(!destination&&['help-nearest','calm-nearest','corrupt-nearest','attack-nearest-hostile','collect-supply'].includes(type))return null;
     const priority=source==='event'?8:source==='ai'?7:source==='player'?9:3;
     if(npc.goal&&npc.goal.priority>priority&&npc.goal.expiresAt>Date.now())return null;
-    npc.goal={id:'goal-'+(++serial),type,targetNpcId:targetNpc?.id||null,priority,source,phase:'move',startedAt:Date.now(),expiresAt:Date.now()+(type==='follow-player'?45000:18000),performUntil:0};
+    npc.goal={id:'goal-'+(++serial),type,targetNpcId:targetNpc?.id||null,supplyKind:supply?.kind||null,priority,source,phase:'move',startedAt:Date.now(),expiresAt:Date.now()+(type==='follow-player'?45000:18000),performUntil:0};
     npc.actionPose=null;
     npc.decision=type.replace(/-/g,' ');
     if(destination){
@@ -106,6 +108,7 @@ export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true
         if(target){remember(npc,`talked with ${target.name}`);remember(target,`talked with ${npc.name}`);report=`${npc.name} talked with ${target.name}`;}break;
       case'work-shift':remember(npc,`worked a shift as ${npc.occupation}`);report=`${npc.name} worked as ${npc.occupation}`;break;
       case'errand':remember(npc,'ran an errand');report=`${npc.name} finished an errand`;break;
+      case'collect-supply':remember(npc,`went for ${goal.supplyKind||'supplies'}`);report=`${npc.name} reached ${goal.supplyKind||'supplies'}`;break;
       case'flee-area':report=`${npc.name} evacuated the area`;break;
     }
     npc.lastAction={type:goal.type,at:Date.now(),targetNpcId:goal.targetNpcId||null};
@@ -114,6 +117,8 @@ export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true
   }
   function chooseRoutine(npc,now){
     if(npc.goal||now<npc.autonomyCooldown||now<(npc.emotionUntil||0))return;
+    if((npc.health??100)<68&&findPickup(npc,{max:55,kind:'medkit'})){command(npc,{npcAction:'collect-supply',kind:'medkit'},'script');return;}
+    if(npc.faction==='authority'&&!npc.hasWeapon&&findPickup(npc,{max:45,kind:'sidearm'})){command(npc,{npcAction:'collect-supply',kind:'sidearm'},'script');return;}
     if(npc.faction==='authority'){
       const hurt=resolveSelector(npc,'help-nearest');if(hurt){command(npc,'help-nearest','script');return;}
       command(npc,'patrol-area','script');return;
