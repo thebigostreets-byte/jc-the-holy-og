@@ -73,6 +73,14 @@ export function createNpcConversation({panel, log, onOpen = () => {}, onClose = 
     setStatus(greeting ? 'CONNECTING…' : 'THINKING…'); renderHistory();
     if (message) {line('YOU',message); drafts.set(key,message);}
     try {
+      if(message&&!greeting){
+        const local=onWorldAction(null,npc,message);
+        if(typeof local==='string'&&local.trim()){
+          history.push({role:'user',content:message},{role:'assistant',content:local.trim()});
+          conversations.set(key,history.slice(-8));persistConversations();renderHistory();setStatus('ACTING');speakReply(local.trim(),npc);
+          if(input.value.trim()===message)input.value='';drafts.set(key,input.value);return;
+        }
+      }
       const result = await requestNpcDialogue(npc,history,{message,greeting,signal:controller.signal,world:worldContext()});
       if (id !== requestId || active !== npc) return;
       const worldDirection=onWorldAction(result.action||null,npc,message)||null;
