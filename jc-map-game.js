@@ -6,7 +6,7 @@ import {createCinematicLook} from './cinematic-look.js';
 import * as THREE from './three.module.js';
 import {cloneBuildingMaterial} from './map-materials.js';
 
-import {stickAxis, response, advanceChain, advanceGait, advanceLook, setFlightForward} from './jc-control-math.js';
+import {stickAxis, response, advancePedal, advanceChain, advanceGait, advanceLook, setFlightForward} from './jc-control-math.js';
 import {transitionFlight,shouldTouchDown} from './jc-flight-state.js';
 import {createMiracleEffects} from './jc-miracle-effects.js';
 import {loadRearWalk,loadPoseSheet,FLIGHT_CELLS} from './rear-walk.js';
@@ -43,7 +43,7 @@ body.jc-playing #status{display:none}
 #jcHud{display:none;position:fixed;inset:0;z-index:6;pointer-events:none;color:#fff;font:600 14px Arial,sans-serif}
 body.jc-playing #jcHud{display:block}
 #jcStick,#jcLookStick{width:clamp(76px,24vw,104px);height:clamp(76px,24vw,104px);border:2px solid #f9d87899;border-radius:50%;background:#091018c7;box-shadow:inset 0 0 0 1px #ffffff14,0 6px 18px #0008;pointer-events:auto;touch-action:none;overscroll-behavior:none;position:relative;flex-shrink:0}
-#jcLookStick{border-color:#a9dfff88;background:#071520ad}#jcGas{display:none;position:relative;width:clamp(78px,24vw,108px);height:clamp(78px,24vw,108px);border:2px solid #f9d878aa;border-radius:24px;background:linear-gradient(180deg,#2a3138,#10161b);color:#ffe7a8;font:900 15px/1 Arial,sans-serif;letter-spacing:.08em;box-shadow:inset 0 -8px 18px #0008,inset 0 2px 5px #ffffff18,0 8px 20px #0009;pointer-events:auto;touch-action:none;overscroll-behavior:none;user-select:none;-webkit-user-select:none}#jcGas small{display:block;margin-top:5px;font-size:9px;letter-spacing:.04em;color:#d8c89f}#jcGas.pressed{transform:translateY(4px) scale(.97);background:linear-gradient(180deg,#453a24,#17130d);box-shadow:inset 0 7px 14px #000b,0 2px 8px #0008}
+#jcLookStick{border-color:#a9dfff88;background:#071520ad}#jcHud #jcGas{display:none;position:relative;width:clamp(96px,29vw,132px);height:clamp(116px,34vw,148px);padding:12px 10px;border:2px solid #f9d878cc;border-radius:28px;background:linear-gradient(180deg,#343d45,#12181e 58%,#090d11);color:#fff0bd;font:900 18px/1 Arial,sans-serif;letter-spacing:.10em;box-shadow:inset 0 -14px 24px #0009,inset 0 3px 7px #ffffff1f,0 10px 26px #000b;pointer-events:auto;touch-action:none;overscroll-behavior:none;user-select:none;-webkit-user-select:none;transform-origin:50% 100%;transition:transform .06s ease,background .08s ease,box-shadow .08s ease}#jcGas span{font-size:22px;text-shadow:0 2px 5px #000}#jcGas b{display:block;position:relative;width:76%;height:10px;margin:11px auto 4px;border-radius:999px;overflow:hidden;background:#050709;box-shadow:inset 0 1px 4px #000;border:1px solid #ffffff22}#jcGas b i{display:block;width:100%;height:100%;transform:scaleX(0);transform-origin:left center;background:linear-gradient(90deg,#cfa94d,#fff0a8);will-change:transform}#jcGas small{display:block;margin-top:5px;font-size:9px;line-height:1.15;letter-spacing:.04em;color:#d8c89f}#jcHud #jcGas.pressed{transform:translateY(5px) scale(.975);background:linear-gradient(180deg,#554722,#211a0c 58%,#0d0a05);box-shadow:inset 0 10px 18px #000b,0 3px 10px #0009}#jcHud [data-move="b"].pressed{transform:translateY(2px);background:#563220;border-color:#ffb98a}
 #jcStick i,#jcLookStick i{position:absolute;left:32%;top:32%;width:36%;height:36%;border-radius:50%;background:#ffe4a6dd;box-shadow:0 2px 12px #0009;pointer-events:none;will-change:transform;transform:translate3d(0,0,0)}
 #jcLookStick i{background:#a9dfffbb}
 #jcFeedback{position:absolute;top:28%;left:50%;transform:translateX(-50%);background:#091018df;padding:10px 16px;border-bottom:2px solid #f9d878;opacity:0;transition:opacity .15s;text-align:center}
@@ -101,14 +101,14 @@ body.jc-playing #jcHud{display:block}
 #jcPlayReturn{display:none;position:fixed;top:12px;right:12px;z-index:7}
 body:not(.jc-playing) #jcPlayReturn{display:block}
 #jcHud .jc-mini-label{position:absolute;left:20px;top:129px;color:#e5d5aa;font-size:8px;letter-spacing:.14em;text-shadow:0 1px 4px #000}
-@media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{display:block;bottom:calc(env(safe-area-inset-bottom) + 10px);height:clamp(88px,25vw,112px);left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));touch-action:none;overscroll-behavior:none}#jcStick{display:none!important}#jcGas{display:flex;position:absolute!important;left:0;bottom:0;align-items:center;justify-content:center;flex-direction:column}#jcLookStick{position:absolute!important;right:0;bottom:0}#jcHud .jc-hint{display:none}#jcHud .jc-score{font-size:12px}#jcHud .jc-score strong{font-size:15px}#jcHud .jc-ability{top:76px;right:8px;font-size:12px}#jcHud .jc-ability button{min-height:44px}#jcHud .jc-actions{position:absolute!important;right:0;bottom:calc(clamp(76px,24vw,104px) + 10px);width:min(37vw,146px);max-height:42vh;gap:5px}#jcHud .jc-actions button{padding:7px 5px;font-size:12px;min-height:46px}}
+@media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{display:block;bottom:calc(env(safe-area-inset-bottom) + 10px);height:clamp(88px,25vw,112px);left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));touch-action:none;overscroll-behavior:none}#jcStick{display:none!important}#jcHud #jcGas{display:flex;position:absolute!important;left:0;bottom:0;align-items:center;justify-content:center;flex-direction:column}#jcLookStick{position:absolute!important;right:0;bottom:0}#jcHud .jc-hint{display:none}#jcHud .jc-score{font-size:12px}#jcHud .jc-score strong{font-size:15px}#jcHud .jc-ability{top:76px;right:8px;font-size:12px}#jcHud .jc-ability button{min-height:44px}#jcHud .jc-actions{position:absolute!important;right:0;bottom:calc(clamp(76px,24vw,104px) + 10px);width:min(37vw,146px);max-height:42vh;gap:5px}#jcHud .jc-actions button{padding:7px 5px;font-size:12px;min-height:46px}}
 `;
-style.textContent += '@media(max-width:800px){#jcMissionPanel{left:12px!important;top:306px!important;max-width:calc(100vw - 24px)}}#jcHud,#jcHud *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#jcTalk input,#jcTalk textarea{-webkit-user-select:text;user-select:text}#jcHud button,#jcStick,#jcLookStick,#jcGas{touch-action:none}@media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{z-index:12;pointer-events:none}#jcStick,#jcLookStick,#jcHud .jc-actions{position:relative;z-index:13;pointer-events:auto}#jcNpcReadout{pointer-events:none!important;bottom:calc(env(safe-area-inset-bottom) + 230px)!important;max-width:46vw!important}#jcPeople{z-index:8}#jcWorldPrompt{z-index:9}}';
+style.textContent += '@media(max-width:800px){#jcMissionPanel{left:12px!important;top:306px!important;max-width:calc(100vw - 24px)}}#jcHud,#jcHud *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#jcTalk input,#jcTalk textarea{-webkit-user-select:text;user-select:text}#jcHud button,#jcStick,#jcLookStick,#jcGas{touch-action:none}@media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{z-index:12;pointer-events:none}#jcStick,#jcLookStick,#jcGas,#jcHud .jc-actions{position:relative;z-index:13;pointer-events:auto}#jcNpcReadout{pointer-events:none!important;bottom:calc(env(safe-area-inset-bottom) + 230px)!important;max-width:46vw!important}#jcPeople{z-index:8}#jcWorldPrompt{z-index:9}}';
 document.head.append(style);
 
 const hud = document.createElement('div');
 hud.id = 'jcHud';
-hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button><button id="jcSettings" type="button">SETTINGS</button><button id="jcCallCar" type="button">CALL CAR</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcElectric">STORM 0%</span><span id="jcAbilityReady">Ready</span><button id="jcOpenWheel" type="button">OPEN MIRACLE WHEEL</button></div><div class="jc-mini-label">CITY RADAR</div><div id="jcStreetReadout">STREET · LOCATING…</div><div id="jcMinimap" aria-label="Circular minimap with compass"><canvas id="jcMinimapCanvas" width="288" height="288" aria-label="Nearby buildings, people and lights"></canvas><div id="jcCompass"><b>▲</b><span id="jcHeadingReadout">N 000°</span></div></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q cast · Tab miracles · H call car · E enter/exit</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><button id="jcGas" type="button" aria-label="Hold gas pedal to move forward">GAS<small>HOLD TO MOVE</small></button><div id="jcStick" role="group" aria-label="Legacy left joystick"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: steer and look"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button">BRAKE</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">PORTAL</button><button data-action="cast" type="button">CAST MIRACLE</button><button data-action="wheel" type="button">MIRACLE WHEEL · 44 POWERS</button><button data-action="car" type="button">JC CAR</button><button data-action="preset" type="button">PRESET 1</button><button data-action="preset" type="button">PRESET 2</button><button data-action="preset" type="button">PRESET 3</button><button data-action="preset" type="button">PRESET 4</button><button data-action="edit-presets" type="button">EDIT PRESETS</button></div></div></div><div id="jcSettingsPanel" role="dialog" aria-modal="true"><h3>GAME SETTINGS</h3><label for="jcGroqKey">Groq API key for NPC dialogue</label><input id="jcGroqKey" type="password" autocomplete="new-password" placeholder="gsk_…"><p>Held in memory in this tab only; clear it or reload to remove it.</p><span id="jcKeyStatus">Using game key if configured</span><button id="jcTimeToggle" type="button">SWITCH TO NIGHT</button><button id="jcSoundToggle" type="button">MUTE SOUND</button><label for="jcMasterVolume">Master volume</label><input id="jcMasterVolume" type="range" min="0" max="1" step="0.01"><label for="jcMusicVolume">Ambience</label><input id="jcMusicVolume" type="range" min="0" max="1" step="0.01"><label for="jcEffectsVolume">Sound effects</label><input id="jcEffectsVolume" type="range" min="0" max="1" step="0.01"><button id="jcKeyApply" type="button">USE KEY</button><button id="jcKeyClear" type="button">CLEAR KEY</button><button id="jcSettingsClose" type="button">CLOSE</button></div><div id="jcWheel" role="dialog" aria-label="JC miracles" aria-modal="true"><div class="jc-wheel-panel"><div class="jc-wheel-title"><strong>CHOOSE A MIRACLE</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups" role="tablist" aria-label="Miracle category"></div><div class="jc-list" role="group" aria-label="Miracle selection wheel"><div class="jc-wheel-core"><span id="jcWheelFocus">SELECT AN ABILITY</span><strong>44 MIRACLES · 44 POWERS</strong><small id="jcWheelCost">3 CATEGORIES</small><div class="jc-wheel-nav"><button id="jcWheelPrev" type="button" aria-label="Previous miracles">‹</button><button id="jcWheelNext" type="button" aria-label="Next miracles">›</button></div></div></div></div></div>`;
+hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button><button id="jcSettings" type="button">SETTINGS</button><button id="jcCallCar" type="button">CALL CAR</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcElectric">STORM 0%</span><span id="jcAbilityReady">Ready</span><button id="jcOpenWheel" type="button">OPEN MIRACLE WHEEL</button></div><div class="jc-mini-label">CITY RADAR</div><div id="jcStreetReadout">STREET · LOCATING…</div><div id="jcMinimap" aria-label="Circular minimap with compass"><canvas id="jcMinimapCanvas" width="288" height="288" aria-label="Nearby buildings, people and lights"></canvas><div id="jcCompass"><b>▲</b><span id="jcHeadingReadout">N 000°</span></div></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q cast · Tab miracles · H call car · E enter/exit</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><button id="jcGas" type="button" aria-label="Hold gas pedal to move forward" aria-pressed="false"><span>GAS</span><b aria-hidden="true"><i id="jcGasFill"></i></b><small>HOLD TO MOVE</small></button><div id="jcStick" role="group" aria-label="Legacy left joystick"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: steer and look"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button" aria-label="Brake while moving, reverse when stopped">BRAKE / REV</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">PORTAL</button><button data-action="cast" type="button">CAST MIRACLE</button><button data-action="wheel" type="button">MIRACLE WHEEL · 44 POWERS</button><button data-action="car" type="button">JC CAR</button><button data-action="preset" type="button">PRESET 1</button><button data-action="preset" type="button">PRESET 2</button><button data-action="preset" type="button">PRESET 3</button><button data-action="preset" type="button">PRESET 4</button><button data-action="edit-presets" type="button">EDIT PRESETS</button></div></div></div><div id="jcSettingsPanel" role="dialog" aria-modal="true"><h3>GAME SETTINGS</h3><label for="jcGroqKey">Groq API key for NPC dialogue</label><input id="jcGroqKey" type="password" autocomplete="new-password" placeholder="gsk_…"><p>Held in memory in this tab only; clear it or reload to remove it.</p><span id="jcKeyStatus">Using game key if configured</span><button id="jcTimeToggle" type="button">SWITCH TO NIGHT</button><button id="jcSoundToggle" type="button">MUTE SOUND</button><label for="jcMasterVolume">Master volume</label><input id="jcMasterVolume" type="range" min="0" max="1" step="0.01"><label for="jcMusicVolume">Ambience</label><input id="jcMusicVolume" type="range" min="0" max="1" step="0.01"><label for="jcEffectsVolume">Sound effects</label><input id="jcEffectsVolume" type="range" min="0" max="1" step="0.01"><button id="jcKeyApply" type="button">USE KEY</button><button id="jcKeyClear" type="button">CLEAR KEY</button><button id="jcSettingsClose" type="button">CLOSE</button></div><div id="jcWheel" role="dialog" aria-label="JC miracles" aria-modal="true"><div class="jc-wheel-panel"><div class="jc-wheel-title"><strong>CHOOSE A MIRACLE</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups" role="tablist" aria-label="Miracle category"></div><div class="jc-list" role="group" aria-label="Miracle selection wheel"><div class="jc-wheel-core"><span id="jcWheelFocus">SELECT AN ABILITY</span><strong>44 MIRACLES · 44 POWERS</strong><small id="jcWheelCost">3 CATEGORIES</small><div class="jc-wheel-nav"><button id="jcWheelPrev" type="button" aria-label="Previous miracles">‹</button><button id="jcWheelNext" type="button" aria-label="Next miracles">›</button></div></div></div></div></div>`;
 document.body.append(hud);
 style.textContent += '#jcNpcReadout{position:absolute;left:12px;bottom:144px;max-width:min(390px,78vw);padding:7px 10px;background:#091018d9;border-left:2px solid #c4ffee;color:#c4ffee;font-size:11px;letter-spacing:.4px;pointer-events:auto}#jcNpcTalkButton{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 178px);transform:translateX(-50%);display:none;pointer-events:auto;padding:11px 16px;border:1px solid #f1d17e;border-radius:8px;background:#111b2aee;color:#ffe6a4;font-weight:900;box-shadow:0 6px 18px #0009;z-index:2}#jcNpcTalkButton.available{display:block}@media(pointer:fine){#jcNpcTalkButton{display:none!important}}#jcPeople{position:absolute;left:12px;top:48%;z-index:3;pointer-events:auto}#jcPeopleToggle{padding:9px 12px!important;background:#091018eF!important;border:1px solid #f9d878!important;color:#ffe6a4!important}#jcPeoplePanel{display:none;width:min(280px,78vw);max-height:38vh;overflow:auto;margin-top:6px;padding:8px;background:#091018f2;border:1px solid #f9d878;border-radius:8px}#jcPeoplePanel.open{display:block}#jcPeoplePanel button{display:block;width:100%;text-align:left;margin:4px 0;padding:8px!important}#jcPersonMarker{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;pointer-events:none;background:#071018e8;border:1px solid #ffe18c;border-radius:15px;padding:6px 10px;color:#ffe6a4;font-size:13px;text-shadow:0 1px 4px #000;white-space:nowrap;display:none}#jcPersonMarker.visible{display:block}#jcPersonMarker b{font-size:20px;vertical-align:middle;margin-right:5px}';
 const npcReadout=document.createElement('div');npcReadout.id='jcNpcReadout';npcReadout.textContent='CITY FOLKS · OBSERVING';hud.append(npcReadout);
@@ -122,7 +122,7 @@ const personMarker=document.createElement('div');personMarker.id='jcPersonMarker
 let contacts=[];try{contacts=JSON.parse(localStorage.getItem('jc-saved-people-v1')||'[]');if(!Array.isArray(contacts))contacts=[];}catch{contacts=[];}
 let selectedPerson=null;
 const settingsPanel=hud.querySelector('#jcSettingsPanel');
-hud.querySelector('#jcSettings').onclick=()=>settingsPanel.classList.add('open');
+hud.querySelector('#jcSettings').onclick=()=>{resetInput();settingsPanel.classList.add('open');};
 hud.querySelector('#jcSettingsClose').onclick=()=>settingsPanel.classList.remove('open');
 const soundToggle=hud.querySelector('#jcSoundToggle'),soundSettings=jcAudio.getSettings();
 for(const [key,id] of [['master','jcMasterVolume'],['music','jcMusicVolume'],['effects','jcEffectsVolume']]){const input=hud.querySelector('#'+id);input.value=String(soundSettings[key]);input.oninput=()=>jcAudio.set(key,input.value);}
@@ -168,7 +168,7 @@ function observeNpcPlayer(){
  npcSystem.observePlayer({state,appearance});
 }
 function renderPeople(){const panel=hud.querySelector('#jcPeoplePanel');hud.querySelector('#jcPeopleToggle').textContent=`CONTACTS · ${contacts.length}`;panel.replaceChildren();if(!contacts.length){const p=document.createElement('p');p.textContent='Tap a person in the city to talk and save them here.';p.className='jc-hint';panel.append(p);return;}for(const contact of contacts){const row=document.createElement('button');row.type='button';row.textContent=`${String(contact.id)===String(selectedPerson?.contactId)?'✦ ':''}${contact.name} · ${contact.faction}`;const memories=npcSystem?.memorySummary(contact.id)||[];if(memories.length){const detail=document.createElement('small');detail.style.cssText='display:block;font-size:10px;color:#d8c8a0';detail.textContent='REMEMBERS · '+memories.at(-1);row.append(detail);}row.addEventListener('click',()=>{const npc=npcSystem?.npcs.find(n=>String(n.contactId)===String(contact.id))||contact;selectedPerson=npc;openNpcTalk(npc);});panel.append(row);}}
-function openNpcTalk(npc=nearNpc){if(npc&&playing){observeNpcPlayer();persistContact(npc);livingWorld?.onNpcInteraction(npc);selectedPerson=npc;renderPeople();conversation.open(npc);}}
+function openNpcTalk(npc=nearNpc){if(npc&&playing){resetInput();observeNpcPlayer();persistContact(npc);livingWorld?.onNpcInteraction(npc);selectedPerson=npc;renderPeople();conversation.open(npc);}}
 function pickPerson(clientX,clientY){if(!npcSystem||!game?.camera||!game?.renderer)return null;const rect=game.renderer.domElement.getBoundingClientRect(),limit=matchMedia('(pointer:coarse)').matches?48:34;let best=null,bestScore=Infinity;game.camera.updateMatrixWorld();for(const npc of npcSystem.npcs){if(!npc.sprite||npc.collapse)continue;const distance=npc.position.distanceTo(player.position);if(distance>180)continue;const point=npc.position.clone().add(new THREE.Vector3(0,.9,0)).project(game.camera);if(point.z< -1||point.z>1)continue;const x=rect.left+(point.x+1)*rect.width/2,y=rect.top+(1-point.y)*rect.height/2,screenDistance=Math.hypot(x-clientX,y-clientY);if(screenDistance>limit)continue;const score=screenDistance+distance*.035;if(score<bestScore){best=npc;bestScore=score;}}return best;}
 hud.querySelector('#jcPeopleToggle').addEventListener('click',()=>hud.querySelector('#jcPeoplePanel').classList.toggle('open'));
 renderPeople();
@@ -357,7 +357,7 @@ const coarseDevice = matchMedia('(pointer:coarse), (max-width:800px)').matches |
 const maximumDpr = coarseDevice ? .9 : Math.min(1.25, devicePixelRatio || 1);
 let adaptiveDpr = Math.min(maximumDpr, coarseDevice ? .75 : 1);
 let dashCooldown = 0, pulseCooldown = 0, lastTiles = -1, dragging = false;
-let pointerX = 0, pointerY = 0, lookPointer = null, stickPointer = null, lookStickPointer = null, stickTouchIdentifier = null, lookStickTouchIdentifier = null, gasHeld = false;
+let pointerX = 0, pointerY = 0, lookPointer = null, stickPointer = null, lookStickPointer = null, stickTouchIdentifier = null, lookStickTouchIdentifier = null, gasHeld = false, gasPointerId = null, brakeHeld = false, brakePointerId = null, throttle = 0, throttleTarget = 0;
 const analog = {x:0,y:0}, touchStick = {x:0,y:0}, touchLookStick = {x:0,y:0};
 let lockedSoul = null, lockedBuilding = null, teleportAim = false, teleportTarget = null, teleportMarker = null, feedbackUntil = 0, nextHud = 0, runTime = 0, runActive = false, runFinished = false;
 let chain = {count:0,last:0,points:0}, personalBest = 0;
@@ -423,7 +423,7 @@ function chooseTeleportPoint(clientX,clientY){
   teleportMarker.rotation.x=-Math.PI/2;teleportMarker.position.set(teleportTarget.x,groundAt(teleportTarget.x,teleportTarget.z)+.14,teleportTarget.z);game.scene.add(teleportMarker);
   teleportAim=false;feedback(selectedBuilding&&hits.length?`BUILDING DESTINATION · ${selectedBuilding.userData.identity?.name||selectedBuilding.userData.buildingId} · CAST TELEPORT`:'DESTINATION LOCKED · click TELEPORT again or press T');
 }
-function resetInput(){keys.clear();padKeys.clear();analog.x=analog.y=touchStick.x=touchStick.y=touchLookStick.x=touchLookStick.y=0;gasHeld=false;hud.querySelector('#jcGas')?.classList.remove('pressed');dragging=false;lookPointer=null;stickPointer=lookStickPointer=null;stickTouchIdentifier=lookStickTouchIdentifier=null;hud.querySelector('#jcStick i').style.transform='';hud.querySelector('#jcLookStick i').style.transform='';}
+function resetInput(){keys.clear();padKeys.clear();analog.x=analog.y=touchStick.x=touchStick.y=touchLookStick.x=touchLookStick.y=0;gasHeld=brakeHeld=false;gasPointerId=brakePointerId=null;throttle=throttleTarget=0;const gas=hud.querySelector('#jcGas');gas?.classList.remove('pressed');gas?.setAttribute('aria-pressed','false');const fill=hud.querySelector('#jcGasFill');if(fill)fill.style.transform='scaleX(0)';hud.querySelector('[data-move="b"]')?.classList.remove('pressed');dragging=false;lookPointer=null;stickPointer=lookStickPointer=null;stickTouchIdentifier=lookStickTouchIdentifier=null;hud.querySelector('#jcStick i').style.transform='';hud.querySelector('#jcLookStick i').style.transform='';}
 function toggleWheel(){
   const opening=!wheel.classList.contains('open');
   if(opening){const catalog=activeMiracles();if(!catalog.some(a=>a.id===selectedAbility))setActiveMiracle(catalog[0].id);const selected=catalog.find(ability=>ability.id===selectedAbility);selectedGroup=selected?.group||'Travel';const groupItems=catalog.filter(ability=>ability.group===selectedGroup),index=groupItems.findIndex(ability=>ability.id===selectedAbility);wheelPage=Math.max(0,Math.floor(index/8));wheelFocusId=selectedAbility;renderWheel();}
@@ -1102,7 +1102,7 @@ playReturn.onclick = () => setMode(true);
 function frameStep(now) {
   miracleEffects?.update(now);
   craterSystem?.update(now);
-  if (conversation.isOpen) {window.JC_WORLD_SCALE=0;last=now;return;}
+  if (conversation.isOpen) {if(gasHeld||brakeHeld||Math.abs(throttle)>.001)resetInput();window.JC_WORLD_SCALE=0;last=now;return;}
   const elapsed = Math.max(0, now - last);
   const dt = Math.min(.045, elapsed / 1000);
   last = now;
@@ -1138,7 +1138,7 @@ function frameStep(now) {
   }else{padKeys.clear();gamepadButtons=[];}
   if(wheel.classList.contains('open')){window.JC_WORLD_SCALE=0;velocity.set(0,0,0);return;}
   const worldScale=now<stasisUntil?0:now<timeScaleUntil?.22:1;window.JC_WORLD_SCALE=worldScale;const worldDt=dt*worldScale;worldClock+=worldDt*1000;
-  const look=advanceLook(yaw,viewPitch,lookX,lookY,dt);
+  const steerAssist=coarseDevice&&(gasHeld||brakeHeld||drivingCar)?1.18:1;const look=advanceLook(yaw,viewPitch,THREE.MathUtils.clamp(lookX*steerAssist,-1,1),lookY,dt);
   yaw=look.yaw;viewPitch=look.pitch;
   if(runActive)runTime+=elapsed/1000;
   dashCooldown = Math.max(0, dashCooldown - dt);
@@ -1147,24 +1147,30 @@ function frameStep(now) {
   setFlightForward(flightForward,yaw,viewPitch);
   right.set(Math.cos(yaw), 0, Math.sin(yaw));
   const travelForward=flying?flightForward:forward;
+  const horizontalMotion=Math.hypot(velocity.x,velocity.z);
+  const mobileReverse=coarseDevice&&brakeHeld&&!flying&&!gasHeld&&horizontalMotion<1.1;
+  const braking=keys.has('b')||padKeys.has('b')||(coarseDevice&&brakeHeld&&!mobileReverse);
+  const reverseThrottle=drivingCar?-.42:-.58;
+  throttleTarget=coarseDevice?(braking?0:gasHeld?1:mobileReverse?reverseThrottle:0):0;
+  throttle=advancePedal(throttle,throttleTarget,dt);
   desired.set(0, 0, 0);
-  if (keys.has('w') || padKeys.has('w') || keys.has('ArrowUp') || gasHeld) desired.add(travelForward);
+  if (keys.has('w') || padKeys.has('w') || keys.has('ArrowUp')) desired.add(travelForward);
   if (keys.has('s') || padKeys.has('s') || keys.has('ArrowDown')) desired.sub(travelForward);
   if (keys.has('d') || padKeys.has('d') || keys.has('ArrowRight')) desired.add(right);
   if (keys.has('a') || padKeys.has('a') || keys.has('ArrowLeft')) desired.sub(right);
+  if(coarseDevice&&Math.abs(throttle)>.006)desired.addScaledVector(travelForward,throttle);
   desired.addScaledVector(travelForward,-analog.y).addScaledVector(right,analog.x);
   const riseHeld=keys.has('e')||keys.has('Space')||padKeys.has('Space');
   const dropHeld=keys.has('c')||keys.has('Control')||padKeys.has('Control');
   if(flying){if(riseHeld)desired.y+=1;if(dropHeld)desired.y-=1;}else desired.y=0;
   if (desired.lengthSq()>1) desired.normalize();
   if(!runActive&&!runFinished&&(desired.lengthSq()>.02||flightHeight>0)){runActive=true;}
-  const braking=keys.has('b')||padKeys.has('b');
   const sprint = !flying && (keys.has('Shift')||padKeys.has('Shift')) && grace > 0 && desired.lengthSq() > 0;
-  const boost = hypersonic && flying && grace > 0 && !braking;
+  const boost = hypersonic && flying && grace > 0 && !braking && (!coarseDevice||gasHeld||Math.abs(throttle)>.05);
   window.JC_HYPERFLIGHT=boost;
   grace = THREE.MathUtils.clamp(grace + (boost ? -3 : sprint ? -20 : now < graceSurgeUntil ? 24 : now < sanctuaryUntil ? 19 : now < shieldUntil ? 17 : 12) * dt, 0, 100);
   if (boost && grace <= 0) hypersonic=false;
-  if(boost&&desired.lengthSq()<.01)desired.copy(flightForward);
+  if(boost&&desired.lengthSq()<.01&&!coarseDevice)desired.copy(flightForward);
   const speed=(diving?52:boost?1800:flying?95:sprint?11:5.4)*(now<timeScaleUntil?1.5:1),activeSpeed=drivingCar?(desired.lengthSq()>.02?30:0):speed;
   // Fast action-game steering: immediate on foot, responsive in cruise, and capable of hard turns at hyperflight speed.
   const steering = braking?52:desired.lengthSq()<.01?(flying?18:34):flying?(boost?60:46):48;
@@ -1241,7 +1247,7 @@ function frameStep(now) {
     feedbackLabel.style.opacity=now<feedbackUntil?'1':'0';
     const ability=abilities.find(a=>a.id===selectedAbility),remaining=Math.max(0,((cooldowns.get(selectedAbility)||0)-now)/1000);
     hud.querySelector('#jcAbilityReady').textContent=remaining?`Recharging ${remaining.toFixed(1)}s`:grace<ability.cost?`Need ${ability.cost} grace`:`Ready · ${ability.cost} grace`;
-    flightLabel.textContent=`${Math.round(velocity.length()*3.6)} km/h · ${Math.round(flightHeight)} m${braking?' · BRAKING':''}`;
+    flightLabel.textContent=`${Math.round(velocity.length()*3.6)} km/h · ${Math.round(flightHeight)} m${braking?' · BRAKING':mobileReverse?' · REVERSE':''}`;const gasFill=hud.querySelector('#jcGasFill');if(gasFill)gasFill.style.transform=`scaleX(${Math.min(1,Math.abs(throttle)).toFixed(3)})`;
     runLabel.textContent=runFinished?`${runTime.toFixed(1)}s · ${chain.points} pts · Best ${personalBest.toFixed(1)}s`:`${runTime.toFixed(1)}s · ${chain.points} pts${personalBest?' · Best '+personalBest.toFixed(1)+'s':''}`;
     const target=lockedSoul||souls.filter(s=>!s.userData.collected).sort((a,b)=>a.position.distanceToSquared(player.position)-b.position.distanceToSquared(player.position))[0];
     if(target){
@@ -1439,23 +1445,46 @@ const group = game.loaded.get('C15_R14');
     viewPitch=THREE.MathUtils.clamp(viewPitch-(e.clientY-pointerY)*(coarseDevice?.0048:.0036),-.72,.72);
     pointerX = e.clientX;pointerY = e.clientY;
   });
+  const brakeButton=hud.querySelector('[data-move="b"]');
   hud.querySelectorAll('[data-move]').forEach(button => {
     const key = button.dataset.move;
-    button.addEventListener('pointerdown', e => {e.preventDefault();button.setPointerCapture(e.pointerId);keys.add(key);});
-    for (const type of ['pointerup','pointercancel','lostpointercapture']) button.addEventListener(type, () => keys.delete(key));
+    button.addEventListener('pointerdown', e => {
+      if(!playing||wheel.classList.contains('open'))return;
+      e.preventDefault();e.stopPropagation();
+      if(key==='b'&&coarseDevice){
+        if(brakePointerId!=null&&brakePointerId!==e.pointerId)return;
+        brakePointerId=e.pointerId;brakeHeld=true;button.classList.add('pressed');
+        try{button.setPointerCapture(e.pointerId);}catch{}
+        return;
+      }
+      try{button.setPointerCapture(e.pointerId);}catch{}
+      keys.add(key);
+    },{passive:false});
+    for (const type of ['pointerup','pointercancel']) button.addEventListener(type,e=>{
+      if(key==='b'&&coarseDevice){
+        if(e.pointerId!==brakePointerId)return;
+        brakePointerId=null;brakeHeld=false;button.classList.remove('pressed');
+      }else keys.delete(key);
+    },{passive:true});
+    button.addEventListener('lostpointercapture',()=>{if(key!=='b'||!coarseDevice)keys.delete(key);},{passive:true});
   });
   const gas=hud.querySelector('#jcGas');
   if(gas){
-    const releaseGas=()=>{gasHeld=false;gas.classList.remove('pressed');};
     gas.addEventListener('pointerdown',e=>{
       if(!playing||wheel.classList.contains('open'))return;
       e.preventDefault();e.stopPropagation();
-      gasHeld=true;gas.classList.add('pressed');
+      if(gasPointerId!=null&&gasPointerId!==e.pointerId)return;
+      gasPointerId=e.pointerId;gasHeld=true;gas.classList.add('pressed');gas.setAttribute('aria-pressed','true');
       try{gas.setPointerCapture(e.pointerId);}catch{}
     },{passive:false});
-    for(const type of ['pointerup','pointercancel','lostpointercapture'])gas.addEventListener(type,e=>{e.preventDefault?.();releaseGas();},{passive:false});
+    gas.addEventListener('lostpointercapture',()=>{}, {passive:true});
     gas.addEventListener('contextmenu',e=>e.preventDefault());
   }
+  const releasePedalPointer=(pointerId)=>{
+    if(pointerId===gasPointerId){gasPointerId=null;gasHeld=false;gas?.classList.remove('pressed');gas?.setAttribute('aria-pressed','false');}
+    if(pointerId===brakePointerId){brakePointerId=null;brakeHeld=false;brakeButton?.classList.remove('pressed');}
+  };
+  for(const type of ['pointerup','pointercancel'])addEventListener(type,e=>releasePedalPointer(e.pointerId),{passive:true});
   const stick=hud.querySelector('#jcStick'),lookStick=hud.querySelector('#jcLookStick');
   const pointerEventsSupported='PointerEvent' in window;
   function setStickPoint(clientX,clientY,element,state){
@@ -1504,14 +1533,18 @@ const group = game.loaded.get('C15_R14');
       readStick(e,element,state,pointer);
     },{passive:false});
 
-    for(const type of ['pointerup','pointercancel','lostpointercapture']){
-      element.addEventListener(type,e=>{
-        const pointer=isLook?lookStickPointer:stickPointer;
-        if(type==='lostpointercapture'&&e.pointerId!==pointer)return;
-        if(releaseStick(e.pointerId,isLook)){e.stopPropagation();}
-      },{passive:true});
+    for(const type of ['pointerup','pointercancel']){
+      element.addEventListener(type,e=>{if(releaseStick(e.pointerId,isLook))e.stopPropagation();},{passive:true});
     }
+    element.addEventListener('lostpointercapture',()=>{}, {passive:true});
   }
+  addEventListener('pointermove',e=>{
+    let handled=false;
+    if(e.pointerId===stickPointer){readStick(e,stick,touchStick,stickPointer);handled=true;}
+    if(e.pointerId===lookStickPointer){readStick(e,lookStick,touchLookStick,lookStickPointer);handled=true;}
+    if(handled)e.preventDefault();
+  },{passive:false});
+  for(const type of ['pointerup','pointercancel'])addEventListener(type,e=>{releaseStick(e.pointerId,false);releaseStick(e.pointerId,true);},{passive:true});
 
   // Pointer capture is the primary mobile path. Legacy touch events are only a
   // fallback for browsers without Pointer Events; running both causes brief
