@@ -119,7 +119,7 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,on
   }
 
   function update(dt,now=performance.now()) {
-    autonomy?.update(now);
+    if(typeof autonomy!=='undefined')autonomy?.update(now);
     const playerPosition=player.position;
     for(const npc of npcs) {
       if(!npc.sprite)continue;
