@@ -7,7 +7,7 @@ assert.equal(stickAxis(.12),0);assert.equal(stickAxis(-1),-1);assert.ok(stickAxi
 assert.equal(stickAxis(.08,.12),0,'touch stick ignores resting thumb drift');assert.ok(Math.abs(stickAxis(.56,.12)-.5)<1e-9,'touch and gamepad use the same rescaled deadzone');
 const aim=new THREE.Vector3();setFlightForward(aim,0,0);assert.ok(aim.distanceTo(new THREE.Vector3(0,0,-1))<1e-9,'neutral aim flies straight');setFlightForward(aim,Math.PI/2,0);assert.ok(aim.distanceTo(new THREE.Vector3(1,0,0))<1e-9,'yaw steers in every horizontal direction');setFlightForward(aim,0,Math.PI/4);assert.ok(Math.abs(aim.y-Math.SQRT1_2)<1e-9&&Math.abs(aim.length()-1)<1e-9,'pitch steers upward without changing flight speed');
 const lookRight=advanceLook(0,0,1,0,1/60),lookLeft=advanceLook(0,0,-1,0,1/60),lookUp=advanceLook(0,0,0,-1,1/60),lookDown=advanceLook(0,0,0,1,1/60);
-assert.ok(lookRight.yaw>0&&lookLeft.yaw<0,'right stick turns view both ways');assert.ok(lookUp.pitch>0&&lookDown.pitch<0,'right stick aims view up and down');assert.equal(advanceLook(0,.62,0,-1,1).pitch,.62,'look pitch cannot flip camera');
+assert.ok(lookRight.yaw>0&&lookLeft.yaw<0,'right stick turns view both ways');assert.ok(lookUp.pitch>0&&lookDown.pitch<0,'right stick aims view up and down');assert.ok(advanceLook(0,0,1,0,1).yaw>=5.1,'full right stick supports fast action-game turning');assert.equal(advanceLook(0,.72,0,-1,1).pitch,.72,'look pitch cannot flip camera');
 function coast(hz){let velocity=72;for(let i=0;i<hz;i++)velocity+=(0-velocity)*response(12,1/hz);return velocity;}
 assert.ok(Math.abs(coast(30)-coast(120))<1e-9);
 let chain={count:0,last:0,points:0};for(let i=1;i<=8;i++)chain=advanceChain(chain,i*3);
@@ -18,8 +18,8 @@ assert.match(source,/id="jcLookStick" role="group" aria-label="Right joystick/,'
 assert.match(source,/lookX=stickAxis\(touchLookStick\.x,\.12\),lookY=stickAxis\(touchLookStick\.y,\.12\)/,'right stick has independent yaw and pitch axes');
 assert.match(source,/setFlightForward\(flightForward,yaw,viewPitch\)/,'aim pitch controls three-dimensional flight direction');
 assert.match(source,/const look=advanceLook\(yaw,viewPitch,lookX,lookY,dt\)/,'mobile right stick directly steers view direction at a frame-rate-independent rate');
-assert.match(source,/const speed=\(diving\?34:boost\?72:flying\?24:sprint\?9:4\.8\)/,'walking and running use deliberate speeds');
-assert.match(source,/steering = braking\?38:desired\.lengthSq\(\)<\.01\?\(flying\?10:24\):flying\?\(boost\?20:28\):32/,'movement responds quickly without retaining the old soft steering');
+assert.match(source,/const speed=\(diving\?52:boost\?1800:flying\?95:sprint\?11:5\.4\)/,'movement uses tuned ground, flight and hyperflight speeds');
+assert.match(source,/steering = braking\?52:desired\.lengthSq\(\)<\.01\?\(flying\?18:34\):flying\?\(boost\?60:46\):48/,'movement responds quickly with stronger flight and hyperflight steering');
 assert.match(source,/const open=extras\.classList\.toggle\('open'\)/,'small screens can reveal secondary controls on demand');
 const start=source.indexOf('function blockedAt('),end=source.indexOf('\nlet flying',start);
 const player={position:new THREE.Vector3(0,0,0)},velocity=new THREE.Vector3(72,0,0);
