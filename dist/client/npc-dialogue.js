@@ -1,5 +1,33 @@
 const ENDPOINT = '/api/npc-chat';
 let sessionApiKey='';
+
+function stableIndex(value,count){let h=0;for(const c of String(value||''))h=(Math.imul(h,31)+c.charCodeAt(0))>>>0;return count?h%count:0;}
+export function localNpcGreeting(npc={}){
+  const state=String(npc.state||'idle'),faction=String(npc.faction||'civilian'),name=String(npc.name||'there');
+  const urgent=state==='fear'||state==='retreat'?['Something is wrong out here.','Keep your eyes open. Something just happened.','I am trying to get clear of this mess.']:null;
+  const lines=urgent||({
+    authority:['Need something? I am working this area.','Stay alert. What do you need?','I am on duty. Talk to me.'],
+    angel:['Peace. What do you need?','I am listening.','You can speak freely.'],
+    demon:['What do you want?','Make it quick.','You have my attention.'],
+    civilian:['Hey. What is up?','What do you need?','Yeah? I am listening.']
+  }[faction]||['What do you need?']);
+  return lines[stableIndex(name+':'+state,lines.length)];
+}
+export function localNpcReply(npc={},message=''){
+  const text=String(message||'').trim().toLowerCase();if(!text)return null;
+  if(/\b(what(?:'s| is) your name|who are you)\b/.test(text))return `I'm ${npc.name||'a local'}.`;
+  if(/\b(what do you do|what(?:'s| is) your job|where do you work|occupation)\b/.test(text))return `I work as ${npc.occupation||npc.role||'a local'}.`;
+  if(/\b(what are you doing|what(?:'s| is) going on with you|where are you going|what are you up to)\b/.test(text)){
+    const doing=String(npc.decision||npc.state||'watching what is happening').replace(/-/g,' ');
+    return `I'm ${doing}.`;
+  }
+  if(/\b(are you okay|you okay|are you alright|you alright)\b/.test(text)){
+    if(['fear','retreat'].includes(npc.state))return 'Not really. I am trying to get somewhere safe.';
+    if((npc.health??100)<60)return 'I am hurt, but I am still moving.';
+    return 'Yeah. I am okay right now.';
+  }
+  return null;
+}
 export function setNpcApiKey(value){sessionApiKey=String(value||'').trim().slice(0,512);return sessionApiKey.length>0;}
 export function clearNpcApiKey(){sessionApiKey='';}
 
