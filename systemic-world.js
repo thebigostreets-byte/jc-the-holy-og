@@ -146,7 +146,7 @@ export function createSystemicWorld({
       type:template.type,label:template.label,signal:template.signal,severity,
       position:new Vec3(x,y,z),
       startedAt:now,expiresAt:now+template.duration+severity*4500,
-      phase:'active',responded:false,resolvers:[...template.resolvers]
+      phase:'active',responded:false,npcResponses:0,resolvers:[...template.resolvers]
     };
     activeIncidents.push(incident);
     const district=districtAt(incident.position);
@@ -166,6 +166,8 @@ export function createSystemicWorld({
     if(actor==='satan'){
       mutateDistrict(district,{hope:-1-power,corruption:2+power,fear:2+power,crime:1+power,satanInfluence:2+power,jcInfluence:-1});
       reputation({publicReputation:-power,civilianReputation:-power,spiritualInfluence:-power,satanPressure:1+power});
+    }else if(actor==='civic'){
+      mutateDistrict(district,{hope:1+Math.ceil(power/2),fear:-1-power*.5,crime:-Math.max(0,Math.floor(power/2)),prosperity:Math.max(0,power-1)});
     }else{
       mutateDistrict(district,{hope:2+power,corruption:-1-power,fear:-2-power,crime:-Math.ceil(power/2),prosperity:1+power,jcInfluence:2+power,satanInfluence:-1-power});
       reputation({publicReputation:1+power,civilianReputation:2+power,authorityReputation:incident.type==='robbery'||incident.type==='traffic-crash'?1+power:1,criminalFear:1+power,spiritualInfluence:2+power,satanPressure:-Math.max(1,power-1)});
@@ -175,6 +177,35 @@ export function createSystemicWorld({
     record('incident-resolved',incident.position,{incidentType:incident.type,method,actor,district:district.name});
     onStatus(`${incident.label} RESOLVED · ${method.replace(/-/g,' ').toUpperCase()} · ${district.name.toUpperCase()}`);
     return true;
+  }
+
+  function npcResponse(incident,npc){
+    if(!incident||incident.phase!=='active'||!npc)return {handled:false,resolved:false};
+    const faction=String(npc.faction||'civilian');
+    const effective=faction==='authority'
+      ? new Set(['traffic-crash','robbery','crowd-panic','collapse-risk']).has(incident.type)
+      : faction==='angel'
+        ? new Set(['medical','crowd-panic','demon-sighting','structure-fire']).has(incident.type)
+        : faction==='civilian'
+          ? new Set(['medical','crowd-panic','traffic-crash']).has(incident.type)
+          : false;
+    if(faction==='demon'){
+      incident.responded=true;incident.npcResponses=(incident.npcResponses||0)+1;
+      const district=districtAt(incident.position);mutateDistrict(district,{fear:1,corruption:1});
+      record('npc-response',incident.position,{incidentId:incident.id,npcId:npc.id||npc.name,faction,effect:'worsened'});
+      return {handled:true,resolved:false,effect:'worsened'};
+    }
+    if(!effective)return {handled:false,resolved:false};
+    incident.responded=true;incident.npcResponses=(incident.npcResponses||0)+1;
+    incident.severity=Math.max(1,incident.severity-1);
+    incident.expiresAt+=6000;
+    record('npc-response',incident.position,{incidentId:incident.id,npcId:npc.id||npc.name,faction,effect:'stabilized',responses:incident.npcResponses});
+    npcSystem?.signal?.('responder-action',incident.position,28);
+    if(incident.severity<=1&&incident.npcResponses>=2){
+      resolveIncident(incident,'local-responders','civic');
+      return {handled:true,resolved:true,effect:'resolved'};
+    }
+    return {handled:true,resolved:false,effect:'stabilized'};
   }
 
   function failIncident(incident){
@@ -275,7 +306,7 @@ export function createSystemicWorld({
     };
   }
 
-  return {update,onAbility,onDestruction,onRebuild,spawnIncident,resolveIncident,nearestIncident,districtAt,hudLine,snapshot,get state(){return state;},get incidents(){return activeIncidents;}};
+  return {update,onAbility,onDestruction,onRebuild,spawnIncident,resolveIncident,npcResponse,nearestIncident,districtAt,hudLine,snapshot,get state(){return state;},get incidents(){return activeIncidents;}};
 }
 
 export {STORAGE_KEY as SYSTEMIC_WORLD_STORAGE_KEY};

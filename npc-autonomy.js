@@ -28,7 +28,7 @@ function localActionFromText(message=''){
   return null;
 }
 
-export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true,findPickup=()=>null,remember=()=>{},onReport=()=>{}}={}){
+export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true,findPickup=()=>null,findIncident=()=>null,onIncidentResponse=()=>null,remember=()=>{},onReport=()=>{}}={}){
   let lastUpdate=-Infinity,serial=0;
   for(let i=0;i<npcs.length;i++){
     const npc=npcs[i],r=rngFor(npc.id||i);
@@ -68,8 +68,12 @@ export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true
     if(!npc||!allowed(npc,type))return null;
     let targetNpc=resolveSelector(npc,type);
     const supply=type==='collect-supply'?findPickup(npc,{max:55,kind:typeof action==='object'?action.kind||null:null}):null;
-    let destination=action?.position&&typeof action.position==='object'?action.position:null;
-    if(type==='follow-player'||type==='protect-player'||type==='flee-area'||type==='investigate-nearby')destination=player?.position;
+    const requestedPosition=typeof action==='object'&&action?.position&&typeof action.position==='object'?action.position:null;
+    const incidentInfo=type==='investigate-nearby'?(findIncident(requestedPosition||npc.position,55)||findIncident(npc.position,130)):null;
+    let destination=requestedPosition;
+    if(type==='follow-player'||type==='protect-player')destination=player?.position;
+    else if(type==='flee-area')destination=requestedPosition||player?.position;
+    else if(type==='investigate-nearby')destination=requestedPosition||incidentInfo?.incident?.position||player?.position;
     else if(targetNpc)destination=targetNpc.position;
     else if(type==='patrol-area')destination={x:npc.position.x+Math.cos(serial+npcs.indexOf(npc))*24,z:npc.position.z+Math.sin(serial+npcs.indexOf(npc))*24};
     else if(type==='work-shift')destination=npc.workAnchor;
@@ -79,7 +83,7 @@ export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true
     if(!destination&&['help-nearest','calm-nearest','corrupt-nearest','attack-nearest-hostile','collect-supply'].includes(type))return null;
     const priority=source==='event'?8:source==='ai'?7:source==='player'?9:3;
     if(npc.goal&&npc.goal.priority>priority&&npc.goal.expiresAt>Date.now())return null;
-    npc.goal={id:'goal-'+(++serial),type,targetNpcId:targetNpc?.id||null,supplyKind:supply?.kind||null,priority,source,phase:'move',startedAt:Date.now(),expiresAt:Date.now()+(type==='follow-player'?45000:18000),performUntil:0};
+    npc.goal={id:'goal-'+(++serial),type,targetNpcId:targetNpc?.id||null,supplyKind:supply?.kind||null,incidentId:incidentInfo?.incident?.id||null,priority,source,phase:'move',startedAt:Date.now(),expiresAt:Date.now()+(type==='follow-player'?45000:18000),performUntil:0};
     npc.actionPose=null;
     npc.decision=type.replace(/-/g,' ');
     if(destination){
@@ -102,7 +106,12 @@ export function createNpcAutonomy({npcs=[],player,groundAt=()=>0,isSafe=()=>true
       case'attack-nearest-hostile':
         if(target){target.health=Math.max(0,(target.health??100)-24);target.state='fear';target.emotionUntil=now+3000;if(target.health<=0)target.collapse=true;remember(npc,`fought ${target.name}`);report=`${npc.name} fought ${target.name}`;}break;
       case'protect-player':npc.protectingPlayerUntil=now+9000;report=`${npc.name} is protecting JC`;break;
-      case'investigate-nearby':remember(npc,'investigated a disturbance');report=`${npc.name} investigated the disturbance`;break;
+      case'investigate-nearby':{
+        const response=onIncidentResponse(npc,goal.incidentId);
+        remember(npc,response?.resolved?'helped resolve an incident':'investigated a disturbance');
+        report=response?.resolved?`${npc.name} helped resolve the incident`:response?.handled?`${npc.name} stabilized the incident`:`${npc.name} investigated the disturbance`;
+        break;
+      }
       case'patrol-area':report=`${npc.name} completed a patrol`;break;
       case'socialize':
         if(target){remember(npc,`talked with ${target.name}`);remember(target,`talked with ${npc.name}`);report=`${npc.name} talked with ${target.name}`;}break;

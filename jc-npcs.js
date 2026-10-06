@@ -20,12 +20,13 @@ function chooseOpen(x,z,isSafe) {
   return [x,z];
 }
 
-export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,findPickup=()=>null,onReport,count=8,crowdCount=500,mobile=false,camera=null}) {
+export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,findPickup=()=>null,findIncident=()=>null,onIncidentResponse=()=>null,onReport,count=8,crowdCount=500,mobile=false,camera=null}) {
   const root=new THREE.Group();root.name='JC responsive NPC crowd';scene.add(root);
   root.visible=false;
   const npcs=[];
   const memoryStore=createNpcMemoryStore();
-  const size=Math.max(6,Math.min(16,Math.round(count||8)));
+  const detailedCap=mobile?12:24;
+  const size=Math.max(6,Math.min(detailedCap,Math.round(count||8)));
   let trackedId=null;
   const crowd=createAmbientCrowd({scene,player,camera,groundAt,isSafe,count:crowdCount,mobile});
   let lastReport=0,autonomy=null;
@@ -58,7 +59,7 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,fi
     root.add(sprite);npc.sprite=sprite;
   }
 
-  autonomy=createNpcAutonomy({npcs,player,groundAt,isSafe,findPickup,remember:(npc,text)=>{memoryStore.remember(npc,{key:`action:${String(text).slice(0,80)}:${Math.floor(Date.now()/5000)}`,kind:'action',text:String(text).slice(0,220),at:Date.now()});refreshMemory(npc);},onReport:text=>onReport?.(text)});
+  autonomy=createNpcAutonomy({npcs,player,groundAt,isSafe,findPickup,findIncident,onIncidentResponse,remember:(npc,text)=>{memoryStore.remember(npc,{key:`action:${String(text).slice(0,80)}:${Math.floor(Date.now()/5000)}`,kind:'action',text:String(text).slice(0,220),at:Date.now()});refreshMemory(npc);},onReport:text=>onReport?.(text)});
 
   const eventWitnessText={flight:'saw JC take flight above the street',hypersonic:'saw JC streak through the sky at hypersonic speed',hover:'saw JC hover above the street',glide:'saw JC glide over the city','sky-lift':'saw JC rise into the air',leap:'saw JC leap high above the ground',teleport:'saw JC vanish and reappear nearby','phase-step':'saw JC pass through an obstacle','beam-down':'saw JC descend in a flash of light',rain:'saw JC call rain over the street',lightning:'saw lightning strike near JC',heal:'saw JC heal someone nearby',bless:'saw JC bless someone nearby',shield:'saw JC shield people nearby',cleanse:'saw JC cleanse the area',sunrise:'saw a wave of light spread from JC',sanctuary:'saw JC create a place of safety','redemption-wave':'saw JC send a bright wave through the street',rebuild:'saw JC repair the surroundings','dive-impact':'saw JC dive hard into the street','traffic-impact':'saw a traffic collision nearby'};
   function refreshMemory(npc){npc.lifeMemory=memoryStore.get(npc.id);return npc.lifeMemory;}
@@ -125,21 +126,24 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,fi
     for(const npc of npcs) {
       if(!npc.sprite)continue;
       let distance=npc.position.distanceTo(playerPosition);
-      if(distance>180&&npc.id!==trackedId&&now>npc.emotionUntil&&now>npc.nextWander){
+      if(!npc.goal&&distance>180&&npc.id!==trackedId&&now>npc.emotionUntil&&now>npc.nextWander){
         const i=npcs.indexOf(npc),angle=i*2.3999632297,radius=18+(i%4)*11;
         const [x,z]=chooseOpen(playerPosition.x+Math.cos(angle)*radius,playerPosition.z+Math.sin(angle)*radius,isSafe);
         npc.position.set(x,groundAt(x,z)+1.55,z);npc.target.copy(npc.position);npc.event=null;npc.state='idle';npc.nextWander=now+1800;distance=npc.position.distanceTo(playerPosition);
       }
-      if(npc.faction==='demon'&&distance<48&&now>npc.emotionUntil) {
+      if(!npc.goal&&npc.faction==='demon'&&distance<48&&now>npc.emotionUntil) {
         npc.state='retreat';npc.event={type:'JC-nearby',position:playerPosition.clone(),time:now};npc.emotionUntil=now+3500;setDestination(npc,playerPosition,38);
       }
-      if(npc.faction==='angel'&&distance<60&&now>npc.emotionUntil) {
+      if(!npc.goal&&npc.faction==='angel'&&distance<60&&now>npc.emotionUntil) {
         npc.state='awe';npc.event={type:'JC-nearby',position:playerPosition.clone(),time:now};npc.emotionUntil=now+2600;setDestination(npc,playerPosition,Math.max(12,Math.min(26,distance*.55)));
       }
       if(npc.event&&now<npc.emotionUntil) {
         // The event target is chosen once in signal(); per-frame work stays light.
+      } else if(npc.goal) {
+        // Autonomous goals own the destination until the task completes.
+        npc.event=null;
       } else {
-        if(npc.actionPose&&!npc.goal&&now>npc.emotionUntil)npc.actionPose=null;
+        if(npc.actionPose&&now>npc.emotionUntil)npc.actionPose=null;
         npc.event=null;
         if(now>npc.nextWander||npc.position.distanceTo(npc.target)<1.5) {
           const angle=Math.random()*Math.PI*2,range=5+Math.random()*13;
