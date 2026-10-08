@@ -13,11 +13,11 @@
 <div id="renderOverlay" style="position:fixed;inset:0;background:#091018f5;z-index:30;display:none;align-items:center;justify-content:center;flex-direction:column;padding:18px"><button id="closeRender" style="position:absolute;right:18px;top:18px">Close</button><p>Actual model render · all 1,225 tiles · no geometry sampling</p><img loading="lazy" id="fullCityProof" style="max-width:96%;max-height:87%;object-fit:contain" alt="Complete connected Las Vegas model rendered from all source geometry"></div>
 <script src="./map-startup.js?v=gas-pro-20261006h"></script>
 <script type="module">
-if (!window.jcCanOpenGraphics?.()) {
-  window.jcOpenLiteFallback?.('WebGL unavailable — launching Canvas 2D play mode');
-} else {
+try {
   await import('./map-engine.js?v=masked-cutouts-20261008a');
   await import('./jc-map-game.js?v=gas-pro-20261006h');
   await import('./building-textures.js?v=gas-pro-20261006h');
+} catch (error) {
+  window.jcLoadingRecovery?.(error?.message || 'The 3D game could not start. Please retry.');
 }
 </script></body></html>
