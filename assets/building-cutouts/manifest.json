@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "kind": "fictional-vegas-resort-photo-cutouts",
+  "source": {
+    "type": "generated-original-art",
+    "provider": "OpenAI Image Generation",
+    "license": "unverified"
+  },
+  "placement": {
+    "role": "far-distance single-view cutout LOD",
+    "nearGeometry": "preserved-source-GLB",
+    "groundAndCollision": "preserved-source-GLB",
+    "view": "south-east three-quarter",
+    "showDistanceMetres": 420,
+    "maxSimultaneous": { "mobile": 1, "desktop": 2 }
+  },
+  "assets": [
+    {
+      "asset_id": "cutout_blood_bay_v1",
+      "name": "Blood Bay",
+      "source_site_alias": "Mandalay Bay",
+      "path": "assets/building-cutouts/blood-bay-v1.webp",
+      "dimensions_px": [384, 256],
+      "alpha_mask": true,
+      "notes": "Original red-and-black fictional resort cutout; no readable lettering."
+    },
+    {
+      "asset_id": "cutout_obsidian_pyramid_v1",
+      "name": "Obsidian Pyramid",
+      "source_site_alias": "Luxor",
+      "path": "assets/building-cutouts/obsidian-pyramid-v1.webp",
+      "dimensions_px": [384, 256],
+      "alpha_mask": true,
+      "notes": "Original dark pyramid resort cutout with red apex lighting; no readable lettering."
+    }
+  ],
+  "validation": {
+    "alpha_channel": "verified",
+    "github_pages_runtime": "pending",
+    "webgl_visual_check": "not-verified"
+  }
+}

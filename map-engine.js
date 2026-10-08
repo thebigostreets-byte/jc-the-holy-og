@@ -10,6 +10,7 @@ import {loadPhysicalMaterials,buildingSurface,wallUV} from './physical-building-
 import * as THREE from './three.module.js';
 import { OrbitControls } from './map-controls.js';
 import {createBuildingImpostors} from './building-impostors.js';
+import {createPhotoCutoutLod} from './photo-cutout-lod.js';
 import {decodeGlbAttribute} from './ground-sampling.js';
 import {predictTravel,createPrefetchCache,corridorPoints} from './predictive-streaming.js?v=3d-20261003';
 import {createPhotorealDetailMaps,applyPhotorealMaterial} from './photorealism-pbr.js';
@@ -213,11 +214,11 @@ $('goGeo').onclick=()=>{try{const a=$('geo').value.trim().split(/[,\s]+/).map(Nu
 $('map').src=payload.resources['assets/overview.jpg'];$('map').onclick=e=>{const r=e.target.getBoundingClientRect(),c=Math.min(34,Math.max(0,Math.floor((e.clientX-r.left)/r.width*35))),y=Math.min(34,Math.max(0,34-Math.floor((e.clientY-r.top)/r.height*35)));loadArea(`C${String(c).padStart(2,'0')}_R${String(y).padStart(2,'0')}`);};
 $('openFolder').onclick=()=>$('folder').click();$('folder').onchange=connectFolder;
 const REAL_STRIP_LANDMARKS=[
- {name:'Mandalay Bay',type:'casino',longitude:-115.1753,latitude:36.0919,radius:260,maxBuildings:5,roughness:.36,glow:.18},
- {name:'Luxor',type:'casino',longitude:-115.1761,latitude:36.0955,radius:230,maxBuildings:5,roughness:.34,glow:.22},
+ {name:'Blood Bay',type:'casino',longitude:-115.1753,latitude:36.0919,radius:260,maxBuildings:5,roughness:.36,glow:.18},
+ {name:'Obsidian Pyramid',type:'casino',longitude:-115.1761,latitude:36.0955,radius:230,maxBuildings:5,roughness:.34,glow:.22},
  {name:'Excalibur',type:'casino',longitude:-115.1756,latitude:36.0987,radius:220,maxBuildings:5,roughness:.82,glow:.16},
  {name:'New York-New York',type:'casino',longitude:-115.1745,latitude:36.1022,radius:200,maxBuildings:7,roughness:.74,glow:.2},
- {name:'MGM Grand',type:'casino',longitude:-115.1697,latitude:36.1025,radius:240,maxBuildings:7,roughness:.38,glow:.22},
+ {name:'666',type:'casino',longitude:-115.1697,latitude:36.1025,radius:240,maxBuildings:7,roughness:.38,glow:.22},
  {name:'T-Mobile Arena',type:'arena',longitude:-115.1783,latitude:36.1029,radius:190,maxBuildings:3,roughness:.4,glow:0},
  {name:'Aria Resort',type:'casino',longitude:-115.1761,latitude:36.1074,radius:220,maxBuildings:7,roughness:.32,glow:.2},
  {name:'The Cosmopolitan',type:'casino',longitude:-115.1761,latitude:36.1097,radius:190,maxBuildings:6,roughness:.32,glow:.24},
@@ -234,7 +235,7 @@ const REAL_STRIP_LANDMARKS=[
  {name:'Resorts World',type:'casino',longitude:-115.1677,latitude:36.1354,radius:260,maxBuildings:8,roughness:.42,glow:.24},
  {name:'Circus Circus',type:'casino',longitude:-115.1665,latitude:36.1379,radius:230,maxBuildings:7,roughness:.74,glow:.2},
  {name:'The STRAT',type:'casino',longitude:-115.1554,latitude:36.1475,radius:200,maxBuildings:5,roughness:.38,glow:.24},
- {name:'Palms',type:'casino',longitude:-115.1982,latitude:36.1155,radius:240,maxBuildings:6,roughness:.4,glow:.2},
+ {name:'Psalms',type:'casino',longitude:-115.1982,latitude:36.1155,radius:240,maxBuildings:6,roughness:.4,glow:.2},
  {name:'Allegiant Stadium',type:'stadium',longitude:-115.183952,latitude:36.090794,radius:320,maxBuildings:4,roughness:.38,glow:0}
 ];
 function geoDistanceMetres(lon,lat,target){const y=(lat-target.latitude)*111320,x=(lon-target.longitude)*111320*Math.cos(lat*Math.PI/180);return Math.hypot(x,y);}
@@ -277,13 +278,14 @@ async function importEdits(obj){
 }
 $('save').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(exportEdits(),null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='Vegas_Building_Edits.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);};$('loadEdits').onclick=()=>$('editsFile').click();$('editsFile').onchange=async e=>{try{await importEdits(JSON.parse(await e.target.files[0].text()));}catch(err){status(err.message);}};
 function resize(){const r=$('viewport').getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}new ResizeObserver(resize).observe($('viewport'));resize();if(mobileMap) $('streamRange').value='0';
-function animate(t){requestAnimationFrame(animate);const dt=Math.min((t-last)/1000,.04);last=t;if(!window.studio?.paused){tick(dt*Math.max(0,Math.min(1,window.JC_WORLD_SCALE??1)));streamingTick(t,dt);}if(!window.JC_MAP_PLAYING)controls.update();window.studio?.distantCity?.update();window.studio?.environment?.update(t,dt);window.studio?.traffic?.update(dt);window.studio?.buildingViews?.update(t,dt,document.body.classList.contains('jc-playing'));if(!mobileMap||!startInPlay||window.JC_PLAYER_READY){if(window.studio?.renderFrame)window.studio.renderFrame();else renderer.render(scene,camera);}}requestAnimationFrame(animate);
+function animate(t){requestAnimationFrame(animate);const dt=Math.min((t-last)/1000,.04);last=t;if(!window.studio?.paused){tick(dt*Math.max(0,Math.min(1,window.JC_WORLD_SCALE??1)));streamingTick(t,dt);}if(!window.JC_MAP_PLAYING)controls.update();window.studio?.distantCity?.update();window.studio?.environment?.update(t,dt);window.studio?.traffic?.update(dt);window.studio?.buildingViews?.update(t,dt,document.body.classList.contains('jc-playing'));window.studio?.photoCutouts?.update(t,dt,document.body.classList.contains('jc-playing'));if(!mobileMap||!startInPlay||window.JC_PLAYER_READY){if(window.studio?.renderFrame)window.studio.renderFrame();else renderer.render(scene,camera);}}requestAnimationFrame(animate);
 window.studio={sections,cityBounds:base,mobileMap,lowSpec,stable3D,deviceMemory,scene,camera,renderer,controls,buildings,chunks,edits,loaded,origin,centerSection,ensureContext,streamingTick,streamInfo:()=>({enabled:streamEnabled,radius:streamRadius,loading,current,lastWanted,context:!!contextGround,availableFiles:files.size,lowSpec,stable3D,deviceMemory}),tileRevision:()=>tileRevision,prefetchInfo:()=>prefetchedBytes.stats(),loadArea,select,focus,view,destroy,rebuild,updateEdit,exportEdits,importEdits,applyRealStripPreset,tick,stats:()=>({buildings:buildings.size,tiles:loaded.size,visibleTiles:[...loaded.values()].filter(g=>g.visible).length,chunks:particles.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),proof:()=>{document.body.classList.add('proof');resize();}};
 window.studio.roads=createRoadNetwork(window.studio);
 window.studio.traffic=createCityTraffic(window.studio);
 window.studio.distantCity=createDistantCity(window.studio);
 window.studio.environment=createCityEnvironment(window.studio,{mobile:mobileMap});
 window.studio.buildingViews=createBuildingImpostors(window.studio,{mobile:mobileMap,enabled:params.get('buildingViews')==='on'&&!stable3D});
+window.studio.photoCutouts=createPhotoCutoutLod(window.studio,{mobile:mobileMap,enabled:params.get('photoCutouts')!=='off'});
 $('fullCityProof').src=payload.fullCityProof;
 window.studio.ready=loadArea('C15_R14',streamRadius);
 await window.studio.ready;

@@ -23,6 +23,10 @@ export function loadPhysicalMaterials(){
 }
 export function buildingHash(id){let hash=2166136261;for(const c of id){hash^=c.charCodeAt(0);hash=Math.imul(hash,16777619);}return hash>>>0;}
 const LANDMARK_FACADES=[
+ [/Blood Bay|Mandalay Bay/i,0x482024,0xe73548,3],
+ [/Obsidian Pyramid|Luxor/i,0x191a20,0xe41f3b,3],
+ [/666|MGM Grand/i,0x401318,0xff2c43,0],
+ [/Psalms|Palms/i,0xa5b7c2,0x79b8dc,2],
  [/Bellagio/i,0xe3d5b5,0xd8bc75,0],
  [/Caesars/i,0xe5dfcd,0x73b5d2,2],
  [/Paris/i,0xe4d3b4,0xe47a5d,1],
