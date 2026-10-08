@@ -3,10 +3,10 @@ import {readFile} from 'node:fs/promises';
 import {photoCutoutAsset,isPhotoCutoutView} from '../photo-cutout-rules.js';
 import {fictionalLandmarkName} from '../building-identities.js';
 
-assert.match(photoCutoutAsset('Blood Bay'),/blood-bay-v1\\.webp$/);
-assert.match(photoCutoutAsset('Mandalay Bay'),/blood-bay-v1\\.webp$/);
-assert.match(photoCutoutAsset('Obsidian Pyramid'),/obsidian-pyramid-v1\\.webp$/);
-assert.match(photoCutoutAsset('Luxor'),/obsidian-pyramid-v1\\.webp$/);
+assert.ok(photoCutoutAsset('Blood Bay').endsWith('blood-bay-v1.webp'));
+assert.ok(photoCutoutAsset('Mandalay Bay').endsWith('blood-bay-v1.webp'));
+assert.ok(photoCutoutAsset('Obsidian Pyramid').endsWith('obsidian-pyramid-v1.webp'));
+assert.ok(photoCutoutAsset('Luxor').endsWith('obsidian-pyramid-v1.webp'));
 assert.equal(photoCutoutAsset('Generic Strip hotel'),null);
 assert.equal(isPhotoCutoutView(Math.sin(Math.PI/4),Math.cos(Math.PI/4),900,70),true);
 assert.equal(isPhotoCutoutView(Math.sin(Math.PI),Math.cos(Math.PI),900,70),false,'other view angles keep the original mesh');
