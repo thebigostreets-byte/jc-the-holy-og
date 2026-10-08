@@ -4,6 +4,9 @@ import {readFile} from 'node:fs/promises';
 const publicAssets=new Set(JSON.parse(await readFile('scripts/public-assets.json','utf8')));
 const deployableFiles=[
   'map.html',
+  'building-identities.js',
+  'photo-cutout-lod.js',
+  'photo-cutout-rules.js',
   'cinematic-look.js',
   'jc-character3d.js',
   'npc-dialogue.js',
@@ -37,7 +40,7 @@ for(const entry of ['map-engine.js','jc-map-game.js','jc-npcs.js']){
   const imports=[...source.matchAll(/from\s+['"]\.\/([^'"]+\.js)['"]/g)].map(match=>match[1]);
   for(const dependency of imports){
     assert(publicAssets.has(dependency),`${entry} imports ${dependency}, but it is missing from scripts/public-assets.json`);
-    if(['jc-audio.js','jc-crowd.js','jc-traffic.js','npc-contacts.js','vegas-streets.js','photorealism-pbr.js','rooftop-details.js'].includes(dependency))
+    if(['photo-cutout-lod.js','photo-cutout-rules.js','jc-audio.js','jc-crowd.js','jc-traffic.js','npc-contacts.js','vegas-streets.js','photorealism-pbr.js','rooftop-details.js'].includes(dependency))
       await readFile(`dist/client/${dependency}`,'utf8');
   }
 }
