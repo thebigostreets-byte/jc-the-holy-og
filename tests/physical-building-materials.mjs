@@ -7,6 +7,19 @@ import {buildingSurface,wallUV} from '../physical-building-materials.js';
 const photos=Array.from({length:4},()=>new THREE.Texture());
 const physical=Array.from({length:6},()=>new THREE.Texture());
 const kinds=new Set();
+const sharedCasinoTexture=new THREE.Texture();
+for(const identity of [
+ {name:'Blood Bay',type:'casino'},
+ {name:'Blood Pyramid',type:'casino'},
+ {name:'666',type:'casino'},
+ {name:'Generic Strip Resort',type:'casino'}
+]){
+ const surface=buildingSurface('NGA14-casino-'+identity.name,50,photos,physical,identity,{casino:sharedCasinoTexture});
+ assert.ok(photos.includes(surface.map),'named casino uses a photographic facade instead of the single shared generated casino map');
+ assert.notEqual(surface.map,sharedCasinoTexture);
+ assert.equal(surface.kind,'casino photographic facade');
+}
+
 for(let i=0;i<1000;i++){
  const id=`NGA14-${i}`,surface=buildingSurface(id,5,photos,physical);
  kinds.add(surface.kind);assert.ok(surface.map);assert.ok(surface.scale.every(x=>x>0));
