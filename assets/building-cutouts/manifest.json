@@ -40,6 +40,18 @@
       ],
       "alpha_mask": true,
       "notes": "User-provided southeast-view masked dark glass pyramid cutout; optimized to 384 × 256 WebP."
+    },
+    {
+      "asset_id": "cutout_obsidian_pyramid_night_v1",
+      "name": "Obsidian Pyramid · night",
+      "source_site_alias": "Luxor",
+      "path": "assets/building-cutouts/obsidian-pyramid-night-v1.webp",
+      "dimensions_px": [
+        384,
+        256
+      ],
+      "alpha_mask": true,
+      "notes": "User-provided masked black-glass pyramid cutout; selected by the in-game night setting."
     }
   ],
   "validation": {

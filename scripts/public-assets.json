@@ -1,9 +1,9 @@
 [
   "404.html",
-  "README.md",
   "ability-ui.css",
   "assets/building-cutouts/blood-bay-v1.webp",
   "assets/building-cutouts/manifest.json",
+  "assets/building-cutouts/obsidian-pyramid-night-v1.webp",
   "assets/building-cutouts/obsidian-pyramid-v1.webp",
   "assets/full-city-proof.jpg",
   "assets/generated_stucco.webp",
@@ -208,6 +208,7 @@
   "poses/pose-8.webp",
   "poses/pose-9.webp",
   "predictive-streaming.js",
+  "README.md",
   "real-city-climb-demo.html",
   "realistic-motion.js",
   "rear-walk.js",

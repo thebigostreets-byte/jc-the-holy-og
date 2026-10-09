@@ -29,11 +29,13 @@ import {createStreetPickups} from './street-pickups.js';
 
 const jcAudio=createJcAudio();
 let worldTimeMode='day';
+window.JC_WORLD_TIME_MODE=worldTimeMode;
 try{
  const savedTime=localStorage.getItem('jc-map-time-of-day');
  if(savedTime==='day'||savedTime==='night')worldTimeMode=savedTime;
  else {const legacy=JSON.parse(localStorage.getItem('jc-master-upgrade')||'null');if(legacy?.dayNight==='night')worldTimeMode='night';}
 }catch{}
+window.JC_WORLD_TIME_MODE=worldTimeMode;
 const style = document.createElement('style');
 style.textContent = `
 body.jc-playing header,body.jc-playing aside,body.jc-playing .views,body.jc-playing .compass{display:none}
@@ -130,7 +132,7 @@ soundToggle.onclick=()=>{const state=jcAudio.set('muted',!jcAudio.getSettings().
 const timeToggle=hud.querySelector('#jcTimeToggle');
 const refreshTimeToggle=()=>{timeToggle.textContent=worldTimeMode==='day'?'SWITCH TO NIGHT':'SWITCH TO DAY';timeToggle.setAttribute('aria-pressed',String(worldTimeMode==='day'));};
 refreshTimeToggle();
-timeToggle.onclick=()=>{worldTimeMode=worldTimeMode==='day'?'night':'day';try{localStorage.setItem('jc-map-time-of-day',worldTimeMode);}catch{}cinematicLook?.setTimeOfDay(worldTimeMode);for(const group of game?.loaded?.values?.()||[])group.userData.jcThemeApplied=false;wallpaperStrip();refreshTimeToggle();feedback(worldTimeMode==='day'?'DAYLIGHT ACTIVE':'NIGHT ACTIVE');};
+timeToggle.onclick=()=>{worldTimeMode=worldTimeMode==='day'?'night':'day';window.JC_WORLD_TIME_MODE=worldTimeMode;try{localStorage.setItem('jc-map-time-of-day',worldTimeMode);}catch{}cinematicLook?.setTimeOfDay(worldTimeMode);for(const group of game?.loaded?.values?.()||[])group.userData.jcThemeApplied=false;wallpaperStrip();refreshTimeToggle();feedback(worldTimeMode==='day'?'DAYLIGHT ACTIVE':'NIGHT ACTIVE');};
 
 hud.querySelector('#jcKeyApply').onclick=()=>{const input=hud.querySelector('#jcGroqKey'),ok=setNpcApiKey(input.value);input.value='';hud.querySelector('#jcKeyStatus').textContent=ok?'Personal Groq key active for this tab':'Enter a Groq key first';};
 hud.querySelector('#jcKeyClear').onclick=()=>{clearNpcApiKey();hud.querySelector('#jcGroqKey').value='';hud.querySelector('#jcKeyStatus').textContent='Using game key if configured';};
