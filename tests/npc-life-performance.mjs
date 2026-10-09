@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import {createNpcLife,createNpcIdentity,updateNpcLife,respondToSimulationClaim} from '../npc-life-simulation.js';
+import {createNpcPerformanceScheduler,createNpcDecisionQueue} from '../npc-performance.js';
+
+const resident=createNpcLife('npc-0001');
+const again=createNpcLife('npc-0001');
+assert.equal(resident.homeId,again.homeId);
+assert.equal(resident.familyId,again.familyId);
+assert.equal(resident.workplaceId,again.workplaceId);
+updateNpcLife(resident,12,0);
+assert.equal(typeof resident.activity,'string');
+const identity=createNpcIdentity('npc-0001');
+assert.ok(identity.name.includes(' '));
+const before=identity.gameBelief;
+const reaction=respondToSimulationClaim(identity,{evidence:90});
+assert.ok(['skeptic','curious','believer'].includes(reaction.stage));
+assert.ok(identity.gameBelief>=before);
+const scheduler=createNpcPerformanceScheduler({mobile:true,now:()=>1000});
+assert.equal(scheduler.shouldUpdate('npc-0001',20,1000),true);
+assert.equal(scheduler.shouldUpdate('npc-0001',20,1010),false);
+assert.equal(scheduler.shouldUpdate('npc-0001',20,1060),true);
+let calls=0;
+const queue=createNpcDecisionQueue({fetcher:async()=>{calls++;return {ok:true,json:async()=>({reply:'Hello'})};},now:()=>1000});
+assert.equal((await queue.request('npc-0001',{message:'Hello'})).reply,'Hello');
+assert.equal(await queue.request('npc-0001',{message:'Again'}),null);
+assert.equal(calls,1);
+console.log('NPC life, identities, adaptive update scheduler and request throttling checks passed.');
