@@ -1,15 +1,22 @@
 const CUTOUTS = Object.freeze({
-  'blood-bay': './assets/building-cutouts/blood-bay-v1.webp',
-  'obsidian-pyramid': './assets/building-cutouts/obsidian-pyramid-v1.webp'
+  'blood-bay': Object.freeze({
+    day: './assets/building-cutouts/blood-bay-v1.webp',
+    night: './assets/building-cutouts/blood-bay-v1.webp'
+  }),
+  'obsidian-pyramid': Object.freeze({
+    day: './assets/building-cutouts/obsidian-pyramid-v1.webp',
+    night: './assets/building-cutouts/obsidian-pyramid-night-v1.webp'
+  })
 });
 const VIEW_ANGLE = Math.PI / 4;
 const VIEW_TOLERANCE = Math.PI / 5;
 
-export function photoCutoutAsset(identityOrName = '') {
+export function photoCutoutAsset(identityOrName = '', night = false) {
   const name = (typeof identityOrName === 'string' ? identityOrName : identityOrName?.name || '').trim().toLowerCase();
-  if (name === 'blood bay' || name === 'mandalay bay') return CUTOUTS['blood-bay'];
-  if (name === 'obsidian pyramid' || name === 'luxor') return CUTOUTS['obsidian-pyramid'];
-  return null;
+  const asset = name === 'blood bay' || name === 'mandalay bay' ? CUTOUTS['blood-bay']
+    : name === 'obsidian pyramid' || name === 'luxor' ? CUTOUTS['obsidian-pyramid']
+    : null;
+  return asset?.[night ? 'night' : 'day'] || null;
 }
 
 export function isPhotoCutoutView(dx, dz, distance, height, sector = VIEW_ANGLE) {

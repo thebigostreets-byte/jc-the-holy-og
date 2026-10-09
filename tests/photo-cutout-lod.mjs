@@ -6,6 +6,9 @@ import {fictionalLandmarkName} from '../building-identities.js';
 assert.ok(photoCutoutAsset('Blood Bay').endsWith('blood-bay-v1.webp'));
 assert.ok(photoCutoutAsset('Mandalay Bay').endsWith('blood-bay-v1.webp'));
 assert.ok(photoCutoutAsset('Obsidian Pyramid').endsWith('obsidian-pyramid-v1.webp'));
+assert.ok(photoCutoutAsset('Obsidian Pyramid',true).endsWith('obsidian-pyramid-night-v1.webp'));
+assert.ok(photoCutoutAsset('Luxor',true).endsWith('obsidian-pyramid-night-v1.webp'));
+assert.ok(photoCutoutAsset('Blood Bay',true).endsWith('blood-bay-v1.webp'));
 assert.ok(photoCutoutAsset('Luxor').endsWith('obsidian-pyramid-v1.webp'));
 assert.equal(photoCutoutAsset('Generic Strip hotel'),null);
 assert.deepEqual(rankPhotoCutoutTargets([{id:'near-wrong-view',distance:20,inView:false},{id:'far-right-view',distance:200,inView:true}]).map(x=>x.id),['far-right-view','near-wrong-view']);
@@ -18,12 +21,13 @@ assert.equal(fictionalLandmarkName('MGM Grand'),'666');
 assert.equal(fictionalLandmarkName('Palms'),'Psalms');
 
 const assets=JSON.parse(await readFile('scripts/public-assets.json','utf8'));
-for(const path of ['photo-cutout-lod.js','photo-cutout-rules.js','assets/building-cutouts/manifest.json','assets/building-cutouts/blood-bay-v1.webp','assets/building-cutouts/obsidian-pyramid-v1.webp'])assert.ok(assets.includes(path),path+' is published');
+for(const path of ['photo-cutout-lod.js','photo-cutout-rules.js','assets/building-cutouts/manifest.json','assets/building-cutouts/blood-bay-v1.webp','assets/building-cutouts/obsidian-pyramid-v1.webp','assets/building-cutouts/obsidian-pyramid-night-v1.webp'])assert.ok(assets.includes(path),path+' is published');
 const manifest=JSON.parse(await readFile('assets/building-cutouts/manifest.json','utf8'));
 assert.equal(manifest.validation.alpha_channel,'verified');
 assert.match(manifest.assets[0].notes,/masked Crimson Glass Resort Tower/);
 assert.match(manifest.assets[1].notes,/southeast-view masked dark glass pyramid/);
-for(const path of ['assets/building-cutouts/blood-bay-v1.webp','assets/building-cutouts/obsidian-pyramid-v1.webp']){
+assert.match(manifest.assets[2].notes,/masked black-glass pyramid/);
+for(const path of ['assets/building-cutouts/blood-bay-v1.webp','assets/building-cutouts/obsidian-pyramid-v1.webp','assets/building-cutouts/obsidian-pyramid-night-v1.webp']){
   const data=await readFile(path);
   const deployed=await readFile(`dist/client/${path}`);
   assert.deepEqual(deployed,data,`dist/client/${path} must deploy the same image as source`);
@@ -33,6 +37,8 @@ for(const path of ['assets/building-cutouts/blood-bay-v1.webp','assets/building-
   assert.ok(data[20]&0x10,'WebP extended header records a true alpha channel');
 }
 assert.deepEqual(await readFile('dist/client/assets/building-cutouts/manifest.json'),await readFile('assets/building-cutouts/manifest.json'));
+const characterGame=await readFile('jc-map-game.js','utf8');
+assert.match(characterGame,/window\.JC_WORLD_TIME_MODE=worldTimeMode/,'game publishes day/night state for building cutouts');
 const engine=await readFile('map-engine.js','utf8');
 assert.ok(engine.includes('createPhotoCutoutLod'));
 assert.ok(engine.includes('photoCutouts?.update'));

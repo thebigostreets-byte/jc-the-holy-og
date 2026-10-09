@@ -71,7 +71,8 @@ export function createPhotoCutoutLod(game, { mobile = false, enabled = true } = 
     const best = new Map();
     for (const [id, ob] of buildings) {
       if (!ob || chunks.has(id) || !ob.userData.identity) continue;
-      const asset = photoCutoutAsset(ob.userData.identity);
+      const night = typeof window !== 'undefined' && window.JC_WORLD_TIME_MODE === 'night';
+      const asset = photoCutoutAsset(ob.userData.identity, night);
       if (!asset) continue;
       const existing = records.get(asset);
       if (!ob.visible && existing?.ob !== ob) continue;
