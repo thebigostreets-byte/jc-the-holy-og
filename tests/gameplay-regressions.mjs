@@ -17,7 +17,7 @@ fx.clear();assert.equal(cleaned,20);fx.dispose();assert.equal(scene.children.len
 
 const source=fs.readFileSync(new URL('../jc-map-game.js',import.meta.url),'utf8');
 const camera=new THREE.PerspectiveCamera(62,1,.1,1000);camera.position.set(0,20,20);camera.lookAt(0,0,0);camera.updateMatrixWorld();
-const aim=vm.createContext({THREE,window:{addEventListener(){}},playing:true,teleportAim:true,teleportTarget:null,teleportMarker:null,terrainY:0,flightHeight:0,flying:false,player:{position:point},ray:new THREE.Raycaster(),game:{camera,scene:new THREE.Scene(),renderer:{domElement:{getBoundingClientRect:()=>({left:0,top:0,width:400,height:400})}}},clearSpot:(x,z)=>[x,z],groundAt:()=>0,clearTeleportMarker(){},feedback(){}});
+const aim=vm.createContext({THREE,window:{addEventListener(){}},document:{addEventListener(){},hidden:false},playing:true,teleportAim:true,teleportTarget:null,teleportMarker:null,terrainY:0,flightHeight:0,flying:false,player:{position:point},ray:new THREE.Raycaster(),game:{camera,scene:new THREE.Scene(),renderer:{domElement:{getBoundingClientRect:()=>({left:0,top:0,width:400,height:400})}}},clearSpot:(x,z)=>[x,z],groundAt:()=>0,clearTeleportMarker(){},feedback(){}});
 vm.runInContext(source.slice(source.indexOf('function chooseTeleportPoint('),source.indexOf('function resetInput()')),aim);
 aim.chooseTeleportPoint(200,200);assert.ok(aim.teleportTarget instanceof THREE.Vector3);assert.ok(Number.isFinite(aim.teleportTarget.x));assert.equal(aim.teleportAim,false,'one tap locks a valid teleport destination');
 
