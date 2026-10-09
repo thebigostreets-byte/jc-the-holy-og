@@ -19,10 +19,10 @@ export function createNpcPerformanceScheduler({
   return {
     getTier,
     shouldUpdate(id, distance, time = now()) {
-      if (id == null) return false;
+      if (id == null || !Number.isFinite(time)) return false;
       const tier = getTier(distance);
       const last = lastUpdates.get(id);
-      if (!last || time < last.time || time - last.time >= config.intervals[tier]) {
+      if (!last || time < last.time || tier < last.tier || time - last.time >= config.intervals[tier]) {
         lastUpdates.set(id, {time, tier});
         return true;
       }
@@ -47,28 +47,34 @@ export function createNpcDecisionQueue({
   const lastSent = new Map();
   const queue = [];
   let active = 0;
-  const maxConcurrent = Math.max(1, Math.min(4, Math.floor(concurrency)));
+  const maxConcurrent = Number.isFinite(concurrency) ? Math.max(1, Math.min(4, Math.floor(concurrency))) : 2;
+  const requestTimeout = Number.isFinite(timeoutMs) ? Math.max(1, timeoutMs) : 9000;
   function pump() {
     while (active < maxConcurrent && queue.length) {
       const job = queue.shift();
       if (job.cancelled) { pending.delete(job.id); job.resolve(null); continue; }
       active++;
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-      fetcher(endpoint, {
+      let timer;
+      const deadline = new Promise(resolve => {
+        timer = setTimeout(() => { controller.abort(); resolve(null); }, requestTimeout);
+      });
+      const response = Promise.resolve().then(() => fetcher(endpoint, {
         method: 'POST',
         headers: {'content-type':'application/json'},
         credentials: 'same-origin',
         signal: controller.signal,
         body: JSON.stringify(job.payload),
-      }).then(async response => {
-        if (!response.ok) return null;
-        const result = await response.json();
-        return typeof result?.reply === 'string' ? result : null;
-      }).catch(() => null).then(result => job.resolve(result)).finally(() => {
+      })).then(async result => {
+        if (!result?.ok) return null;
+        const data = await result.json();
+        return typeof data?.reply === 'string' ? data : null;
+      }).catch(() => null);
+      Promise.race([response, deadline]).then(result => {
         clearTimeout(timer);
         active--;
-        pending.delete(job.id);
+        if (pending.get(job.id) === job) pending.delete(job.id);
+        job.resolve(result);
         pump();
       });
     }
