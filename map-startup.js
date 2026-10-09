@@ -27,6 +27,13 @@ window.jcCanOpenGraphics=function(){
  }catch{return false;}
 };
 window.jcLoadingRecovery=function(message){
+ // The live canvas is authoritative: never cover playable 3D with a startup modal.
+ if(window.studio || window.JC_PLAYER_READY || window.JC_CITY_READY){
+  console.warn('JC background failure (3D retained):',message);
+  document.getElementById('jcRecovery')?.remove();
+  window.JC_BOOT_FAILED=false;
+  return;
+ }
  const fatalGraphics=/lost its graphics connection|WebGL 2 and WebGL 1 are unavailable|could not start WebGL/i.test(String(message));
  if(!fatalGraphics&&(window.JC_PLAYER_READY||window.JC_CITY_READY)){
   console.warn('Suppressed stale 3D startup overlay after scene initialized:',message);
@@ -47,18 +54,19 @@ addEventListener('error',event=>{
  if(target&&target!==window){console.warn('Nonfatal asset load failure',target.src||target.href||target.tagName);return;}
  const message=event.error?.message||event.message||'Unknown startup error';
  if(window.JC_PLAYER_READY||window.JC_CITY_READY){console.warn('Runtime error after 3D initialized',message);return;}
- window.jcLoadingRecovery(message);
+ console.error('JC preboot exception:',message);
+ // Do not interrupt initialization for unrelated asynchronous errors.
 },true);
 addEventListener('unhandledrejection',event=>{
  const message=event.reason?.message||String(event.reason||'Unknown rejection');
  if(window.JC_PLAYER_READY||window.JC_CITY_READY){console.warn('Nonfatal background task failure',message);event.preventDefault();return;}
- window.jcLoadingRecovery(message);
+ console.error('JC preboot rejection:',message);
 });
 setTimeout(()=>{if(window.JC_BOOT_FAILED)return;const play=new URLSearchParams(location.search).get('play')==='1';if(!window.JC_CITY_READY||(play&&!window.JC_PLAYER_READY)){const stage=window.JC_BOOT_STAGE||(!window.JC_CITY_READY?'city':'player');window.jcLoadingRecovery('Full 3D startup is taking too long at '+stage+'. You can retry full 3D or choose lite mode.');}},90000);
 
 // An earlier asynchronous startup failure must not permanently obscure a later successful scene.
 const jcRecoveryCleanup=setInterval(()=>{
- if(window.JC_PLAYER_READY||window.JC_CITY_READY){
+ if(window.studio||window.JC_PLAYER_READY||window.JC_CITY_READY){
   const recovery=document.getElementById('jcRecovery');
   if(recovery&&!/lost its graphics connection|could not start WebGL/i.test(recovery.textContent||'')){
    recovery.remove();window.JC_BOOT_FAILED=false;
