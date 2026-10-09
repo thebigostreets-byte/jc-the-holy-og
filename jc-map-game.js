@@ -9,7 +9,6 @@ import {cloneBuildingMaterial} from './map-materials.js';
 import {stickAxis, standardPadActions, standardPadHolds, response, advancePedal, advanceChain, advanceGait, advanceLook, setFlightForward} from './jc-control-math.js';
 import {transitionFlight,shouldTouchDown} from './jc-flight-state.js';
 import {createMiracleEffects} from './jc-miracle-effects.js';
-import {loadRearWalk,loadPoseSheet,FLIGHT_CELLS} from './rear-walk.js';
 import {cachedGroundSample} from './ground-sampling.js';
 import {addBackgroundMusic} from './background-music.js';
 import {createCityMissions} from './city-missions.js';
@@ -108,7 +107,7 @@ document.head.append(style);
 
 const hud = document.createElement('div');
 hud.id = 'jcHud';
-hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button><button id="jcSettings" type="button">SETTINGS</button><button id="jcCallCar" type="button">CALL CAR</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcElectric">STORM 0%</span><span id="jcAbilityReady">Ready</span><button id="jcOpenWheel" type="button">OPEN MIRACLE WHEEL</button></div><div class="jc-mini-label">CITY RADAR</div><div id="jcStreetReadout">STREET · LOCATING…</div><div id="jcMinimap" aria-label="Circular minimap with compass"><canvas id="jcMinimapCanvas" width="288" height="288" aria-label="Nearby buildings, people and lights"></canvas><div id="jcCompass"><b>▲</b><span id="jcHeadingReadout">N 000°</span></div></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q cast · Tab miracles · H call car · E enter/exit</div><div id="jcGamepadPause" role="status" aria-live="polite" hidden style="position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:24px;background:#050913c9;color:#fff;font:900 clamp(28px,6vw,54px)/1 Impact,Arial,sans-serif;text-shadow:0 3px 16px #000">PAUSED · PRESS START TO RESUME</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><button id="jcGas" type="button" aria-label="Hold gas pedal to move forward" aria-pressed="false"><span>GAS</span><b aria-hidden="true"><i id="jcGasFill"></i></b><small>HOLD TO MOVE</small></button><div id="jcStick" role="group" aria-label="Legacy left joystick"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: steer and look"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button" aria-label="Brake while moving, reverse when stopped">BRAKE / REV</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">PORTAL</button><button data-action="cast" type="button">CAST MIRACLE</button><button data-action="wheel" type="button">MIRACLE WHEEL · 44 POWERS</button><button data-action="car" type="button">JC CAR</button><button data-action="preset" type="button">PRESET 1</button><button data-action="preset" type="button">PRESET 2</button><button data-action="preset" type="button">PRESET 3</button><button data-action="preset" type="button">PRESET 4</button><button data-action="edit-presets" type="button">EDIT PRESETS</button></div></div></div><div id="jcSettingsPanel" role="dialog" aria-modal="true"><h3>GAME SETTINGS</h3><label for="jcGroqKey">Groq API key for NPC dialogue</label><input id="jcGroqKey" type="password" autocomplete="new-password" placeholder="gsk_…"><p>Held in memory in this tab only; clear it or reload to remove it.</p><span id="jcKeyStatus">Using game key if configured</span><button id="jcTimeToggle" type="button">SWITCH TO NIGHT</button><button id="jcSoundToggle" type="button">MUTE SOUND</button><label for="jcMasterVolume">Master volume</label><input id="jcMasterVolume" type="range" min="0" max="1" step="0.01"><label for="jcMusicVolume">Ambience</label><input id="jcMusicVolume" type="range" min="0" max="1" step="0.01"><label for="jcEffectsVolume">Sound effects</label><input id="jcEffectsVolume" type="range" min="0" max="1" step="0.01"><button id="jcKeyApply" type="button">USE KEY</button><button id="jcKeyClear" type="button">CLEAR KEY</button><button id="jcSettingsClose" type="button">CLOSE</button></div><div id="jcWheel" role="dialog" aria-label="JC miracles" aria-modal="true"><div class="jc-wheel-panel"><div class="jc-wheel-title"><strong>CHOOSE A MIRACLE</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups" role="tablist" aria-label="Miracle category"></div><div class="jc-list" role="group" aria-label="Miracle selection wheel"><div class="jc-wheel-core"><span id="jcWheelFocus">SELECT AN ABILITY</span><strong>44 MIRACLES · 44 POWERS</strong><small id="jcWheelCost">3 CATEGORIES</small><div class="jc-wheel-nav"><button id="jcWheelPrev" type="button" aria-label="Previous miracles">‹</button><button id="jcWheelNext" type="button" aria-label="Next miracles">›</button></div></div></div></div></div>`;
+hud.innerHTML = `<div class="jc-top"><div class="jc-score">JC · STRIP RESTORATION<br><strong id="jcScore">0 / 8</strong> LIGHTS &nbsp; GRACE <span id="jcGrace">100</span>%<div id="jcRun">Restore 8 lights · start moving to begin</div><button id="jcRestart" type="button">RESTART RUN</button><button id="jcSettings" type="button">SETTINGS</button><button id="jcCallCar" type="button">CALL CAR</button></div><button id="jcEditor" type="button">CITY EDITOR</button></div><div class="jc-ability">SELECTED MIRACLE<strong id="jcSelected">Light Pulse</strong><span id="jcState">Grounded</span><span id="jcElectric">STORM 0%</span><span id="jcAbilityReady">Ready</span><button id="jcOpenWheel" type="button">OPEN MIRACLE WHEEL</button></div><div class="jc-mini-label">CITY RADAR</div><div id="jcStreetReadout">STREET · LOCATING…</div><div id="jcMinimap" aria-label="Circular minimap with compass"><canvas id="jcMinimapCanvas" width="288" height="288" aria-label="Nearby buildings, people and lights"></canvas><div id="jcCompass"><b>▲</b><span id="jcHeadingReadout">N 000°</span></div></div><div class="jc-hint">WASD move · Drag to look / aim · Right stick look / flight pitch · Shift sprint · Space dash / rise · Ctrl descend · F fly · G boost · V dive · B brake · K building target · L light target · T teleport · Q cast · Tab miracles · H call car · E enter/exit</div><div id="jcGamepadPause" role="status" aria-live="polite" hidden style="position:fixed;inset:0;z-index:40;display:none;place-items:center;padding:24px;background:#050913c9;color:#fff;font:900 clamp(28px,6vw,54px)/1 Impact,Arial,sans-serif;text-shadow:0 3px 16px #000">PAUSED · PRESS START TO RESUME</div><div id="jcFeedback" role="status" aria-live="polite"></div><div id="jcTarget"></div><div id="jcFlight"></div><div class="jc-touch"><button id="jcGas" type="button" aria-label="Hold gas pedal to move forward" aria-pressed="false"><span>GAS</span><b aria-hidden="true"><i id="jcGasFill"></i></b><small>HOLD TO MOVE</small></button><div id="jcStick" role="group" aria-label="Legacy left joystick"><i></i></div><div id="jcLookStick" role="group" aria-label="Right joystick: steer and look"><i></i></div><div class="jc-actions"><button data-move="e" type="button">RISE</button><button data-move="c" type="button">DROP</button><button data-move="b" type="button" aria-label="Brake while moving, reverse when stopped">BRAKE / REV</button><button data-action="boost" type="button">BOOST</button><button data-action="dive" type="button">DIVE</button><button data-action="fly" type="button">FLY</button><button data-action="land" type="button">LAND</button><button data-action="more" type="button" aria-expanded="false">MORE</button><div class="jc-extras"><button data-action="lock" type="button">TARGET</button><button data-action="teleport" type="button">PORTAL</button><button data-action="cast" type="button">CAST MIRACLE</button><button data-action="wheel" type="button">MIRACLE WHEEL · 44 POWERS</button><button data-action="car" type="button">JC CAR</button><button data-action="preset" type="button">PRESET 1</button><button data-action="preset" type="button">PRESET 2</button><button data-action="preset" type="button">PRESET 3</button><button data-action="preset" type="button">PRESET 4</button><button data-action="edit-presets" type="button">EDIT PRESETS</button></div></div></div><div id="jcSettingsPanel" role="dialog" aria-modal="true"><h3>GAME SETTINGS</h3><label for="jcGroqKey">Groq API key for NPC dialogue</label><input id="jcGroqKey" type="password" autocomplete="new-password" placeholder="gsk_…"><p>Held in memory in this tab only; clear it or reload to remove it.</p><span id="jcKeyStatus">Using game key if configured</span><button id="jcTimeToggle" type="button">SWITCH TO NIGHT</button><button id="jcSoundToggle" type="button">MUTE SOUND</button><label for="jcMasterVolume">Master volume</label><input id="jcMasterVolume" type="range" min="0" max="1" step="0.01"><label for="jcMusicVolume">Ambience</label><input id="jcMusicVolume" type="range" min="0" max="1" step="0.01"><label for="jcEffectsVolume">Sound effects</label><input id="jcEffectsVolume" type="range" min="0" max="1" step="0.01"><button id="jcKeyApply" type="button">USE KEY</button><button id="jcKeyClear" type="button">CLEAR KEY</button><button id="jcSettingsClose" type="button">CLOSE</button></div><div id="jcWheel" role="dialog" aria-label="JC miracles" aria-modal="true"><div class="jc-wheel-panel"><div class="jc-wheel-title"><strong>CHOOSE A MIRACLE</strong><button id="jcWheelClose" type="button" aria-label="Close miracles">✕</button></div><div class="jc-groups" role="tablist" aria-label="Miracle category"></div><div class="jc-list" role="group" aria-label="Miracle selection wheel"><div class="jc-wheel-core"><span id="jcWheelFocus">SELECT AN ABILITY</span><strong>44 MIRACLES · 44 POWERS</strong><small id="jcWheelCost">3 CATEGORIES</small><div class="jc-wheel-nav"><button id="jcWheelPrev" type="button" aria-label="Previous miracles">‹</button><button id="jcWheelNext" type="button" aria-label="Next miracles">›</button></div></div></div></div></div>`;
 document.body.append(hud);
 style.textContent += '#jcNpcReadout{position:absolute;left:12px;bottom:144px;max-width:min(390px,78vw);padding:7px 10px;background:#091018d9;border-left:2px solid #c4ffee;color:#c4ffee;font-size:11px;letter-spacing:.4px;pointer-events:auto}#jcNpcTalkButton{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 178px);transform:translateX(-50%);display:none;pointer-events:auto;padding:11px 16px;border:1px solid #f1d17e;border-radius:8px;background:#111b2aee;color:#ffe6a4;font-weight:900;box-shadow:0 6px 18px #0009;z-index:2}#jcNpcTalkButton.available{display:block}@media(pointer:fine){#jcNpcTalkButton{display:none!important}}#jcPeople{position:absolute;left:12px;top:48%;z-index:3;pointer-events:auto}#jcPeopleToggle{padding:9px 12px!important;background:#091018eF!important;border:1px solid #f9d878!important;color:#ffe6a4!important}#jcPeoplePanel{display:none;width:min(280px,78vw);max-height:38vh;overflow:auto;margin-top:6px;padding:8px;background:#091018f2;border:1px solid #f9d878;border-radius:8px}#jcPeoplePanel.open{display:block}#jcPeoplePanel button{display:block;width:100%;text-align:left;margin:4px 0;padding:8px!important}#jcPersonMarker{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;pointer-events:none;background:#071018e8;border:1px solid #ffe18c;border-radius:15px;padding:6px 10px;color:#ffe6a4;font-size:13px;text-shadow:0 1px 4px #000;white-space:nowrap;display:none}#jcPersonMarker.visible{display:block}#jcPersonMarker b{font-size:20px;vertical-align:middle;margin-right:5px}';
 const npcReadout=document.createElement('div');npcReadout.id='jcNpcReadout';npcReadout.textContent='CITY FOLKS · OBSERVING';hud.append(npcReadout);
@@ -203,8 +202,6 @@ let fireSystem=null,pickups=null,electricCharge=0,lastVehicleHit=0;
 const carWheels=[];
 function createJCCar(scene,x,z,y){const group=new THREE.Group();group.name='JC personal gold-lined touring car';const bodyMat=new THREE.MeshStandardMaterial({color:0x171c20,metalness:.7,roughness:.3}),goldMat=new THREE.MeshStandardMaterial({color:0xdab45d,metalness:.8,roughness:.22}),glassMat=new THREE.MeshStandardMaterial({color:0x192735,metalness:.45,roughness:.12}),tireMat=new THREE.MeshStandardMaterial({color:0x090b0d,roughness:.9}),lampMat=new THREE.MeshBasicMaterial({color:0xffe1a0}),tailMat=new THREE.MeshBasicMaterial({color:0xff2632});const box=(name,size,pos,mat)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(...size),mat);m.name=name;m.position.set(...pos);group.add(m);return m;};box('armored grand tourer chassis',[4.25,.66,1.85],[0,.65,0],bodyMat);box('gold hood trim',[1.15,.055,1.68],[1.18,1.005,0],goldMat);box('cockpit',[2.05,.8,1.55],[-.35,1.32,0],glassMat);box('roof',[1.3,.15,1.56],[-.4,1.78,0],bodyMat);box('front fascia',[.18,.37,1.75],[2.12,.69,0],goldMat);box('front light left',[.08,.16,.47],[2.22,.83,-.55],lampMat);box('front light right',[.08,.16,.47],[2.22,.83,.55],lampMat);box('tail left',[.08,.19,.42],[-2.14,.79,-.55],tailMat);box('tail right',[.08,.19,.42],[-2.14,.79,.55],tailMat);for(const xWheel of [-1.35,1.35])for(const zWheel of [-.94,.94]){const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.43,.43,.25,16),tireMat);wheel.rotation.x=Math.PI/2;wheel.position.set(xWheel,.43,zWheel);group.add(wheel);carWheels.push(wheel);}group.position.set(x,y,z);scene.add(group);return group;}
 const characterFrames = Array(39).fill(null);
-let rearWalkReady=false;
-const sheetOverrides=new Set();
 let jcAura=null,jcSilhouetteGlow=null,jcGlowLight=null,jcGlowTexture=null,jcGlowBoostUntil=0;
 
 function makeJCGlowTexture(){
@@ -256,65 +253,39 @@ function updateJCGlow(now){
   jcSilhouetteGlow.material.opacity=.25+pulse*.03+boost*.12;
   jcGlowLight.intensity=1.65+pulse*.16+boost*.95;
 }
-function installPoseSheet(url,columns,rows,indices){
-  loadPoseSheet(url,columns,rows,indices.map((_,i)=>i),frames=>{
-    frames.forEach((canvas,i)=>{
-      const index=indices[i],old=characterFrames[index];
-      if(index===0&&sheetOverrides.has(0))return;
-      if(index===18&&sheetOverrides.has(18))return;
-      const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
-      texture.minFilter=THREE.LinearFilter;texture.generateMipmaps=false;
-      characterFrames[index]={texture,aspect:canvas.width/canvas.height};sheetOverrides.add(index);
-      if(poseIndex===index)applyCharacterFrame(index);
-      old?.texture.dispose();
-    });
-  },rows===3?FLIGHT_CELLS:undefined);
-}
-function installPoseImage(url,index){
+const characterFrameLoads=new Map();
+function requestCharacterFrame(index){
+  const safeIndex=Math.max(0,Math.min(characterFrames.length-1,Math.floor(index)));
+  if(characterFrames[safeIndex]||characterFrameLoads.has(safeIndex))return;
   const image=new Image();
-  image.onload=()=>{
-    const cleaned=cleanPoseImage(image),texture=new THREE.CanvasTexture(cleaned);
-    texture.colorSpace=THREE.SRGBColorSpace;texture.minFilter=THREE.LinearFilter;texture.generateMipmaps=false;
-    const old=characterFrames[index];characterFrames[index]={texture,aspect:cleaned.width/cleaned.height};
-    sheetOverrides.add(index);if(poseIndex===index)applyCharacterFrame(index);old?.texture.dispose();
-  };
-  image.src=url;
-}
-function loadCharacterFrames(){
-  installPoseSheet('./character-art/jc-rear-run-v2.webp',4,2,[31,32,33,34,35,36,37,38]);
-  installPoseSheet('./character-art/jc-rear-flight-v2.webp',3,3,[14,15,16,17,18,19,20,21,22]);
-  installPoseImage('./character-art/jc-rear-idle-v1.webp',0);
-  installPoseImage('./character-art/jc-rear-rise-v1.webp',18);
-  for(let i=0;i<characterFrames.length;i++){
-    const image=new Image();
+  const pending=new Promise(resolve=>{
     image.onload=()=>{
-      if(sheetOverrides.has(i)||(rearWalkReady&&(i===0||(i>=23&&i<=30))))return;
-      const cleaned=cleanPoseImage(image),texture=new THREE.CanvasTexture(cleaned);
-      texture.colorSpace=THREE.SRGBColorSpace;
-      texture.minFilter=THREE.LinearFilter;
-      texture.generateMipmaps=false;
-      characterFrames[i]={texture,aspect:cleaned.width/cleaned.height};
-      if(i===0&&realisticAvatar)applyCharacterFrame(0);
+      try{
+        const cleaned=cleanPoseImage(image),texture=new THREE.CanvasTexture(cleaned);
+        texture.colorSpace=THREE.SRGBColorSpace;
+        texture.minFilter=THREE.LinearFilter;
+        texture.generateMipmaps=false;
+        characterFrames[safeIndex]={texture,aspect:cleaned.width/cleaned.height};
+        if(poseIndex===safeIndex)applyCharacterFrame(safeIndex);
+      }catch(error){console.warn('Character pose could not be prepared',safeIndex,error);}
+      resolve();
     };
-    image.src=`./poses/pose-${i}.webp`;
-  }
-  loadRearWalk(frames=>{
-    const obsolete=new Set([...(sheetOverrides.has(0)?[]:[characterFrames[0]]),...characterFrames.slice(23,31)].filter(Boolean));
-    frames.forEach((canvas,i)=>{
-      const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
-      texture.minFilter=THREE.LinearFilter;texture.generateMipmaps=false;
-      const frame={texture,aspect:canvas.width/canvas.height};
-      characterFrames[23+i]=frame;
-    });
-    rearWalkReady=true;if(!sheetOverrides.has(0))characterFrames[0]=characterFrames[29];applyCharacterFrame(poseIndex);
-    obsolete.forEach(frame=>frame.texture.dispose());
+    image.onerror=()=>{
+      console.warn('Character pose image unavailable',safeIndex);
+      resolve();
+    };
   });
+  characterFrameLoads.set(safeIndex,pending);
+  image.src=`./poses/pose-${safeIndex}.webp`;
 }
+function loadCharacterFrames(){requestCharacterFrame(0);}
 function applyCharacterFrame(index){
   if(!realisticAvatar)return;
   ensureJCGlow();
   if(devilMode&&devilTexture){if(realisticAvatar.material.map!==devilTexture){realisticAvatar.material.map=devilTexture;realisticAvatar.material.needsUpdate=true;}return;}
-  const frame=characterFrames[index]||characterFrames[0];
+  const safeIndex=Math.max(0,Math.min(characterFrames.length-1,Math.floor(index)));
+  requestCharacterFrame(safeIndex);
+  const frame=characterFrames[safeIndex]||characterFrames[0];
   if(!frame)return;
   const material=realisticAvatar.material;
   if(material.map!==frame.texture){material.map=frame.texture;material.needsUpdate=true;}
@@ -423,7 +394,18 @@ function chooseTeleportPoint(clientX,clientY){
   teleportMarker.rotation.x=-Math.PI/2;teleportMarker.position.set(teleportTarget.x,groundAt(teleportTarget.x,teleportTarget.z)+.14,teleportTarget.z);game.scene.add(teleportMarker);
   teleportAim=false;feedback(selectedBuilding&&hits.length?`BUILDING DESTINATION · ${selectedBuilding.userData.identity?.name||selectedBuilding.userData.buildingId} · CAST TELEPORT`:'DESTINATION LOCKED · click TELEPORT again or press T');
 }
-function setControllerPaused(paused){controllerPaused=!!paused;const overlay=hud.querySelector('#jcGamepadPause');if(overlay)overlay.hidden=!controllerPaused;resetInput();feedback(controllerPaused?'PAUSED · PRESS START TO RESUME':'RESUMED');}
+function setControllerPaused(paused){controllerPaused=!!paused;const overlay=hud.querySelector('#jcGamepadPause');if(overlay){overlay.hidden=!controllerPaused;overlay.style.display=controllerPaused?'grid':'none';overlay.style.pointerEvents=controllerPaused?'auto':'none';overlay.setAttribute('aria-label','Tap to resume gameplay');overlay.setAttribute('role','button');overlay.tabIndex=controllerPaused?0:-1;}resetInput();feedback(controllerPaused?'PAUSED · TAP SCREEN OR PRESS START TO RESUME':'RESUMED');}
+// Touch and keyboard users must always have a way out of gamepad pause.
+const jcPauseRecovery=()=>{if(controllerPaused)setControllerPaused(false);};
+// Recover from stale overlays after browser back/forward navigation or visibility changes.
+const jcSyncPauseOverlay=()=>{const overlay=hud.querySelector('#jcGamepadPause');if(!overlay)return;overlay.hidden=!controllerPaused;overlay.style.display=controllerPaused?'grid':'none';overlay.style.pointerEvents=controllerPaused?'auto':'none';};
+window.addEventListener('pageshow',()=>{if(!navigator.getGamepads?.()?.some(Boolean))controllerPaused=false;jcSyncPauseOverlay();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)jcSyncPauseOverlay();});
+if(!navigator.getGamepads?.()?.some(Boolean))controllerPaused=false;
+jcSyncPauseOverlay();
+hud.querySelector('#jcGamepadPause')?.addEventListener('click',jcPauseRecovery);
+hud.querySelector('#jcGamepadPause')?.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();jcPauseRecovery();}});
+window.addEventListener('keydown',event=>{if(controllerPaused&&(event.key==='Escape'||event.key==='Enter')){event.preventDefault();jcPauseRecovery();}});
 function resetInput(){keys.clear();padKeys.clear();analog.x=analog.y=touchStick.x=touchStick.y=touchLookStick.x=touchLookStick.y=0;gasHeld=brakeHeld=false;gasPointerId=brakePointerId=null;throttle=throttleTarget=0;const gas=hud.querySelector('#jcGas');gas?.classList.remove('pressed');gas?.setAttribute('aria-pressed','false');const fill=hud.querySelector('#jcGasFill');if(fill)fill.style.transform='scaleX(0)';hud.querySelector('[data-move="b"]')?.classList.remove('pressed');dragging=false;lookPointer=null;stickPointer=lookStickPointer=null;stickTouchIdentifier=lookStickTouchIdentifier=null;hud.querySelector('#jcStick i').style.transform='';hud.querySelector('#jcLookStick i').style.transform='';}
 function toggleWheel(){
   const opening=!wheel.classList.contains('open');
