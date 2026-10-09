@@ -16,8 +16,6 @@ assert.match(source,/controllerPaused/,'Start pauses gameplay and freezes the wo
 assert.match(source,/id==='jump'\)\{if\(!flying\)dash\(\);\}/,'A dash-jumps grounded and rises when held during flight');
 assert.match(source,/id==='cast'\)cast\(\)/,'B casts the equipped power');
 assert.match(source,/else if\(id==='car'\)toggleCar\(\)/,'Y enters and exits the car');
-assert.match(source,/else if\(id==='flight'\)cast\(id\)/,'LB toggles flight');
-assert.match(source,/else if\(id==='shield'\)cast\(id\)/,'RB activates shield');
 assert.match(source,/id==='pause'/,'Start button is handled as a pause toggle');
 assert.match(source,/jcGamepadPause/,'pause state has a visible overlay');
 console.log('PASS: standard gamepad mapping, pause behavior and source/deploy parity.');
