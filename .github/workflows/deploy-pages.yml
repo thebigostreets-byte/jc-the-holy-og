@@ -67,6 +67,8 @@ jobs:
           }
           console.log(`Synchronized ${copied} client assets from main.`);
           NODE
+      - name: Rebase root URLs for GitHub project Pages
+        run: node source/scripts/rebase-github-pages-paths.mjs pages
       - name: Commit and push deployment bundle
         working-directory: pages
         run: |
