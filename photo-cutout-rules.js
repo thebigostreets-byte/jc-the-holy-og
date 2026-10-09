@@ -18,3 +18,8 @@ export function isPhotoCutoutView(dx, dz, distance, height, sector = VIEW_ANGLE)
   const delta = Math.atan2(Math.sin(angle - sector), Math.cos(angle - sector));
   return Math.abs(delta) <= VIEW_TOLERANCE;
 }
+
+// Prefer assets whose baked view matches the camera, then the closest landmark.
+export function rankPhotoCutoutTargets(candidates = []) {
+  return [...candidates].sort((a, b) => Number(!!b.inView) - Number(!!a.inView) || a.distance - b.distance);
+}

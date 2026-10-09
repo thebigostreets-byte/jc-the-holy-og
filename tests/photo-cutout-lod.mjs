@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {photoCutoutAsset,isPhotoCutoutView} from '../photo-cutout-rules.js';
+import {photoCutoutAsset,isPhotoCutoutView,rankPhotoCutoutTargets} from '../photo-cutout-rules.js';
 import {fictionalLandmarkName} from '../building-identities.js';
 
 assert.ok(photoCutoutAsset('Blood Bay').endsWith('blood-bay-v1.webp'));
@@ -8,6 +8,7 @@ assert.ok(photoCutoutAsset('Mandalay Bay').endsWith('blood-bay-v1.webp'));
 assert.ok(photoCutoutAsset('Obsidian Pyramid').endsWith('obsidian-pyramid-v1.webp'));
 assert.ok(photoCutoutAsset('Luxor').endsWith('obsidian-pyramid-v1.webp'));
 assert.equal(photoCutoutAsset('Generic Strip hotel'),null);
+assert.deepEqual(rankPhotoCutoutTargets([{id:'near-wrong-view',distance:20,inView:false},{id:'far-right-view',distance:200,inView:true}]).map(x=>x.id),['far-right-view','near-wrong-view']);
 assert.equal(isPhotoCutoutView(Math.sin(Math.PI/4),Math.cos(Math.PI/4),900,70),true);
 assert.equal(isPhotoCutoutView(Math.sin(Math.PI),Math.cos(Math.PI),900,70),false,'other view angles keep the original mesh');
 assert.equal(isPhotoCutoutView(Math.sin(Math.PI/4),Math.cos(Math.PI/4),300,70),false,'near views keep the original mesh');

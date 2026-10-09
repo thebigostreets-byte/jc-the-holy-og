@@ -35,6 +35,7 @@ jobs:
             tests/npc-memory.mjs \
             tests/control-upgrade.mjs \
             tests/pose-cleanup.mjs \
+            tests/character-pose-assets.mjs \
             tests/photorealism-pbr.mjs \
             tests/rooftop-details.mjs \
             tests/predictive-streaming.mjs \

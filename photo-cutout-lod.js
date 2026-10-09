@@ -1,5 +1,5 @@
 import * as THREE from './three.module.js';
-import { photoCutoutAsset, isPhotoCutoutView } from './photo-cutout-rules.js';
+import { photoCutoutAsset, isPhotoCutoutView, rankPhotoCutoutTargets } from './photo-cutout-rules.js';
 export { photoCutoutAsset, isPhotoCutoutView } from './photo-cutout-rules.js';
 
 // Photo cutouts are a distant visual LOD. The source GLB remains authoritative
@@ -84,8 +84,18 @@ export function createPhotoCutoutLod(game, { mobile = false, enabled = true } = 
       if (best.get(asset)?.ob !== record.ob) release(record);
     }
     const limit = mobile ? 1 : 2;
-    const ordered = [...best.entries()].sort(([a], [b]) => Number(b.includes('blood-bay')) - Number(a.includes('blood-bay')));
-    for (const [asset, target] of ordered.slice(0, limit)) {
+    const cameraPosition = camera.position;
+    const candidates = [...best.entries()].map(([asset, target]) => {
+      const bounds = new THREE.Box3().setFromObject(target.ob);
+      const center = bounds.getCenter(new THREE.Vector3());
+      const dx = cameraPosition.x - center.x, dz = cameraPosition.z - center.z;
+      const distance = cameraPosition.distanceTo(center);
+      return { asset, target, distance, inView: isPhotoCutoutView(dx, dz, distance, Math.max(1, bounds.max.y - bounds.min.y)) };
+    });
+    // On phones, prefer the cutout that matches the current view; otherwise show
+    // the nearest landmark. This avoids permanently starving the second image.
+    const ordered = rankPhotoCutoutTargets(candidates);
+    for (const { asset, target } of ordered.slice(0, limit)) {
       const existing = records.get(asset);
       if (!existing || existing.ob !== target.ob) prepare(asset, target.ob);
     }

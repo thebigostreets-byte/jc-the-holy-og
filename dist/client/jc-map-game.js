@@ -9,7 +9,6 @@ import {cloneBuildingMaterial} from './map-materials.js';
 import {stickAxis, standardPadActions, standardPadHolds, response, advancePedal, advanceChain, advanceGait, advanceLook, setFlightForward} from './jc-control-math.js';
 import {transitionFlight,shouldTouchDown} from './jc-flight-state.js';
 import {createMiracleEffects} from './jc-miracle-effects.js';
-import {loadRearWalk,loadPoseSheet,FLIGHT_CELLS} from './rear-walk.js';
 import {cachedGroundSample} from './ground-sampling.js';
 import {addBackgroundMusic} from './background-music.js';
 import {createCityMissions} from './city-missions.js';
@@ -203,8 +202,6 @@ let fireSystem=null,pickups=null,electricCharge=0,lastVehicleHit=0;
 const carWheels=[];
 function createJCCar(scene,x,z,y){const group=new THREE.Group();group.name='JC personal gold-lined touring car';const bodyMat=new THREE.MeshStandardMaterial({color:0x171c20,metalness:.7,roughness:.3}),goldMat=new THREE.MeshStandardMaterial({color:0xdab45d,metalness:.8,roughness:.22}),glassMat=new THREE.MeshStandardMaterial({color:0x192735,metalness:.45,roughness:.12}),tireMat=new THREE.MeshStandardMaterial({color:0x090b0d,roughness:.9}),lampMat=new THREE.MeshBasicMaterial({color:0xffe1a0}),tailMat=new THREE.MeshBasicMaterial({color:0xff2632});const box=(name,size,pos,mat)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(...size),mat);m.name=name;m.position.set(...pos);group.add(m);return m;};box('armored grand tourer chassis',[4.25,.66,1.85],[0,.65,0],bodyMat);box('gold hood trim',[1.15,.055,1.68],[1.18,1.005,0],goldMat);box('cockpit',[2.05,.8,1.55],[-.35,1.32,0],glassMat);box('roof',[1.3,.15,1.56],[-.4,1.78,0],bodyMat);box('front fascia',[.18,.37,1.75],[2.12,.69,0],goldMat);box('front light left',[.08,.16,.47],[2.22,.83,-.55],lampMat);box('front light right',[.08,.16,.47],[2.22,.83,.55],lampMat);box('tail left',[.08,.19,.42],[-2.14,.79,-.55],tailMat);box('tail right',[.08,.19,.42],[-2.14,.79,.55],tailMat);for(const xWheel of [-1.35,1.35])for(const zWheel of [-.94,.94]){const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.43,.43,.25,16),tireMat);wheel.rotation.x=Math.PI/2;wheel.position.set(xWheel,.43,zWheel);group.add(wheel);carWheels.push(wheel);}group.position.set(x,y,z);scene.add(group);return group;}
 const characterFrames = Array(39).fill(null);
-let rearWalkReady=false;
-const sheetOverrides=new Set();
 let jcAura=null,jcSilhouetteGlow=null,jcGlowLight=null,jcGlowTexture=null,jcGlowBoostUntil=0;
 
 function makeJCGlowTexture(){
@@ -256,65 +253,39 @@ function updateJCGlow(now){
   jcSilhouetteGlow.material.opacity=.25+pulse*.03+boost*.12;
   jcGlowLight.intensity=1.65+pulse*.16+boost*.95;
 }
-function installPoseSheet(url,columns,rows,indices){
-  loadPoseSheet(url,columns,rows,indices.map((_,i)=>i),frames=>{
-    frames.forEach((canvas,i)=>{
-      const index=indices[i],old=characterFrames[index];
-      if(index===0&&sheetOverrides.has(0))return;
-      if(index===18&&sheetOverrides.has(18))return;
-      const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
-      texture.minFilter=THREE.LinearFilter;texture.generateMipmaps=false;
-      characterFrames[index]={texture,aspect:canvas.width/canvas.height};sheetOverrides.add(index);
-      if(poseIndex===index)applyCharacterFrame(index);
-      old?.texture.dispose();
-    });
-  },rows===3?FLIGHT_CELLS:undefined);
-}
-function installPoseImage(url,index){
+const characterFrameLoads=new Map();
+function requestCharacterFrame(index){
+  const safeIndex=Math.max(0,Math.min(characterFrames.length-1,Math.floor(index)));
+  if(characterFrames[safeIndex]||characterFrameLoads.has(safeIndex))return;
   const image=new Image();
-  image.onload=()=>{
-    const cleaned=cleanPoseImage(image),texture=new THREE.CanvasTexture(cleaned);
-    texture.colorSpace=THREE.SRGBColorSpace;texture.minFilter=THREE.LinearFilter;texture.generateMipmaps=false;
-    const old=characterFrames[index];characterFrames[index]={texture,aspect:cleaned.width/cleaned.height};
-    sheetOverrides.add(index);if(poseIndex===index)applyCharacterFrame(index);old?.texture.dispose();
-  };
-  image.src=url;
-}
-function loadCharacterFrames(){
-  installPoseSheet('./character-art/jc-rear-run-v2.webp',4,2,[31,32,33,34,35,36,37,38]);
-  installPoseSheet('./character-art/jc-rear-flight-v2.webp',3,3,[14,15,16,17,18,19,20,21,22]);
-  installPoseImage('./character-art/jc-rear-idle-v1.webp',0);
-  installPoseImage('./character-art/jc-rear-rise-v1.webp',18);
-  for(let i=0;i<characterFrames.length;i++){
-    const image=new Image();
+  const pending=new Promise(resolve=>{
     image.onload=()=>{
-      if(sheetOverrides.has(i)||(rearWalkReady&&(i===0||(i>=23&&i<=30))))return;
-      const cleaned=cleanPoseImage(image),texture=new THREE.CanvasTexture(cleaned);
-      texture.colorSpace=THREE.SRGBColorSpace;
-      texture.minFilter=THREE.LinearFilter;
-      texture.generateMipmaps=false;
-      characterFrames[i]={texture,aspect:cleaned.width/cleaned.height};
-      if(i===0&&realisticAvatar)applyCharacterFrame(0);
+      try{
+        const cleaned=cleanPoseImage(image),texture=new THREE.CanvasTexture(cleaned);
+        texture.colorSpace=THREE.SRGBColorSpace;
+        texture.minFilter=THREE.LinearFilter;
+        texture.generateMipmaps=false;
+        characterFrames[safeIndex]={texture,aspect:cleaned.width/cleaned.height};
+        if(poseIndex===safeIndex)applyCharacterFrame(safeIndex);
+      }catch(error){console.warn('Character pose could not be prepared',safeIndex,error);}
+      resolve();
     };
-    image.src=`./poses/pose-${i}.webp`;
-  }
-  loadRearWalk(frames=>{
-    const obsolete=new Set([...(sheetOverrides.has(0)?[]:[characterFrames[0]]),...characterFrames.slice(23,31)].filter(Boolean));
-    frames.forEach((canvas,i)=>{
-      const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
-      texture.minFilter=THREE.LinearFilter;texture.generateMipmaps=false;
-      const frame={texture,aspect:canvas.width/canvas.height};
-      characterFrames[23+i]=frame;
-    });
-    rearWalkReady=true;if(!sheetOverrides.has(0))characterFrames[0]=characterFrames[29];applyCharacterFrame(poseIndex);
-    obsolete.forEach(frame=>frame.texture.dispose());
+    image.onerror=()=>{
+      console.warn('Character pose image unavailable',safeIndex);
+      resolve();
+    };
   });
+  characterFrameLoads.set(safeIndex,pending);
+  image.src=`./poses/pose-${safeIndex}.webp`;
 }
+function loadCharacterFrames(){requestCharacterFrame(0);}
 function applyCharacterFrame(index){
   if(!realisticAvatar)return;
   ensureJCGlow();
   if(devilMode&&devilTexture){if(realisticAvatar.material.map!==devilTexture){realisticAvatar.material.map=devilTexture;realisticAvatar.material.needsUpdate=true;}return;}
-  const frame=characterFrames[index]||characterFrames[0];
+  const safeIndex=Math.max(0,Math.min(characterFrames.length-1,Math.floor(index)));
+  requestCharacterFrame(safeIndex);
+  const frame=characterFrames[safeIndex]||characterFrames[0];
   if(!frame)return;
   const material=realisticAvatar.material;
   if(material.map!==frame.texture){material.map=frame.texture;material.needsUpdate=true;}
