@@ -9,8 +9,8 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === '/api/healthz') return json({ok: true, game: 'JC The Holy OG', npcDialogue: 'integrated'});
-    if (url.pathname === '/api/npc-chat') {
+    if (url.pathname === '/jc-the-holy-og/api/healthz') return json({ok: true, game: 'JC The Holy OG', npcDialogue: 'integrated'});
+    if (url.pathname === '/jc-the-holy-og/api/npc-chat') {
       if (request.method !== 'POST') return json({error: 'Use the conversation box to talk to an NPC.'}, 405);
       if (request.headers.get('origin') !== GAME_ORIGIN) return json({error: 'Open NPC dialogue inside JC The Holy OG.'}, 403);
       if (!request.headers.get('content-type')?.includes('application/json')) return json({error: 'Send a JSON message.'}, 415);

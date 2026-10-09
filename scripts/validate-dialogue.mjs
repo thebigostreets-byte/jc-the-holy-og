@@ -6,7 +6,7 @@ try {
   globalThis.fetch = async (url,options) => {sent={url,options,body:JSON.parse(options.body)};return Response.json({reply:'The lights came back after your miracle.'});};
   const npc={name:'Mara',faction:'civilian',state:'awe',event:{type:'lightning'}};
   assert.match(await requestNpcDialogue(npc,[],{message:'What happened?'}),/lights came back/);
-  assert.equal(sent.url,'/api/npc-chat');
+  assert.equal(sent.url,'/jc-the-holy-og/api/npc-chat');
   assert.equal(sent.options.mode,'same-origin');
   assert.equal(sent.body.npc.recentEvent,'lightning');
   globalThis.fetch = async () => Response.json({error:'Add API credit.',code:'api_credit_exhausted'},{status:503});

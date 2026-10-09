@@ -1,4 +1,4 @@
-const ENDPOINT = '/api/npc-chat';
+const ENDPOINT = '/jc-the-holy-og/api/npc-chat';
 
 const CHARACTER_LOCK_DIRECTIVE = [
   'JC NPC CHARACTER LOCK:',

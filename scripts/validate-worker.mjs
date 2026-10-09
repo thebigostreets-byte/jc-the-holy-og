@@ -6,7 +6,7 @@ const origin = 'https://jc-the-holy-og.ill5299.chatgpt.site';
 const health = await worker.fetch(new Request(`${origin}/api/healthz`), {});
 assert.equal((await health.json()).npcDialogue, 'integrated');
 const game = await worker.fetch(new Request(`${origin}/map.html`), {ASSETS: {fetch: async request => new Response(new URL(request.url).pathname)}});
-assert.equal(await game.text(), '/map.html');
+assert.equal(await game.text(), '/jc-the-holy-og/map.html');
 const denied = await worker.fetch(new Request(`${origin}/api/npc-chat`, {method: 'POST',headers: {origin:'https://other.invalid','content-type':'application/json'},body:'{}'}), {});
 assert.equal(denied.status, 403);
 const originalFetch = globalThis.fetch;

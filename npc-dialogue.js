@@ -1,4 +1,4 @@
-const ENDPOINT = '/api/npc-chat';
+const ENDPOINT = '/jc-the-holy-og/api/npc-chat';
 let sessionApiKey='';
 
 function stableIndex(value,count){let h=0;for(const c of String(value||''))h=(Math.imul(h,31)+c.charCodeAt(0))>>>0;return count?h%count:0;}
@@ -35,7 +35,7 @@ export async function requestNpcTranscription(blob){
   if(!blob?.size)throw new Error('No audio was recorded. Tap the microphone and try again.');
   if(blob.size>18*1024*1024)throw new Error('That recording is too long. Try a shorter message.');
   const form=new FormData();form.append('audio',blob,`npc-message.${blob.type.includes('mp4')?'mp4':blob.type.includes('ogg')?'ogg':'webm'}`);if(sessionApiKey)form.append('apiKey',sessionApiKey);
-  const response=await fetch('/api/npc-transcribe',{method:'POST',mode:'same-origin',credentials:'same-origin',body:form,signal:AbortSignal.timeout(30000)});
+  const response=await fetch('/jc-the-holy-og/api/npc-transcribe',{method:'POST',mode:'same-origin',credentials:'same-origin',body:form,signal:AbortSignal.timeout(30000)});
   const data=await response.json().catch(()=>null);if(!response.ok)throw new Error(data?.error||'Groq Whisper could not transcribe that recording. Try again.');
   if(typeof data?.text!=='string'||!data.text.trim())throw new Error('Whisper did not hear a clear message. Try again.');return data.text.trim();
 }
@@ -54,7 +54,7 @@ export async function requestNpcDialogue(npc, history, {message = '', greeting =
   try {
     const response = await fetch(ENDPOINT,{
       method:'POST',mode:'same-origin',credentials:'same-origin',headers:{'content-type':'application/json'},signal:controller.signal,
-      body:JSON.stringify({playerIdentity,spatialContext,npc:{gender:npc.gender,allegiance:npc.allegiance,alignmentScore:npc.alignmentScore,id:npc.id,personality:[npc.personality,identityContext,memoryContext?'Personally witnessed (do not invent unseen events): '+memoryContext:''].filter(Boolean).join('. '),witnessMemories,observedPlayer,occupation:npc.occupation,decision:npc.decision,memories:npc.lifeMemory?.memories,trust:npc.lifeMemory?.trust,name:npc.name,faction:npc.faction,state:npc.state || 'calm',recentEvent:[npc.event?.type || npc.memory?.type || '',memoryContext].filter(Boolean).join(' · ')},world,history:history.slice(-8),message,greeting,...(sessionApiKey?{apiKey:sessionApiKey}:{})}),
+      body:JSON.stringify({playerIdentity,spatialContext,npc:{gender:npc.gender,allegiance:npc.allegiance,alignmentScore:npc.alignmentScore,id:npc.id,personality:[npc.personality,identityContext,memoryContext?'Personally witnessed (do not invent unseen events): '+memoryContext:''].filter(Boolean).join('. '),witnessMemories,observedPlayer,occupation:npc.occupation,life:npc.life?{activity:npc.life.activity,homeId:npc.life.homeId,workplaceId:npc.life.workplaceId,familyId:npc.life.familyId,stress:npc.life.stress}:null,identity:npc.identity?{openness:npc.identity.openness,skepticism:npc.identity.skepticism,curiosity:npc.identity.curiosity,trust:npc.identity.trust,gameBelief:npc.identity.gameBelief}:null,decision:npc.decision,memories:npc.lifeMemory?.memories,trust:npc.lifeMemory?.trust,name:npc.name,faction:npc.faction,state:npc.state || 'calm',recentEvent:[npc.event?.type || npc.memory?.type || '',memoryContext].filter(Boolean).join(' · ')},world,history:history.slice(-8),message,greeting,...(sessionApiKey?{apiKey:sessionApiKey}:{})}),
     });
     let data;
     try {data = await response.json();} catch {throw new Error('NPC dialogue returned an unreadable response. Your message is saved.');}
