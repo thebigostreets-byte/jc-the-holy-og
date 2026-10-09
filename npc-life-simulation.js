@@ -52,3 +52,36 @@ export function simulateNeighborhood(residents, worldHour, day, events=[]) {
   for(const resident of residents)updateNpcLife(resident,worldHour,day,events);
   return residents;
 }
+
+// NPCs have individual identities and different responses to claims about their reality.
+const firstNames=['Alex','Jordan','Maria','Devin','Sofia','Marcus','Elena','Tyler','Jasmine','Andre','Nina','Carlos','Priya','Owen','Maya','Luis'];
+const lastNames=['Rivera','Johnson','Nguyen','Walker','Martinez','Chen','Brooks','Patel','Garcia','Morgan','Reed','Lopez','Kim','Price'];
+export function createNpcIdentity(id, overrides={}) {
+  const key=String(id);
+  const name=overrides.name||firstNames[hash(key+':first')%firstNames.length]+' '+lastNames[hash(key+':last')%lastNames.length];
+  return {
+    id:key,name,
+    openness:clamp(overrides.openness??(hash(key+':open')%101),0,100),
+    skepticism:clamp(overrides.skepticism??(hash(key+':skeptic')%101),0,100),
+    curiosity:clamp(overrides.curiosity??(hash(key+':curiosity')%101),0,100),
+    trust:clamp(overrides.trust??35,0,100),
+    gameBelief:clamp(overrides.gameBelief??0,0,100),
+    realityEvidence:0,
+    conversations:0,
+  };
+}
+export function respondToSimulationClaim(identity,{evidence=0,relationship=0}={}) {
+  identity.conversations++;
+  const impact=clamp(evidence,0,100)*.45+clamp(relationship,-100,100)*.12+
+    identity.openness*.1+identity.curiosity*.1-identity.skepticism*.16;
+  identity.realityEvidence=clamp(identity.realityEvidence+Math.max(0,evidence),0,1000);
+  identity.gameBelief=clamp(identity.gameBelief+impact*.25,0,100);
+  const stage=identity.gameBelief>=70?'believer':identity.gameBelief>=35?'curious':'skeptic';
+  const responses={
+    skeptic:[`What? No way. You think this is a game?`,`You're messing with me, right?`,`That's crazy, dude. I've got work tomorrow.`],
+    curious:[`Wait. Why would you say that?`,`I don't believe you, but some things here are strange.`,`Okay, show me something I can't explain.`],
+    believer:[`I think you might be telling the truth.`,`If this is a game, what happens to us?`,`I need time to understand what that means.`],
+  };
+  const options=responses[stage];
+  return {stage,reply:options[hash(identity.id+':'+identity.conversations)%options.length],belief:identity.gameBelief};
+}
