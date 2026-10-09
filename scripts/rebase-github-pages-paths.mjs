@@ -17,9 +17,11 @@ function visit(dir){
   }
 }
 visit(root);
-const html=readFileSync(path.join(root,'game-full.html'),'utf8');
-const loader=readFileSync(path.join(root,'device-loader.js'),'utf8');
-if(!html.includes('href="/jc-the-holy-og/game-ui.css')||!loader.includes('"/jc-the-holy-og/boot-runtime.js"')){
-  throw new Error('GitHub Pages path verification failed; required CSS or startup module still uses an origin-root URL.');
+const launcher=readFileSync(path.join(root,'game-full.html'),'utf8');
+const playable=readFileSync(path.join(root,'map.html'),'utf8');
+if(!launcher.includes('location.replace(new URL("./map.html?play=1",location.href).href)')||
+   !playable.includes("await import('./map-engine.js")||
+   !playable.includes("await import('./jc-map-game.js")){
+  throw new Error('GitHub Pages entry verification failed; game-full must route to the maintained playable map entry.');
 }
 console.log(`Rebased ${changedRefs} origin-root references in ${changedFiles} deployable text files for /jc-the-holy-og/.`);
