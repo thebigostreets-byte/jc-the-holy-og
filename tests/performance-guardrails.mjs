@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import * as THREE from '../three.module.js';
+import {createAdaptiveRenderBudget} from '../device-performance.js';
 import {cachedGroundSample,decodeGlbAttribute} from '../ground-sampling.js';
 
 const cache=new Map();let probes=0,fallbacks=0;
@@ -62,4 +63,12 @@ context.refreshFootprints();assert.equal(footprints.length,0,'collapsed building
 destroyed.clear();context.refreshFootprints();assert.equal(footprints.length,1);
 assert.equal(context.openSpace(61,30,4),false,'nearby tile-edge building remains collidable');
 assert.equal(context.openSpace(58,30,4),true,'safe landing outside collision radius remains clear');
+let adaptivePixelRatio=.68;
+const budget=createAdaptiveRenderBudget({setPixelRatio:value=>{adaptivePixelRatio=value;}},{basePixelRatio:.68,minPixelRatio:.42});
+for(let time=0;time<8000;time+=16)budget.update(time,42);
+assert.ok(adaptivePixelRatio<.68,'sustained slow frames lower render resolution');
+const slowRatio=adaptivePixelRatio;
+for(let time=8000;time<34000;time+=16)budget.update(time,16);
+assert.ok(adaptivePixelRatio>slowRatio,'stable performance gradually restores resolution');
+assert.ok(adaptivePixelRatio<=.68,'automatic quality never exceeds the device cap');
 console.log('Performance guardrails passed: terrain probe reuse/cap, GLB decoding, and collision grid updates.');
