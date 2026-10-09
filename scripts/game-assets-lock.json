@@ -94,8 +94,8 @@
     },
     {
       "path": "assets/overview.jpg",
-      "bytes": 713467,
-      "sha256": "887940752f58d246a7062fb3689842e6f52a10e2ae5809309a6e40967629dd95"
+      "bytes": 328937,
+      "sha256": "2c08cdf66fe513d44ac344d0353d12a397bf19db13a133571b5a9210a8fecbf7"
     },
     {
       "path": "building-textures.js",
