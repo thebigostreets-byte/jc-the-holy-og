@@ -14,6 +14,7 @@ const deployableFiles=[
   'npc-memory.js',
   'physical-building-materials.js',
   'map-engine.js',
+  'device-performance.js',
   'jc-map-game.js',
   'jc-npcs.js',
   'jc-audio.js',
