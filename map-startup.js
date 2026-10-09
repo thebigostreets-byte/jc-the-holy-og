@@ -27,6 +27,13 @@ window.jcCanOpenGraphics=function(){
  }catch{return false;}
 };
 window.jcLoadingRecovery=function(message){
+ const fatalGraphics=/lost its graphics connection|WebGL 2 and WebGL 1 are unavailable|could not start WebGL/i.test(String(message));
+ if(!fatalGraphics&&(window.JC_PLAYER_READY||window.JC_CITY_READY)){
+  console.warn('Suppressed stale 3D startup overlay after scene initialized:',message);
+  document.getElementById('jcRecovery')?.remove();
+  window.JC_BOOT_FAILED=false;
+  return;
+ }
  window.JC_BOOT_FAILED=true;
  let recovery=document.getElementById('jcRecovery');if(recovery){recovery.querySelector('p').textContent=message;const fallback=recovery.querySelector('[data-lite-fallback]');if(fallback)fallback.onclick=()=>window.jcOpenLiteFallback(message);return;}
  recovery=document.createElement('div');recovery.id='jcRecovery';recovery.style.cssText='position:fixed;inset:0;z-index:999;background:#091018ed;color:white;display:grid;place-content:center;padding:24px;text-align:center;font:16px Arial;gap:16px';
@@ -48,3 +55,15 @@ addEventListener('unhandledrejection',event=>{
  window.jcLoadingRecovery(message);
 });
 setTimeout(()=>{if(window.JC_BOOT_FAILED)return;const play=new URLSearchParams(location.search).get('play')==='1';if(!window.JC_CITY_READY||(play&&!window.JC_PLAYER_READY)){const stage=window.JC_BOOT_STAGE||(!window.JC_CITY_READY?'city':'player');window.jcLoadingRecovery('Full 3D startup is taking too long at '+stage+'. You can retry full 3D or choose lite mode.');}},90000);
+
+// An earlier asynchronous startup failure must not permanently obscure a later successful scene.
+const jcRecoveryCleanup=setInterval(()=>{
+ if(window.JC_PLAYER_READY||window.JC_CITY_READY){
+  const recovery=document.getElementById('jcRecovery');
+  if(recovery&&!/lost its graphics connection|could not start WebGL/i.test(recovery.textContent||'')){
+   recovery.remove();window.JC_BOOT_FAILED=false;
+  }
+  clearInterval(jcRecoveryCleanup);
+ }
+},500);
+setTimeout(()=>clearInterval(jcRecoveryCleanup),120000);
