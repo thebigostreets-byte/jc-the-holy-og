@@ -47,6 +47,7 @@
   "data/nellis-flood-conveyances.geojson",
   "data/vegas-flood-conveyances.geojson",
   "device-loader.js",
+  "device-performance.js",
   "display-controls.js",
   "distant-city.js",
   "explorable-world.js",
