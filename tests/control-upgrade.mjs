@@ -2,13 +2,15 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import * as THREE from '../three.module.js';
-import {stickAxis,response,advancePedal,advanceChain,advanceLook,setFlightForward} from '../jc-control-math.js';
+import {stickAxis,standardPadActions,standardPadHolds,response,advancePedal,advanceChain,advanceLook,setFlightForward} from '../jc-control-math.js';
 
 assert.equal(stickAxis(.12),0);
 assert.equal(stickAxis(-1),-1);
 assert.ok(stickAxis(.5)>.3&&stickAxis(.5)<.5);
 assert.equal(stickAxis(.08,.12),0,'touch stick ignores resting thumb drift');
 assert.ok(Math.abs(stickAxis(.56,.12)-.5)<1e-9,'touch and gamepad use the same rescaled deadzone');
+assert.deepEqual(standardPadActions,[[0,'jump'],[1,'cast'],[2,'hypersonic'],[3,'car'],[4,'flight'],[5,'shield'],[8,'wheel'],[9,'pause']],'face buttons and menu controls match standard Gamepad API indices');
+assert.deepEqual(standardPadHolds,[[0,'Space'],[6,'Control'],[7,'Space']],'A rises during flight and triggers control altitude');
 
 const aim=new THREE.Vector3();
 setFlightForward(aim,0,0);
@@ -41,6 +43,9 @@ assert.equal(chain.count,8);
 assert.equal(advanceChain(chain,40).count,1);
 
 const source=readFileSync(new URL('../jc-map-game.js',import.meta.url),'utf8');
+assert.match(source,/controllerPaused/,'Start pauses gameplay and freezes the world');
+assert.match(source,/id==='jump'\)\{if\(!flying\)dash\(\);\}/,'A dash-jumps grounded and rises when held during flight');
+assert.match(source,/id==='cast'\)cast\(\)/,'B casts the equipped power');
 assert.match(source,/advancePedal/,'game imports the tested pedal response');
 assert.match(source,/id="jcGas"[^>]+aria-label="Hold gas pedal to move forward"/,'mobile has a dedicated gas pedal');
 assert.match(source,/id="jcGasFill"/,'gas pedal exposes visible throttle feedback');

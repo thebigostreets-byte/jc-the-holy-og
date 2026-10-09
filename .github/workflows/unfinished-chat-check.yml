@@ -33,6 +33,7 @@ jobs:
             tests/photo-cutout-lod.mjs \
             tests/npc-contacts.mjs \
             tests/npc-memory.mjs \
+            tests/control-upgrade.mjs \
             tests/pose-cleanup.mjs \
             tests/photorealism-pbr.mjs \
             tests/rooftop-details.mjs \
