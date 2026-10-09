@@ -428,8 +428,9 @@ function setControllerPaused(paused){controllerPaused=!!paused;const overlay=hud
 const jcPauseRecovery=()=>{if(controllerPaused)setControllerPaused(false);};
 // Recover from stale overlays after browser back/forward navigation or visibility changes.
 const jcSyncPauseOverlay=()=>{const overlay=hud.querySelector('#jcGamepadPause');if(!overlay)return;overlay.hidden=!controllerPaused;overlay.style.display=controllerPaused?'grid':'none';overlay.style.pointerEvents=controllerPaused?'auto':'none';};
-window.addEventListener('pageshow',jcSyncPauseOverlay);
+window.addEventListener('pageshow',()=>{if(!navigator.getGamepads?.()?.some(Boolean))controllerPaused=false;jcSyncPauseOverlay();});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)jcSyncPauseOverlay();});
+if(!navigator.getGamepads?.()?.some(Boolean))controllerPaused=false;
 jcSyncPauseOverlay();
 hud.querySelector('#jcGamepadPause')?.addEventListener('click',jcPauseRecovery);
 hud.querySelector('#jcGamepadPause')?.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();jcPauseRecovery();}});
