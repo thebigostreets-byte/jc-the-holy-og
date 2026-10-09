@@ -3,6 +3,8 @@ import {createCharacter3D} from './jc-character3d.js';
 import {createAmbientCrowd} from './jc-crowd.js';
 import {createNpcMemoryStore} from './npc-memory.js';
 import {createNpcAutonomy} from './npc-autonomy.js';
+import {createNpcLife,createNpcIdentity,updateNpcLife} from './npc-life-simulation.js';
+import {createNpcPerformanceScheduler} from './npc-performance.js';
 
 const AVATARS = [
   ['civilian-01','civilian'],['civilian-02','civilian'],['civilian-03','civilian'],['civilian-04','civilian'],
@@ -25,6 +27,7 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,fi
   root.visible=false;
   const npcs=[];
   const memoryStore=createNpcMemoryStore();
+  const performanceScheduler=createNpcPerformanceScheduler({mobile});
   const detailedCap=mobile?12:24;
   const size=Math.max(6,Math.min(detailedCap,Math.round(count||8)));
   let trackedId=null;
@@ -47,9 +50,12 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,fi
     const ring=18+Math.floor(i/4)*13;
     const [x,z]=chooseOpen(player.position.x+Math.cos(angle)*ring,player.position.z+Math.sin(angle)*ring,isSafe);
     const given=['Mara','Darius','Sol','Nia','Ezra','Vale','Imani','Theo','Rae','Jonah','Ash','Micah','Zuri','Cal','Noor','Eli'];
-    const name=given[i%given.length],id=[faction,avatar,name].join(':');
+    const id=[faction,avatar,given[i%given.length]].join(':');
+    const identity=createNpcIdentity(id);
+    const name=identity.name;
     const profile=characterProfiles[faction]||characterProfiles.civilian,savedMemory=memoryStore.get(id);
-    const npc={id,faction,avatar,name,...profile,sprite:null,trackerRing:null,position:new THREE.Vector3(x,groundAt(x,z)+1.55,z),target:new THREE.Vector3(x,0,z),event:null,state:'idle',nextWander:0,emotionUntil:0,gait:Math.random()*Math.PI*2,stepDistance:0,lifeMemory:savedMemory,observedPlayer:savedMemory?.lastPlayerState?{state:savedMemory.lastPlayerState,appearance:savedMemory.appearance}:null};
+    const life=createNpcLife(id,{name,occupation:profile.role});
+    const npc={id,faction,avatar,name,identity,life,homeId:life.homeId,familyId:life.familyId,workplaceId:life.workplaceId,...profile,sprite:null,trackerRing:null,position:new THREE.Vector3(x,groundAt(x,z)+1.55,z),target:new THREE.Vector3(x,0,z),event:null,state:'idle',nextWander:0,emotionUntil:0,gait:Math.random()*Math.PI*2,stepDistance:0,lifeMemory:savedMemory,observedPlayer:savedMemory?.lastPlayerState?{state:savedMemory.lastPlayerState,appearance:savedMemory.appearance}:null};
     npcs.push(npc);
     const sprite=createCharacter3D({faction,ordinal:i});
     sprite.position.set(x,groundAt(x,z),z);
@@ -126,6 +132,8 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,fi
     for(const npc of npcs) {
       if(!npc.sprite)continue;
       let distance=npc.position.distanceTo(playerPosition);
+      const worldHour=(Date.now()/3600000)%24;
+      if(performanceScheduler.shouldUpdate('life:'+npc.id,distance,now))updateNpcLife(npc.life,worldHour,Math.floor(Date.now()/86400000));
       if(!npc.goal&&distance>180&&npc.id!==trackedId&&now>npc.emotionUntil&&now>npc.nextWander){
         const i=npcs.indexOf(npc),angle=i*2.3999632297,radius=18+(i%4)*11;
         const [x,z]=chooseOpen(playerPosition.x+Math.cos(angle)*radius,playerPosition.z+Math.sin(angle)*radius,isSafe);
@@ -193,5 +201,5 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,fi
 
   return {npcs,signal,update,observePlayer,setTracked,trafficImpact,memorySummary:id=>memoryStore.summary(id),command:(npc,action,source='script')=>autonomy?.command(npc,action,source)||null,commandFromText:(npc,message,source='player')=>autonomy?.commandFromText(npc,message,source)||null,get trackedId(){return trackedId;},totalPopulation:npcs.length+crowd.count,crowd,
     setVisible(value){root.visible=!!value;crowd.setVisible(value);},
-    dispose(){scene.remove(root);crowd.dispose();for(const npc of npcs)npc.sprite?.userData.dispose?.();const materials=new Set();root.traverse(o=>{if(o.material)materials.add(o.material);});for(const material of materials){material.map?.dispose();material.dispose();}}};
+    dispose(){scene.remove(root);crowd.dispose();performanceScheduler.clear();for(const npc of npcs)npc.sprite?.userData.dispose?.();const materials=new Set();root.traverse(o=>{if(o.material)materials.add(o.material);});for(const material of materials){material.map?.dispose();material.dispose();}}};
 }
