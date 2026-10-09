@@ -423,7 +423,12 @@ function chooseTeleportPoint(clientX,clientY){
   teleportMarker.rotation.x=-Math.PI/2;teleportMarker.position.set(teleportTarget.x,groundAt(teleportTarget.x,teleportTarget.z)+.14,teleportTarget.z);game.scene.add(teleportMarker);
   teleportAim=false;feedback(selectedBuilding&&hits.length?`BUILDING DESTINATION · ${selectedBuilding.userData.identity?.name||selectedBuilding.userData.buildingId} · CAST TELEPORT`:'DESTINATION LOCKED · click TELEPORT again or press T');
 }
-function setControllerPaused(paused){controllerPaused=!!paused;const overlay=hud.querySelector('#jcGamepadPause');if(overlay)overlay.hidden=!controllerPaused;resetInput();feedback(controllerPaused?'PAUSED · PRESS START TO RESUME':'RESUMED');}
+function setControllerPaused(paused){controllerPaused=!!paused;const overlay=hud.querySelector('#jcGamepadPause');if(overlay){overlay.hidden=!controllerPaused;overlay.style.display=controllerPaused?'grid':'none';overlay.style.pointerEvents=controllerPaused?'auto':'none';overlay.setAttribute('aria-label','Tap to resume gameplay');overlay.setAttribute('role','button');overlay.tabIndex=controllerPaused?0:-1;}resetInput();feedback(controllerPaused?'PAUSED · TAP SCREEN OR PRESS START TO RESUME':'RESUMED');}
+// Touch and keyboard users must always have a way out of gamepad pause.
+const jcPauseRecovery=()=>{if(controllerPaused)setControllerPaused(false);};
+hud.querySelector('#jcGamepadPause')?.addEventListener('click',jcPauseRecovery);
+hud.querySelector('#jcGamepadPause')?.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();jcPauseRecovery();}});
+window.addEventListener('keydown',event=>{if(controllerPaused&&(event.key==='Escape'||event.key==='Enter')){event.preventDefault();jcPauseRecovery();}});
 function resetInput(){keys.clear();padKeys.clear();analog.x=analog.y=touchStick.x=touchStick.y=touchLookStick.x=touchLookStick.y=0;gasHeld=brakeHeld=false;gasPointerId=brakePointerId=null;throttle=throttleTarget=0;const gas=hud.querySelector('#jcGas');gas?.classList.remove('pressed');gas?.setAttribute('aria-pressed','false');const fill=hud.querySelector('#jcGasFill');if(fill)fill.style.transform='scaleX(0)';hud.querySelector('[data-move="b"]')?.classList.remove('pressed');dragging=false;lookPointer=null;stickPointer=lookStickPointer=null;stickTouchIdentifier=lookStickTouchIdentifier=null;hud.querySelector('#jcStick i').style.transform='';hud.querySelector('#jcLookStick i').style.transform='';}
 function toggleWheel(){
   const opening=!wheel.classList.contains('open');
