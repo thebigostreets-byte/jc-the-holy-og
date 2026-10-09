@@ -132,7 +132,7 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,fi
     for(const npc of npcs) {
       if(!npc.sprite)continue;
       let distance=npc.position.distanceTo(playerPosition);
-      const worldHour=(Date.now()/60000)%24;
+      const worldHour=(Date.now()/3600000)%24;
       if(performanceScheduler.shouldUpdate('life:'+npc.id,distance,now))updateNpcLife(npc.life,worldHour,Math.floor(Date.now()/86400000));
       if(!npc.goal&&distance>180&&npc.id!==trackedId&&now>npc.emotionUntil&&now>npc.nextWander){
         const i=npcs.indexOf(npc),angle=i*2.3999632297,radius=18+(i%4)*11;
