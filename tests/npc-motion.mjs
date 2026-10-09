@@ -10,7 +10,7 @@ assert.ok(start>=0&&end>start,'NPC update loop exists');
 const poses=[];
 const player={position:new THREE.Vector3()};
 const npc={faction:'civilian',sprite:{position:new THREE.Vector3(),rotation:{y:0},userData:{character:{setPose(...args){poses.push(args);}}}},position:new THREE.Vector3(0,1.55,0),target:new THREE.Vector3(5,1.55,0),event:null,state:'wander',nextWander:10000,emotionUntil:10000,gait:0,stepDistance:0};
-const context=vm.createContext({THREE,Math,performance:{now:()=>0},player,npcs:[npc],crowd:{update(){}},isSafe:()=>true,groundAt:()=>0,chooseOpen:(x,z)=>[x,z],report:()=>{},setDestination:()=>{}});
+const context=vm.createContext({THREE,Math,performance:{now:()=>0},player,npcs:[npc],crowd:{update(){}},performanceScheduler:{shouldUpdate:()=>false},isSafe:()=>true,groundAt:()=>0,chooseOpen:(x,z)=>[x,z],report:()=>{},setDestination:()=>{}});
 vm.runInContext(source.slice(start,end),context);
 context.update(.016,0);
 assert.ok(npc.position.x>0,'walking NPC advances toward its target');
