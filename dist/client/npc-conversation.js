@@ -1,4 +1,5 @@
 import {requestNpcDialogue,requestNpcTranscription,localNpcGreeting,localNpcReply} from './npc-dialogue.js';
+import {respondToSimulationClaim} from './npc-life-simulation.js';
 
 const CONVERSATION_STORAGE_KEY='jc-npc-conversations-v1';
 const portraits = Object.fromEntries(['civilian','authority','angel','demon'].map(f => [f, `./character-art/${f}-npc-reference-v1.webp`]));
@@ -81,6 +82,11 @@ export function createNpcConversation({panel, log, onOpen = () => {}, onClose = 
           conversations.set(key,history.slice(-8));persistConversations();renderHistory();setStatus(localAction?'ACTING':'READY TO TALK');speakReply(localFact.trim(),npc);
           if(input.value.trim()===message)input.value='';drafts.set(key,input.value);return;
         }
+      }
+      if(message&&npc.identity&&/\b(video game|videogame|simulation|not real|pixels|programmed)\b/i.test(message)){
+        // Change this NPC's belief, without forcing a preset response or bypassing the AI.
+        const observed=Array.isArray(npc.witnessMemory?.entries)?npc.witnessMemory.entries.length:0;
+        respondToSimulationClaim(npc.identity,{evidence:Math.min(35,observed*5),relationship:(npc.lifeMemory?.trust||0)});
       }
       const result = await requestNpcDialogue(npc,history,{message,greeting,signal:controller.signal,world:worldContext()});
       if (id !== requestId || active !== npc) return;
