@@ -426,6 +426,11 @@ function chooseTeleportPoint(clientX,clientY){
 function setControllerPaused(paused){controllerPaused=!!paused;const overlay=hud.querySelector('#jcGamepadPause');if(overlay){overlay.hidden=!controllerPaused;overlay.style.display=controllerPaused?'grid':'none';overlay.style.pointerEvents=controllerPaused?'auto':'none';overlay.setAttribute('aria-label','Tap to resume gameplay');overlay.setAttribute('role','button');overlay.tabIndex=controllerPaused?0:-1;}resetInput();feedback(controllerPaused?'PAUSED · TAP SCREEN OR PRESS START TO RESUME':'RESUMED');}
 // Touch and keyboard users must always have a way out of gamepad pause.
 const jcPauseRecovery=()=>{if(controllerPaused)setControllerPaused(false);};
+// Recover from stale overlays after browser back/forward navigation or visibility changes.
+const jcSyncPauseOverlay=()=>{const overlay=hud.querySelector('#jcGamepadPause');if(!overlay)return;overlay.hidden=!controllerPaused;overlay.style.display=controllerPaused?'grid':'none';overlay.style.pointerEvents=controllerPaused?'auto':'none';};
+window.addEventListener('pageshow',jcSyncPauseOverlay);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)jcSyncPauseOverlay();});
+jcSyncPauseOverlay();
 hud.querySelector('#jcGamepadPause')?.addEventListener('click',jcPauseRecovery);
 hud.querySelector('#jcGamepadPause')?.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();jcPauseRecovery();}});
 window.addEventListener('keydown',event=>{if(controllerPaused&&(event.key==='Escape'||event.key==='Enter')){event.preventDefault();jcPauseRecovery();}});
