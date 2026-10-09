@@ -280,14 +280,23 @@ function requestCharacterFrame(index){
   characterFrameLoads.set(safeIndex,pending);
   image.src=`./poses/pose-${safeIndex}.webp`;
 }
-function loadCharacterFrames(){requestCharacterFrame(0);}
+function loadCharacterFrames(){
+ requestCharacterFrame(0);
+ // Warm the full ground gait and common flight poses after the first idle image.
+ let next=23;
+ const warm=()=>{
+  if(next<=38){requestCharacterFrame(next++);setTimeout(warm,90);}
+  else for(const index of [14,15,16,17,18,19,20,21,22,5,7,8])requestCharacterFrame(index);
+ };
+ setTimeout(warm,1200);
+}
 function applyCharacterFrame(index){
   if(!realisticAvatar)return;
   ensureJCGlow();
   if(devilMode&&devilTexture){if(realisticAvatar.material.map!==devilTexture){realisticAvatar.material.map=devilTexture;realisticAvatar.material.needsUpdate=true;}return;}
   const safeIndex=Math.max(0,Math.min(characterFrames.length-1,Math.floor(index)));
   requestCharacterFrame(safeIndex);
-  const frame=characterFrames[safeIndex]||characterFrames[0];
+  const frame=characterFrames[safeIndex]||characterFrames[poseIndex]||characterFrames[0];
   if(!frame)return;
   const material=realisticAvatar.material;
   if(material.map!==frame.texture){material.map=frame.texture;material.needsUpdate=true;}
@@ -1202,7 +1211,8 @@ function frameStep(now) {
   const lateral=desired.dot(right);
   const horizontalSpeed=Math.hypot(velocity.x,velocity.z);
   const flightPose=selectFlightPose({diving,braking,rising:riseInput,descending:dropInput,gliding:glide,lateral,boosting:boost,fast:horizontalSpeed>4});
-  if(!flying&&horizontalSpeed>.2)playerStepPhase=advanceGait(playerStepPhase,horizontalSpeed,dt,sprint);
+  if(!flying&&horizontalSpeed>1.1)playerStepPhase=advanceGait(playerStepPhase,horizontalSpeed,dt,sprint);
+  else if(!flying)playerStepPhase=0;
   const locomotionPose=selectGroundPose(horizontalSpeed,playerStepPhase,sprint);
   const basePose=flying?flightPose:locomotionPose;
   const pose=now<poseOverrideUntil?poseOverride:(now<castingUntil?5:basePose);
