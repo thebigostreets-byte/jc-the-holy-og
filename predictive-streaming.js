@@ -58,6 +58,9 @@ export function createPrefetchCache(load,{maxBytes=8*1024*1024,maxEntries=2,maxC
     throw new Error('City tile demand invalidated by repeated stream resets');
   }
   async function prefetch(key){
+    // Skip malformed resource IDs and speculative downloads that cannot be cached.
+    if(key==null||(typeof key==='string'&&!key.trim()))return false;
+    if(byteBudget<1||entryBudget<1)return false;
     // Detached or invalid cached buffers must not block a fresh speculative warmup.
     if(cache.has(key)&&!validTile(cache.get(key)))forget(key);
     if(cache.has(key)||pending.has(key)||prefetching>=concurrencyBudget)return false;
