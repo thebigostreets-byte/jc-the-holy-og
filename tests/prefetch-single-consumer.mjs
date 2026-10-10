@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {createPrefetchCache} from '../predictive-streaming.js';
+let resolveLoad;
+const cache=createPrefetchCache(()=>new Promise(resolve=>{resolveLoad=resolve;}),{maxConcurrent:2});
+const warm=cache.prefetch('tile');
+await Promise.resolve();
+const first=cache.get('tile');
+const second=cache.get('tile');
+resolveLoad(new Uint8Array(16));
+const [prefetched,a,b]=await Promise.all([warm,first,second]);
+assert.equal(prefetched,true);
+assert.equal(a,b);
+assert.equal(cache.stats().hits,1,'shared prefetched response must count as only one cache hit');
+assert.equal(cache.stats().entries,0,'consumed prefetch should not remain cached');
+console.log('PASS: a prefetched tile consumed by two simultaneous gameplay requests counts as one warm cache hit');

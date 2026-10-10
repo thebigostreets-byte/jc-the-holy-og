@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {createPrefetchCache} from '../predictive-streaming.js';
+let attempts=0;
+const cache=createPrefetchCache(async()=>{attempts++;return new Uint8Array(0);},{maxBytes:1024,maxEntries:2});
+assert.equal(await cache.prefetch('empty'),false,'empty response must not be treated as a successful tile warmup');
+assert.deepEqual(cache.stats(),{bytes:0,entries:0,pending:0,hits:0},'empty tile must not occupy a cache slot');
+await cache.get('empty');
+assert.equal(attempts,2,'invalid warmup must not prevent a fresh gameplay fetch');
+assert.equal(cache.stats().hits,0,'invalid empty tiles must not be counted as hits');
+const valid=createPrefetchCache(async()=>new Uint8Array(1),{maxBytes:1024,maxEntries:2});
+assert.equal(await valid.prefetch('tiny'),true,'nonempty tiles remain cacheable');
+assert.equal(valid.stats().entries,1);
+console.log('PASS: empty tiles rejected; valid one-byte tile remains cacheable');
