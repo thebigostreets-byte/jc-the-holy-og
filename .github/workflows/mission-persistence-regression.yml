@@ -1,0 +1,28 @@
+name: JC Mission Persistence Regression
+on:
+  pull_request:
+    paths:
+      - 'jc-missions.js'
+      - 'dist/client/jc-missions.js'
+      - 'tests/missions.mjs'
+      - '.github/workflows/mission-persistence-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mission:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check mission module syntax
+        run: |
+          node --check jc-missions.js
+          node --check dist/client/jc-missions.js
+          node --check tests/missions.mjs
+      - name: Verify deployed mission module matches source
+        run: cmp jc-missions.js dist/client/jc-missions.js
+      - name: Run campaign persistence regressions
+        run: node tests/missions.mjs
