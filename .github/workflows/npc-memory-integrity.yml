@@ -1,0 +1,21 @@
+name: NPC memory integrity regressions
+on:
+  push:
+    branches: ['fix/npc-memory-integrity-oct10-run8']
+  pull_request:
+    paths:
+      - 'npc-memory.js'
+      - 'dist/client/npc-memory.js'
+      - 'tests/npc-memory-integrity.mjs'
+jobs:
+  npc-memory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check npc-memory.js && node --check tests/npc-memory-integrity.mjs
+      - run: node tests/npc-memory.mjs
+      - run: node --test tests/npc-memory-integrity.mjs
+      - run: cmp -s npc-memory.js dist/client/npc-memory.js

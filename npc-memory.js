@@ -1,22 +1,24 @@
 const STORAGE_KEY='jc-npc-memory-v1';
 const MAX_NPCS=40,MAX_ENTRIES=18,MAX_TEXT=220;
 const clone=value=>JSON.parse(JSON.stringify(value));
+const timestamp=value=>{const n=Number(value);return Number.isSafeInteger(n)&&n>=0?n:Date.now();};
+const safeWindow=value=>Number.isFinite(value)&&value>=0?Math.min(value,86400000):12000;
 function cleanEntry(value){
   if(!value||typeof value!=='object')return null;
   const text=String(value.text||'').trim().slice(0,MAX_TEXT);
   if(!text)return null;
-  return {key:String(value.key||'').slice(0,120),kind:String(value.kind||'event').slice(0,32),text,at:Number(value.at)||Date.now()};
+  return {key:String(value.key||'').slice(0,120),kind:String(value.kind||'event').slice(0,32),text,at:timestamp(value.at)};
 }
 function cleanRecord(value,id){
   if(!value||typeof value!=='object')return null;
-  return {id,name:String(value.name||'').slice(0,80),faction:String(value.faction||'civilian').slice(0,24),appearance:String(value.appearance||'').slice(0,180),lastPlayerState:String(value.lastPlayerState||''),entries:(Array.isArray(value.entries)?value.entries:[]).map(cleanEntry).filter(Boolean).slice(-MAX_ENTRIES)};
+  return {id,name:String(value.name||'').slice(0,80),faction:String(value.faction||'civilian').slice(0,24),appearance:String(value.appearance||'').slice(0,180),lastPlayerState:String(value.lastPlayerState||'').slice(0,80),entries:(Array.isArray(value.entries)?value.entries:[]).map(cleanEntry).filter(Boolean).slice(-MAX_ENTRIES)};
 }
 export function createNpcMemoryStore(storage=globalThis.localStorage){
   let records=new Map();
   try{
     const saved=JSON.parse(storage?.getItem(STORAGE_KEY)||'null');
     if(saved?.version===1&&saved.records&&typeof saved.records==='object'){
-      records=new Map(Object.entries(saved.records).map(([id,value])=>[id,cleanRecord(value,id)]).filter(([,value])=>!!value).slice(-MAX_NPCS));
+      records=new Map(Object.entries(saved.records).filter(([id])=>id.length>0&&id.length<=180).map(([id,value])=>[id,cleanRecord(value,id)]).filter(([,value])=>!!value).slice(-MAX_NPCS));
     }
   }catch{}
   function persist(){
@@ -34,11 +36,14 @@ export function createNpcMemoryStore(storage=globalThis.localStorage){
     return record;
   }
   function remember(npc,value,{once=false,dedupeMs=12000}={}){
-    const record=getOrCreate(npc),entry=cleanEntry(value);
-    if(!record||!entry)return null;
+    const entry=cleanEntry(value);
+    if(!entry)return null;
+    const record=getOrCreate(npc);
+    if(!record)return null;
     const previous=record.entries.at(-1);
     if(entry.key&&once&&record.entries.some(item=>item.key===entry.key))return clone(record);
-    if(entry.key&&previous?.key===entry.key&&entry.at-previous.at<dedupeMs){previous.at=entry.at;persist();return clone(record);}
+    const elapsed=entry.at-(previous?.at??0);
+    if(entry.key&&previous?.key===entry.key&&elapsed>=0&&elapsed<safeWindow(dedupeMs)){previous.at=entry.at;persist();return clone(record);}
     record.entries.push(entry);record.entries=record.entries.slice(-MAX_ENTRIES);persist();
     return clone(record);
   }
@@ -49,15 +54,15 @@ export function createNpcMemoryStore(storage=globalThis.localStorage){
       record.appearance=String(appearance).slice(0,180);
       remember(npc,{key:'jc:appearance',kind:'appearance',text:`I saw JC's ${record.appearance}.`,at},{once:true});
     }
-    if(state&&state!==record.lastPlayerState){
-      const label=String(state).slice(0,80);
+    const label=String(state||'').slice(0,80);
+    if(label&&label!==record.lastPlayerState){
       remember(npc,{key:'jc:state:'+label,kind:'movement',text:label==='grounded'?'I saw JC standing on the ground.':label==='hovering'?'I saw JC hovering above the street.':label==='descending'?'I saw JC descend toward the street.':label==='hypersonic'?'I saw JC accelerate into hypersonic flight.':'I saw JC flying above the street.',at},{dedupeMs:30000});
       record.lastPlayerState=label;persist();
     }
     return clone(record);
   }
   function get(id){const record=records.get(String(id||''));return record?clone(record):null;}
-  function summary(id,limit=5){return (records.get(String(id||''))?.entries||[]).slice(-Math.max(0,Math.min(8,limit))).map(item=>item.text);}
+  function summary(id,limit=5){const count=Number.isFinite(limit)?Math.max(0,Math.min(8,Math.floor(limit))):5;if(!count)return [];return (records.get(String(id||''))?.entries||[]).slice(-count).map(item=>item.text);}
   function clear(id){if(id)records.delete(String(id));else records.clear();persist();}
   return {remember,observe,get,summary,clear,get size(){return records.size;}};
 }

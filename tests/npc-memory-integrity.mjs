@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {createNpcMemoryStore,NPC_MEMORY_STORAGE_KEY} from '../npc-memory.js';
+const npc={id:'npc:one',name:'Mara',faction:'civilian'};
+const setup=()=>{const map=new Map(),storage={getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v)};return {map,storage,store:createNpcMemoryStore(storage)};};
+test('invalid entries do not allocate records',()=>{const {store}=setup();assert.equal(store.remember(npc,{text:' '}),null);assert.equal(store.size,0);});
+test('bad timestamps are repaired',()=>{const {store}=setup();store.remember(npc,{text:'event',at:-Infinity});assert.ok(Number.isSafeInteger(store.get(npc.id).entries[0].at));});
+test('clock rollback cannot deduplicate distinct events',()=>{const {store}=setup();store.remember(npc,{key:'x',text:'first',at:30000});store.remember(npc,{key:'x',text:'second',at:20000});assert.equal(store.get(npc.id).entries.length,2);});
+test('bad dedupe window is bounded',()=>{const {store}=setup();store.remember(npc,{key:'x',text:'first',at:30000});store.remember(npc,{key:'x',text:'second',at:30010},{dedupeMs:NaN});assert.equal(store.get(npc.id).entries.length,1);});
+test('saved identifiers and state are bounded',()=>{const {map,storage}=setup(),long='x'.repeat(300);map.set(NPC_MEMORY_STORAGE_KEY,JSON.stringify({version:1,records:{[long]:{entries:[{text:'skip'}]},ok:{lastPlayerState:long,entries:[{text:'keep'}]}}}));const store=createNpcMemoryStore(storage);assert.equal(store.size,1);assert.equal(store.get('ok').lastPlayerState.length,80);});
+test('long movement state does not repeat',()=>{const {store}=setup(),long='fly'.repeat(40);store.observe(npc,{state:long,at:1000});store.observe(npc,{state:long,at:2000});assert.equal(store.get(npc.id).entries.length,1);});
+test('summary respects zero and malformed limits',()=>{const {store}=setup();for(let i=0;i<10;i++)store.remember(npc,{key:String(i),text:String(i),at:i+1});assert.deepEqual(store.summary(npc.id,0),[]);assert.equal(store.summary(npc.id,NaN).length,5);assert.equal(store.summary(npc.id,100).length,8);});
