@@ -4,7 +4,7 @@ import vm from 'node:vm';
 
 const source=readFileSync(new URL('../map-startup.js',import.meta.url),'utf8');
 function setup(search='?play=1'){
- const timers=[];const intervals=[];const elements=new Map();const redirects=[];
+ const timers=[];const intervals=[];const clearedIntervals=new Set();const elements=new Map();const redirects=[];
  const document={
   getElementById:id=>elements.get(id)||null,
   querySelectorAll:()=>[],
@@ -14,9 +14,9 @@ function setup(search='?play=1'){
  const location={href:'https://example.test/map.html'+search,search,replace(url){redirects.push(url);}};
  const window={studio:{renderer:{}},JC_PLAYER_READY:false,JC_CITY_READY:false};
  const context={window,document,location,URL,URLSearchParams,Date,console:{warn(){},error(){}},
-  addEventListener(){},setTimeout(fn,ms){timers.push({fn,ms});return timers.length;},setInterval(fn,ms){intervals.push({fn,ms});return intervals.length;},clearInterval(){} };
+  addEventListener(){},setTimeout(fn,ms){timers.push({fn,ms});return timers.length;},setInterval(fn,ms){intervals.push({fn,ms});return intervals.length;},clearInterval(id){clearedIntervals.add(id);} };
  vm.runInNewContext(source,context);
- return {window,elements,timers,intervals,redirects};
+ return {window,elements,timers,intervals,clearedIntervals,redirects};
 }
 {
  const env=setup();
@@ -90,6 +90,45 @@ function setup(search='?play=1'){
  env.window.JC_CITY_READY=true;
  env.window.jcLoadingRecovery('Late optional asset failure');
  assert.equal(env.elements.has('jcRecovery'),false);
+ assert.equal(env.window.JC_BOOT_FAILED,false);
+}
+
+// Recoverable GPU context loss must not silently redirect before the player can retry.
+{
+ const env=setup();
+ env.window.jcLoadingRecovery('The game lost its graphics connection');
+ assert.ok(env.elements.has('jcRecovery'));
+ assert.equal(env.timers.some(t=>t.ms===1800),false,'recoverable graphics failures must not force lite mode');
+ assert.equal(env.redirects.length,0);
+}
+// A partially removed recovery overlay must be repaired rather than crashing recovery itself.
+{
+ const env=setup();
+ env.window.jcLoadingRecovery('Initial stall');
+ const overlay=env.elements.get('jcRecovery');
+ overlay.children=overlay.children.filter(c=>c.tagName!=='P');
+ assert.doesNotThrow(()=>env.window.jcLoadingRecovery('Updated stall'));
+ assert.equal(env.elements.get('jcRecovery').querySelector('p').textContent,'Updated stall');
+}
+// On very slow devices, recovery must still clear after the former 120s cutoff.
+{
+ const env=setup();
+ env.window.jcLoadingRecovery('Still starting');
+ const cutoff=env.timers.find(t=>t.ms===120000);
+ if(cutoff)cutoff.fn();
+ assert.equal(env.clearedIntervals.has(1),false,'readiness cleanup must remain active past 120s');
+ env.window.JC_PLAYER_READY=true;
+ env.intervals[0].fn();
+ assert.equal(env.elements.has('jcRecovery'),false);
+ assert.equal(env.clearedIntervals.has(1),true);
+}
+// External overlay removal must not leave a stale boot-failed flag after readiness.
+{
+ const env=setup();
+ env.window.jcLoadingRecovery('Waiting');
+ env.elements.delete('jcRecovery');
+ env.window.JC_PLAYER_READY=true;
+ env.intervals[0].fn();
  assert.equal(env.window.JC_BOOT_FAILED,false);
 }
 
