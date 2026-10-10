@@ -22,8 +22,8 @@ const statusText=message=>{$('loading').textContent=message;};
 statusText('Opening the city…');
 async function fetchBytes(url){
  let failure;
- for(let attempt=0;attempt<2;attempt++){
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
+ for(let attempt=0;attempt<3;attempt++){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),45000);
   try{const response=await fetch(url,{signal:controller.signal});
    if(!response.ok){const error=Error('Download failed: '+url+' ('+response.status+').');error.permanent=response.status>=400&&response.status<500&&response.status!==408&&response.status!==429;throw error;}
    return new Uint8Array(await response.arrayBuffer());
