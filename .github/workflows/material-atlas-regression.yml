@@ -31,3 +31,30 @@ jobs:
           node tests/physical-material-cleanup.mjs
       - name: Deployable source parity
         run: cmp -s physical-building-materials.js dist/client/physical-building-materials.js
+  full-repository-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build and hydrate static client
+        run: |
+          npm ci
+          npm run hydrate
+          npm run verify:assets
+          npm run build
+          node tests/deployable-client-sync.mjs
+      - name: Run complete Node regression sweep
+        run: |
+          failures=0
+          for test in tests/*.mjs; do
+            echo "::group::$test"
+            if ! node "$test"; then
+              echo "::error::$test failed"
+              failures=$((failures+1))
+            fi
+            echo "::endgroup::"
+          done
+          echo "Regression failures: $failures"
+          test "$failures" -eq 0
