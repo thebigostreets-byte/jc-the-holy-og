@@ -1,0 +1,25 @@
+name: JC control math guardrails
+on:
+  pull_request:
+    paths:
+      - 'jc-control-math.js'
+      - 'dist/client/jc-control-math.js'
+      - 'tests/control-math-guardrails.mjs'
+      - 'tests/control-upgrade.mjs'
+      - '.github/workflows/control-math-guardrails.yml'
+  workflow_dispatch:
+jobs:
+  controls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and finite-input regression tests
+        run: |
+          node --check jc-control-math.js
+          node --check dist/client/jc-control-math.js
+          node --check tests/control-math-guardrails.mjs
+          node tests/control-math-guardrails.mjs
+          node tests/control-upgrade.mjs
