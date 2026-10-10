@@ -32,8 +32,14 @@ jobs:
           node tests/deployable-client-sync.mjs
       - name: Run complete Node regression suite
         run: |
+          failures=0
           for test in tests/*.mjs; do
             echo "::group::$test"
-            node "$test"
+            if ! node "$test"; then
+              echo "::error::$test failed"
+              failures=$((failures+1))
+            fi
             echo "::endgroup::"
           done
+          echo "Regression failures: $failures"
+          test "$failures" -eq 0
