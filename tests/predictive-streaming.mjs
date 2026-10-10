@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {predictTravel,createPrefetchCache} from '../predictive-streaming.js';
+import {predictTravel,createPrefetchCache,corridorPoints} from '../predictive-streaming.js';
 assert.deepEqual(predictTravel({x:100,z:50},{x:80,z:50},400),{x:142.5,z:50});
 assert.deepEqual(predictTravel({x:50,z:100},{x:50,z:120},400),{x:50,z:57.5});
 const jump=predictTravel({x:10000,z:0},{x:0,z:0},1);assert.ok(jump.x<=10102,'teleport samples cannot produce unlimited prefetch distance');
@@ -18,3 +18,32 @@ finish(new Uint8Array(5));await warm;await demand;assert.equal(fetches,1,'prefet
 const late=shared.prefetch('stale');await Promise.resolve();shared.clear();finish(new Uint8Array(5));await late;assert.equal(shared.stats().bytes,0,'folder changes cannot retain stale prefetch results');
 let attempts=0;const retry=createPrefetchCache(()=>{if(++attempts===1)throw Error('offline');return new Uint8Array(3);});assert.equal(await retry.prefetch('x'),false);assert.equal((await retry.get('x')).length,3,'failed speculative loads never block demand retries');
 console.log('PASS: travel prediction, memory ceilings, eviction, deduplication, request limits, stale-result rejection and retry.');
+
+// Streaming cache regression coverage: folder replacement, bounded concurrency and invalid geometry.
+assert.deepEqual(predictTravel({x:NaN,z:0},{x:7,z:9},100),{x:7,z:9});
+assert.equal(predictTravel({x:NaN,z:0},null,100),null);
+assert.deepEqual(predictTravel({x:1,z:2},{x:0,z:0},100,Infinity),{x:1,z:2});
+assert.deepEqual(corridorPoints({x:NaN,z:0},{x:100,z:0}),[]);
+assert.deepEqual(corridorPoints({x:0,z:0},{x:Infinity,z:0}),[]);
+assert.equal(corridorPoints({x:0,z:0},{x:100,z:0},NaN).length,1);
+let resolveOld;
+const changing=createPrefetchCache(()=>new Promise(resolve=>resolveOld=resolve));
+const old=changing.get('old');await Promise.resolve();changing.clear();resolveOld(new Uint8Array(4));
+await assert.rejects(old,/invalidated by cache reset/);
+let resolveFirst,resolveSecond,starts=0;
+const resetting=createPrefetchCache(()=>new Promise(resolve=>{if(++starts===1)resolveFirst=resolve;else resolveSecond=resolve;}));
+const stale=resetting.prefetch('old');await Promise.resolve();resetting.clear();
+const fresh=resetting.prefetch('new');await Promise.resolve();assert.equal(starts,2);
+resolveFirst(new Uint8Array(2));assert.equal(await stale,false);
+resolveSecond(new Uint8Array(3));assert.equal(await fresh,true);assert.equal(resetting.stats().bytes,3);
+let resolvers=[];
+const parallel=createPrefetchCache(()=>new Promise(resolve=>resolvers.push(resolve)),{maxConcurrent:2});
+const p1=parallel.prefetch('a'),p2=parallel.prefetch('b');await Promise.resolve();
+assert.equal(resolvers.length,2);assert.equal(await parallel.prefetch('c'),false);
+resolvers.forEach(resolve=>resolve(new Uint8Array(2)));
+assert.deepEqual(await Promise.all([p1,p2]),[true,true]);
+assert.equal(parallel.stats().entries,2);
+const bounded=createPrefetchCache(()=>new Uint8Array(0),{maxBytes:0,maxEntries:0,maxConcurrent:NaN});
+assert.equal(await bounded.prefetch('empty'),true);assert.equal(bounded.stats().entries,0);
+assert.throws(()=>createPrefetchCache(null),TypeError);
+console.log('PASS: stale folder requests rejected, new prefetch unlocked, bounded concurrency and finite corridor.');

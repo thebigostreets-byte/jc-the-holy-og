@@ -1,0 +1,24 @@
+name: JC streaming regression checks
+on:
+  pull_request:
+    paths:
+      - 'predictive-streaming.js'
+      - 'dist/client/predictive-streaming.js'
+      - 'tests/predictive-streaming.mjs'
+      - '.github/workflows/streaming-regressions.yml'
+  workflow_dispatch:
+jobs:
+  streaming:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check syntax and streaming regressions
+        run: |
+          node --check predictive-streaming.js
+          node --check dist/client/predictive-streaming.js
+          node tests/predictive-streaming.mjs
+      - name: Ensure shipped and source modules match
+        run: cmp predictive-streaming.js dist/client/predictive-streaming.js
