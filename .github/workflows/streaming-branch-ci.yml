@@ -30,3 +30,10 @@ jobs:
           npm run verify:assets
           npm run build
           node tests/deployable-client-sync.mjs
+      - name: Run complete Node regression suite
+        run: |
+          for test in tests/*.mjs; do
+            echo "::group::$test"
+            node "$test"
+            echo "::endgroup::"
+          done
