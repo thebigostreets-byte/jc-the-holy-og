@@ -7,7 +7,10 @@ export function createDistantCity(game){
  const root=new THREE.Group();root.name='Georeferenced Las Vegas satellite preview';game.scene.add(root);
  const loader=new THREE.TextureLoader(),overview=loader.load('./assets/overview.jpg');overview.colorSpace=THREE.SRGBColorSpace;
  const geometry=new THREE.PlaneGeometry(1000,1000),cells=new Float32Array(game.sections.length*2);
+ const nightMix={value:0};
  const material=new THREE.MeshBasicMaterial({map:overview,depthWrite:false,polygonOffset:true,polygonOffsetFactor:2});
+ material.onBeforeCompile=shader=>{shader.uniforms.cityNightMix=nightMix;shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',\`#include <map_fragment>\\n#ifdef USE_MAP\\nfloat lum=dot(diffuseColor.rgb,vec3(.299,.587,.114));float n=fract(sin(dot(floor(vMapUv*vec2(1400.0)),vec2(127.1,311.7)))*43758.5453);vec3 dark=vec3(.012,.022,.052)+diffuseColor.rgb*vec3(.065,.095,.15);vec3 lights=vec3(1.0,.58,.27)*smoothstep(.20,.62,lum)*step(.988,n)*.8;diffuseColor.rgb=mix(diffuseColor.rgb,dark+lights,cityNightMix);\\n#endif\`);};
+ material.customProgramCacheKey=()=>\'city-night-atlas-v1\';
  material.onBeforeCompile=shader=>{
   shader.vertexShader='attribute vec2 cityCell;\n'+shader.vertexShader;
   shader.vertexShader=shader.vertexShader.replace('#include <uv_vertex>','#include <uv_vertex>\n#ifdef USE_MAP\nvMapUv=(vMapUv/35.0)+cityCell;\n#endif');
@@ -25,5 +28,5 @@ export function createDistantCity(game){
   });tiles.instanceMatrix.needsUpdate=true;geometry.attributes.cityCell.needsUpdate=true;
   for(const [id,mesh]of highDetail)mesh.visible=!game.loaded.has(id);
  }
- update();return {update,dispose(){game.scene.remove(root);root.traverse(o=>{o.geometry?.dispose();o.material?.map?.dispose();o.material?.dispose();});}};
+ update();return {update,setNight(value){nightMix.value=value?1:0;},dispose(){game.scene.remove(root);root.traverse(o=>{o.geometry?.dispose();o.material?.map?.dispose();o.material?.dispose();});}};
 }
