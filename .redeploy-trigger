@@ -1,4 +1,5 @@
 JC THE HOLY OG redeploy trigger
 branch: main
-requested_at: 2026-10-05T23:40:00-07:00
-reason: redeploy after inspecting uploaded Kaggle JC archive; preserve current source tree and avoid destructive archive overwrite
+requested_on: 2026-10-10
+reason: explicit redeploy request; publish existing main through validation workflow without merging unverified feature branches
+baseline_main: ef04e0833c9e030325a2b0e3d3c2dc0b60bc546d
