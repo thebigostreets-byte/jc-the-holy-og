@@ -7,12 +7,11 @@ export function createDistantCity(game){
  const root=new THREE.Group();root.name='Georeferenced Las Vegas satellite preview';game.scene.add(root);
  const loader=new THREE.TextureLoader(),overview=loader.load('./assets/overview.jpg');overview.colorSpace=THREE.SRGBColorSpace;
  const geometry=new THREE.PlaneGeometry(1000,1000),cells=new Float32Array(game.sections.length*2);
+ const nightMix={value:0};
  const material=new THREE.MeshBasicMaterial({map:overview,depthWrite:false,polygonOffset:true,polygonOffsetFactor:2});
- material.onBeforeCompile=shader=>{
-  shader.vertexShader='attribute vec2 cityCell;\n'+shader.vertexShader;
-  shader.vertexShader=shader.vertexShader.replace('#include <uv_vertex>','#include <uv_vertex>\n#ifdef USE_MAP\nvMapUv=(vMapUv/35.0)+cityCell;\n#endif');
- };
- geometry.setAttribute('cityCell',new THREE.InstancedBufferAttribute(cells,2));
+ material.onBeforeCompile=shader=>{shader.uniforms.cityNightMix=nightMix;const nightFragment=['#include <map_fragment>','float lum=dot(diffuseColor.rgb,vec3(.299,.587,.114));','float n=fract(sin(dot(floor(vMapUv*vec2(1400.0)),vec2(127.1,311.7)))*43758.5453);','vec3 dark=vec3(.012,.022,.052)+diffuseColor.rgb*vec3(.065,.095,.15);','vec3 lights=vec3(1.0,.58,.27)*smoothstep(.20,.62,lum)*step(.988,n)*.8;','diffuseColor.rgb=mix(diffuseColor.rgb,dark+lights,cityNightMix);'].join('\\n');shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',nightFragment);};
+ material.customProgramCacheKey=()=> 'city-night-atlas-v1';
+
  const tiles=new THREE.InstancedMesh(geometry,material,game.sections.length);tiles.name='Actual satellite locations';tiles.frustumCulled=false;root.add(tiles);
  const highDetail=new Map(),detailIds=['C14_R13','C14_R14','C14_R15','C15_R13','C15_R14','C15_R15','C16_R13','C16_R14','C16_R15','C15_R21','C21_R21'];
  for(const id of detailIds){const section=game.sections.find(s=>s.id===id);if(!section)continue;const p=tilePlacement(section,game.origin,game.cityBounds),texture=loader.load(`./assets/imagery/${id}.jpg`);texture.colorSpace=THREE.SRGBColorSpace;
@@ -25,5 +24,5 @@ export function createDistantCity(game){
   });tiles.instanceMatrix.needsUpdate=true;geometry.attributes.cityCell.needsUpdate=true;
   for(const [id,mesh]of highDetail)mesh.visible=!game.loaded.has(id);
  }
- update();return {update,dispose(){game.scene.remove(root);root.traverse(o=>{o.geometry?.dispose();o.material?.map?.dispose();o.material?.dispose();});}};
+ update();return {update,setNight(value){nightMix.value=value?1:0;},dispose(){game.scene.remove(root);root.traverse(o=>{o.geometry?.dispose();o.material?.map?.dispose();o.material?.dispose();});}};
 }
