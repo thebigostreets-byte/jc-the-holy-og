@@ -1,0 +1,25 @@
+name: Ground sampling and GLB decoder regressions
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ground-sampling.js
+      - dist/client/ground-sampling.js
+      - tests/ground-sampling-edges.mjs
+      - .github/workflows/ground-sampling-regressions.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ground-sampling:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify decoder syntax and edge cases
+        run: |
+          node --check ground-sampling.js
+          node --check dist/client/ground-sampling.js
+          node tests/ground-sampling-edges.mjs

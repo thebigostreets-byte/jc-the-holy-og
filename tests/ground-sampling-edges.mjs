@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {cachedGroundSample,decodeGlbAttribute} from '../ground-sampling.js';
+
+const source=readFileSync(new URL('../ground-sampling.js',import.meta.url),'utf8');
+const dist=readFileSync(new URL('../dist/client/ground-sampling.js',import.meta.url),'utf8');
+assert.equal(dist,source,'source and deployable terrain decoder must match');
+
+const cache=new Map();
+let fallbackCalls=0;
+assert.equal(cachedGroundSample(1,1,cache,()=>{throw Error('tile not ready');},()=>{fallbackCalls++;return 130;}),130);
+assert.equal(fallbackCalls,1,'failed raycast falls back without crashing');
+assert.equal(cachedGroundSample(2,2,cache,()=>99,()=>0),130,'valid fallback is cached');
+let attempts=0;
+const missing=new Map();
+assert.ok(Number.isNaN(cachedGroundSample(9,9,missing,()=>{attempts++;return NaN;},()=>NaN)));
+assert.equal(missing.size,0,'unavailable terrain must not poison the cache');
+assert.equal(cachedGroundSample(9,9,missing,()=>{attempts++;return 143;},()=>0),143);
+assert.equal(attempts,2,'tile is sampled again after becoming available');
+assert.ok(Number.isNaN(cachedGroundSample(Infinity,0,missing,()=>{throw Error('unexpected');},()=>0)));
+assert.equal(missing.size,1,'invalid coordinates are not cached');
+const bounded=new Map();
+for(let i=0;i<40;i++)cachedGroundSample(i*8,0,bounded,(x)=>x,()=>0,{cellSize:0,maxEntries:3});
+assert.equal(bounded.size,3,'invalid cell size uses default and LRU cap remains bounded');
+
+const packedBytes=new Uint8Array(16),packedView=new DataView(packedBytes.buffer);
+packedView.setFloat32(0,1,true);packedView.setFloat32(4,2,true);
+assert.deepEqual([...decodeGlbAttribute(packedBytes,0,2,1,Float32Array,4,4,'getFloat32')],[1,2]);
+assert.throws(()=>decodeGlbAttribute(packedBytes,12,2,1,Float32Array,4,4,'getFloat32'),/exceeds binary/);
+assert.throws(()=>decodeGlbAttribute(packedBytes,-1,2,1,Float32Array,4,4,'getFloat32'),/Invalid GLB/);
+assert.throws(()=>decodeGlbAttribute(packedBytes,0,2,2,Float32Array,4,4,'getFloat32'),/Invalid GLB/);
+assert.throws(()=>decodeGlbAttribute(packedBytes,0,Number.MAX_SAFE_INTEGER,1,Float32Array,4,4,'getFloat32'),/Invalid GLB|exceeds binary/);
+const interleaved=new Uint8Array(24),view=new DataView(interleaved.buffer);
+view.setFloat32(0,3,true);view.setFloat32(4,4,true);view.setFloat32(12,5,true);view.setFloat32(16,6,true);
+assert.deepEqual([...decodeGlbAttribute(interleaved,0,2,2,Float32Array,4,12,'getFloat32')],[3,4,5,6]);
+const bytes=Buffer.alloc(8);bytes.writeFloatLE(12,0);bytes.writeFloatLE(13,4);
+const decoded=decodeGlbAttribute(bytes,0,2,1,Float32Array,4,4,'getFloat32');
+bytes.writeFloatLE(99,0);
+assert.equal(decoded[0],12,'packed decode must not alias Node Buffer storage');
+console.log('PASS: terrain raycast recovery, retryable missing tiles, bounded cache, invalid GLB accessors, and independent packed buffers.');
