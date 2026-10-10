@@ -1,0 +1,33 @@
+name: Physical Material Recovery Regression
+on:
+  push:
+    branches:
+      - fix/material-atlas-recovery-mid-oct10-0630
+  pull_request:
+    paths:
+      - physical-building-materials.js
+      - dist/client/physical-building-materials.js
+      - tests/physical-material-retry.mjs
+      - tests/physical-material-cleanup.mjs
+      - .github/workflows/material-atlas-regression.yml
+permissions:
+  contents: read
+jobs:
+  atlas-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check physical-building-materials.js
+          node --check tests/physical-material-retry.mjs
+          node --check tests/physical-material-cleanup.mjs
+      - name: Facade atlas regression checks
+        run: |
+          node tests/physical-material-retry.mjs
+          node tests/physical-material-cleanup.mjs
+      - name: Deployable source parity
+        run: cmp -s physical-building-materials.js dist/client/physical-building-materials.js
