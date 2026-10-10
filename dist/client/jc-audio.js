@@ -30,40 +30,49 @@ export function createJcAudio(){
     }
   }catch{}
 
-  let context=null,masterGain=null,musicGain=null,effectsGain=null,ambientStarted=false;
+  let context=null,masterGain=null,musicGain=null,effectsGain=null,disposed=false;
+  const ambientVoices=[],activeEffects=new Set();
   function setParam(param,value){
     if(!param)return;
     if(context&&typeof param.setTargetAtTime==='function')param.setTargetAtTime(value,context.currentTime,.025);
     else param.value=value;
   }
+  function stopAmbient(){
+    for(const [oscillator,voice] of ambientVoices.splice(0)){
+      try{oscillator.stop();}catch{}
+      try{oscillator.disconnect();voice.disconnect();}catch{}
+    }
+  }
   function startAmbient(){
-    if(!context||ambientStarted||settings.music<=0)return;
-    ambientStarted=true;
-    [110,164.81,220,329.63].forEach((frequency,index)=>{
-      const oscillator=context.createOscillator(),voice=context.createGain();
-      oscillator.type=index===3?'sine':'triangle';
-      oscillator.frequency.value=frequency;
-      voice.gain.value=[.06,.035,.025,.012][index];
-      oscillator.connect(voice);voice.connect(musicGain);oscillator.start();
-    });
+    if(!context||disposed||settings.muted||settings.music<=0||ambientVoices.length)return;
+    try{
+      [110,164.81,220,329.63].forEach((frequency,index)=>{
+        const oscillator=context.createOscillator(),voice=context.createGain();
+        oscillator.type=index===3?'sine':'triangle';oscillator.frequency.value=frequency;
+        voice.gain.value=[.06,.035,.025,.012][index];
+        oscillator.connect(voice);voice.connect(musicGain);ambientVoices.push([oscillator,voice]);oscillator.start();
+      });
+    }catch(error){stopAmbient();console.warn('JC ambience unavailable',error);}
   }
   function apply(){
     if(!context)return;
     setParam(masterGain.gain,settings.muted?0:settings.master);
     setParam(musicGain.gain,settings.music);
     setParam(effectsGain.gain,settings.effects);
-    if(settings.music>0)startAmbient();
+    if(settings.music>0&&!settings.muted)startAmbient();else stopAmbient();
   }
   function start(){
+    if(disposed)return false;
+    if(context?.state==='closed'){context=null;masterGain=musicGain=effectsGain=null;stopAmbient();}
     if(!context){
-      const AudioCtor=window.AudioContext||window.webkitAudioContext;
+      const AudioCtor=typeof window==='undefined'?null:(window.AudioContext||window.webkitAudioContext);
       if(!AudioCtor)return false;
       try{
         context=new AudioCtor();
         masterGain=context.createGain();musicGain=context.createGain();effectsGain=context.createGain();
         musicGain.connect(masterGain);effectsGain.connect(masterGain);masterGain.connect(context.destination);
         apply();
-      }catch(error){console.warn('JC audio unavailable',error);context=null;return false;}
+      }catch(error){console.warn('JC audio unavailable',error);try{context?.close?.();}catch{}context=null;masterGain=musicGain=effectsGain=null;stopAmbient();return false;}
     }
     if(context.state==='suspended')Promise.resolve(context.resume()).catch(()=>{});
     return true;
@@ -72,15 +81,19 @@ export function createJcAudio(){
     try{localStorage.setItem(STORAGE_KEY,JSON.stringify(settings));}catch{}
   }
   function set(key,value){
+    if(disposed)return getSettings();
     if(key==='muted')settings.muted=!!value;
-    else if(['master','music','effects'].includes(key))settings[key]=clamp(value);
+    else if(['master','music','effects'].includes(key)){
+      if(!Number.isFinite(Number(value)))return getSettings();
+      settings[key]=clamp(value);
+    }
     else return getSettings();
     persist();apply();return getSettings();
   }
   function getSettings(){return {...settings};}
   function play(name='cast'){
     const pattern=PATTERNS[name]||PATTERNS.cast;
-    if(!start()||settings.muted||settings.effects<=0)return false;
+    if(disposed||settings.muted||settings.effects<=0||activeEffects.size+pattern.length>24||!start())return false;
     for(const [frequency,duration,waveform,level,endFrequency=0,delay=0] of pattern){
       const oscillator=context.createOscillator(),voice=context.createGain();
       const at=context.currentTime+delay,peak=Math.max(.0001,level);
@@ -90,16 +103,30 @@ export function createJcAudio(){
       voice.gain.exponentialRampToValueAtTime(peak,at+.015);
       voice.gain.exponentialRampToValueAtTime(.0001,at+duration);
       oscillator.connect(voice);voice.connect(effectsGain);
+      activeEffects.add([oscillator,voice]);
+      const pair=[...activeEffects].at(-1);
+      oscillator.addEventListener?.('ended',()=>{activeEffects.delete(pair);oscillator.disconnect();voice.disconnect();},{once:true});
       oscillator.start(at);oscillator.stop(at+duration+.025);
-      oscillator.addEventListener?.('ended',()=>{oscillator.disconnect();voice.disconnect();},{once:true});
     }
     return true;
   }
 
+  function dispose(){
+    if(disposed)return;
+    disposed=true;stopAmbient();
+    for(const [oscillator,voice] of activeEffects){try{oscillator.stop();}catch{}try{oscillator.disconnect();voice.disconnect();}catch{}}
+    activeEffects.clear();
+    if(typeof window!=='undefined'){
+      window.removeEventListener?.('pointerdown',activate,true);
+      window.removeEventListener?.('keydown',activate,true);
+    }
+    try{context?.close?.();}catch{}
+    context=null;masterGain=musicGain=effectsGain=null;
+  }
   const activate=()=>start();
   if(typeof window!=='undefined'){
     window.addEventListener('pointerdown',activate,{capture:true,passive:true});
     window.addEventListener('keydown',activate,{capture:true});
   }
-  return {start,play,set,getSettings};
+  return {start,play,set,getSettings,dispose};
 }

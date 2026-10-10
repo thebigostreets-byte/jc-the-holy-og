@@ -1,0 +1,21 @@
+name: Audio lifecycle regressions
+on:
+  push:
+    branches: ['fix/audio-lifecycle-lowend-oct10-run8']
+  pull_request:
+    paths:
+      - 'jc-audio.js'
+      - 'dist/client/jc-audio.js'
+      - 'tests/audio-lifecycle.mjs'
+jobs:
+  audio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check jc-audio.js && node --check tests/audio-lifecycle.mjs
+      - run: node tests/audio-controls.mjs
+      - run: node --test tests/audio-lifecycle.mjs
+      - run: cmp -s jc-audio.js dist/client/jc-audio.js
