@@ -51,7 +51,7 @@ export function createBuildingImpostors(game,{mobile=false,enabled=true}={}){
     capture.position.sub(center);
     const target=new THREE.WebGLRenderTarget(tileSize*3,tileSize*3,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,depthBuffer:true,stencilBuffer:false});
     target.texture.generateMipmaps=false;
-    const material=new THREE.MeshBasicMaterial({map:target.texture,transparent:false,alphaTest:.08,side:THREE.DoubleSide});
+    const material=new THREE.MeshBasicMaterial({map:target.texture,transparent:true,alphaTest:.08,depthWrite:false,side:THREE.DoubleSide});
     const plane=new THREE.Mesh(planeGeometry,material);plane.visible=false;plane.scale.setScalar(radius*2);scene.add(plane);
     const r={id,ob,capture,center,radius,target,plane,frame:0,view:-1,hidden:false,signature:signature(ob),transform:ob.matrixWorld.elements.join(',')};
     records.set(id,r);
