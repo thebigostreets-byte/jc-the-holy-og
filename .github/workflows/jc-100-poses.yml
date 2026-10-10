@@ -1,0 +1,43 @@
+name: JC 100 Pose Bank Verification
+on:
+  push:
+    branches: [feat/jc-100-articulated-poses-oct10]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'jc-pose-bank.js'
+      - 'jc-character3d.js'
+      - 'jc-map-game.js'
+      - 'scripts/public-assets.json'
+      - 'tests/jc-pose-bank.mjs'
+      - '.github/workflows/jc-100-poses.yml'
+  workflow_dispatch:
+jobs:
+  pose-bank:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Check JC 100-pose catalog and module syntax
+        run: |
+          node --check jc-pose-bank.js
+          node --check jc-character3d.js
+          node --check jc-map-game.js
+          node tests/jc-pose-bank.mjs
+      - name: Hydrate assets and build deployable client
+        run: |
+          npm ci
+          npm run hydrate
+          npm run verify:assets
+          npm run build
+          cmp jc-pose-bank.js dist/client/jc-pose-bank.js
+          cmp jc-character3d.js dist/client/jc-character3d.js
+          cmp jc-map-game.js dist/client/jc-map-game.js
+      - name: Core gameplay and performance regressions
+        run: |
+          node tests/gameplay-regressions.mjs
+          node tests/performance-guardrails.mjs
