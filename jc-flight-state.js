@@ -40,4 +40,4 @@ export function transitionFlight(state, action) {
   }
 }
 
-export function shouldTouchDown(flying,previousHeight,height,verticalVelocity){return flying&&previousHeight>0&&height===0&&verticalVelocity<=0;}
+export function shouldTouchDown(flying,previousHeight,height,verticalVelocity){return Boolean(flying)&&Number.isFinite(previousHeight)&&previousHeight>0&&Number.isFinite(height)&&height<=0&&Number.isFinite(verticalVelocity)&&verticalVelocity<=0;}
