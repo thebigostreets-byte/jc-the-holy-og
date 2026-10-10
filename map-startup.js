@@ -35,18 +35,20 @@ window.jcLoadingRecovery=function(message){
   window.JC_BOOT_FAILED=false;
   return;
  }
- const fatalGraphics=/lost its graphics connection|WebGL 2 and WebGL 1 are unavailable|could not start WebGL/i.test(String(message));
- if(!fatalGraphics&&(jcSceneReady())){
-  console.warn('Suppressed stale 3D startup overlay after scene initialized:',message);
-  document.getElementById('jcRecovery')?.remove();
-  window.JC_BOOT_FAILED=false;
-  return;
- }
+ // Only a confirmed absence of both WebGL versions warrants automatic lite mode.
+ // Context loss and shader failures can be recoverable: leave retry controls visible.
+ const noWebGL=/WebGL 2 and WebGL 1 are unavailable/i.test(String(message));
  window.JC_BOOT_FAILED=true;
- let recovery=document.getElementById('jcRecovery');if(recovery){recovery.querySelector('p').textContent=message;const fallback=recovery.querySelector('[data-lite-fallback]');if(fallback)fallback.onclick=()=>window.jcOpenLiteFallback(message);return;}
+ let recovery=document.getElementById('jcRecovery');
+ if(recovery){
+  const description=recovery.querySelector('p');
+  if(description){description.textContent=message;const fallback=recovery.querySelector('[data-lite-fallback]');if(fallback)fallback.onclick=()=>window.jcOpenLiteFallback(message);return;}
+  // A partially replaced overlay must not throw and strand the player.
+  recovery.remove();
+ }
  recovery=document.createElement('div');recovery.id='jcRecovery';recovery.style.cssText='position:fixed;inset:0;z-index:999;background:#091018ed;color:white;display:grid;place-content:center;padding:24px;text-align:center;font:16px Arial;gap:16px';
  const text=document.createElement('p');text.textContent=message;recovery.append(text);
- const retry=document.createElement('button');retry.textContent='Close 3D context and retry';retry.onclick=()=>{window.jcReleaseGraphics();const url=new URL(location.href);url.searchParams.set('retry3d',Date.now().toString());url.searchParams.set('v','playerfirst-20261003j');location.replace(url.href);};recovery.append(retry);const lite=document.createElement('button');lite.dataset.liteFallback='1';lite.textContent='Open mobile/lite play mode';lite.style.marginLeft='8px';lite.onclick=()=>window.jcOpenLiteFallback(message);recovery.append(lite);if(/WebGL|graphics|3D graphics|context/i.test(message)){setTimeout(()=>{if(window.JC_BOOT_FAILED&&!jcSceneReady())window.jcOpenLiteFallback(message);},1800);}
+ const retry=document.createElement('button');retry.textContent='Close 3D context and retry';retry.onclick=()=>{window.jcReleaseGraphics();const url=new URL(location.href);url.searchParams.set('retry3d',Date.now().toString());url.searchParams.set('v','playerfirst-20261003j');location.replace(url.href);};recovery.append(retry);const lite=document.createElement('button');lite.dataset.liteFallback='1';lite.textContent='Open mobile/lite play mode';lite.style.marginLeft='8px';lite.onclick=()=>window.jcOpenLiteFallback(message);recovery.append(lite);if(noWebGL){setTimeout(()=>{if(window.JC_BOOT_FAILED&&!jcSceneReady())window.jcOpenLiteFallback(message);},1800);}
  document.body.append(recovery);
 };
 // Optional textures, audio and secondary scripts must not kill an already rendered game.
@@ -69,10 +71,11 @@ setTimeout(()=>{if(window.JC_BOOT_FAILED)return;const play=new URLSearchParams(l
 const jcRecoveryCleanup=setInterval(()=>{
  if(jcSceneReady()){
   const recovery=document.getElementById('jcRecovery');
-  if(recovery){
-   recovery.remove();window.JC_BOOT_FAILED=false;
-  }
+  if(recovery)recovery.remove();
+  window.JC_BOOT_FAILED=false;
   clearInterval(jcRecoveryCleanup);
  }
 },500);
-setTimeout(()=>clearInterval(jcRecoveryCleanup),120000);
+// Keep the lightweight readiness check alive beyond 120s for very slow devices.
+// It stops immediately after the scene becomes ready or when the page unloads.
+addEventListener('pagehide',()=>clearInterval(jcRecoveryCleanup),{once:true});
