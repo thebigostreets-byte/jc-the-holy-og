@@ -21,6 +21,12 @@ jobs:
             [ -f "$file" ] || continue
             node --check "$file"
           done
+      - name: Build and hydrate deployable client before synchronization check
+        run: |
+          npm ci
+          npm run hydrate
+          npm run verify:assets
+          npm run build
       - name: Check source-to-deploy synchronization
         run: node tests/deployable-client-sync.mjs
       - name: Run regression suite
