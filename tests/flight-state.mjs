@@ -35,3 +35,7 @@ assert.equal(shouldTouchDown(true,120,119,-20),false,'descending at altitude sta
 assert.equal(shouldTouchDown(true,1,0,-20),true,'ground contact lands');
 assert.equal(transitionFlight({...flight,flying:true,height:120},'hover').height,120,'hover preserves airborne altitude');
 assert.equal(transitionFlight({...flight,flying:true,hypersonic:true,height:120},'surge').hypersonic,true,'Sonic Boom never toggles boost off');
+
+assert.equal(shouldTouchDown(true,1,-.01,-20),true);
+assert.equal(shouldTouchDown(true,1,-.01,20),false);
+assert.equal(Number.isFinite(transitionFlight({height:NaN},'takeoff').height),true);
