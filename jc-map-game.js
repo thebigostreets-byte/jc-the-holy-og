@@ -975,7 +975,11 @@ function cast(id = selectedAbility) {
   feedback(ability.name);
   if((typeof devilMode==='undefined'||!devilMode)&&typeof boostJCGlow==='function')boostJCGlow(['judgment-storm','redemption-wave','divine-beam','radiance-nova'].includes(id)?2200:1300);
   const flightAbilities=new Set(['flight','hypersonic','hover','leap','glide','sky-lift','skydive','beam-down']);
-  if(!flightAbilities.has(id))showPose(devilMode?(miraclePose[id] ?? 5):nextJCMiraclePose(id), id === 'redemption-wave' ? 2400 : 800,!devilMode);
+  if(!flightAbilities.has(id)){
+    const isDevil=typeof devilMode!=='undefined'&&devilMode;
+    const castPose=isDevil?(miraclePose[id]??5):(typeof nextJCMiraclePose==='function'?nextJCMiraclePose(id):(miraclePose[id]??5));
+    showPose(castPose,id==='redemption-wave'?2400:800,!isDevil);
+  }
   spawnMiracleSprite(id);
   if(!runActive&&!runFinished)runActive=true;
   npcSystem?.signal(id,player.position,id==='redemption-wave'?120:85);
