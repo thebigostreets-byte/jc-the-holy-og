@@ -1,0 +1,32 @@
+name: Streaming branch verification
+on:
+  push:
+    branches:
+      - fix/streaming-generation-demand-mid-oct10-0430
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  streaming:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check source and deployable parity
+        run: cmp predictive-streaming.js dist/client/predictive-streaming.js
+      - name: Check syntax and run streaming regressions
+        run: |
+          node --check predictive-streaming.js
+          node tests/predictive-streaming.mjs
+          for test in tests/prefetch-*.mjs tests/stream-*.mjs tests/corridor-stationary.mjs; do
+            node "$test"
+          done
+      - name: Build and verify static client
+        run: |
+          npm ci
+          npm run hydrate
+          npm run verify:assets
+          npm run build
+          node tests/deployable-client-sync.mjs
