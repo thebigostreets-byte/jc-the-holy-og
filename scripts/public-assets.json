@@ -76,6 +76,7 @@
   "index.html",
   "jc-audio.js",
   "jc-character-pose.js",
+  "jc-pose-bank.js",
   "jc-character3d.js",
   "jc-control-math.js",
   "jc-crowd.js",

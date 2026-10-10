@@ -20,6 +20,7 @@ import {createCharacter3D} from './jc-character3d.js';
 import {cleanPoseImage} from './pose-cleanup.js';
 import {abilityWheelPage,minimapPoint,compassHeading} from './jc-hud-model.js';
 import {selectFlightPose,selectGroundPose} from './jc-character-pose.js';
+import {JC_POSE_START,JC_POSE_COUNT,JC_POSES,getJCPose,getJCPoseForAction,getJCPoseSequenceFrame} from './jc-pose-bank.js';
 import {setNpcApiKey,clearNpcApiKey} from './npc-dialogue.js';
 import {createJcAudio} from './jc-audio.js';
 import {createFireSystem} from './fire-system.js';
@@ -240,7 +241,7 @@ function ensureJCGlow(){
     jcGlowLight=new THREE.PointLight(0xffe4a3,1.75,18,2);jcGlowLight.name='JC persistent divine light';jcGlowLight.position.set(0,2.15,.25);player.add(jcGlowLight);
   }
   const visible=!devilMode;
-  jcAura.visible=visible;jcSilhouetteGlow.visible=visible;jcGlowLight.visible=visible;
+  jcAura.visible=visible;jcSilhouetteGlow.visible=visible&&!portrait?.visible;jcGlowLight.visible=visible;
   if(visible)syncJCGlowToPose();
 }
 function boostJCGlow(ms=1300){if(!devilMode)jcGlowBoostUntil=Math.max(jcGlowBoostUntil,performance.now()+Math.max(0,ms));}
@@ -280,14 +281,30 @@ function requestCharacterFrame(index){
   characterFrameLoads.set(safeIndex,pending);
   image.src=`./poses/pose-${safeIndex}.webp`;
 }
-function loadCharacterFrames(){requestCharacterFrame(0);}
+function loadCharacterFrames(){
+ requestCharacterFrame(0);
+ // Warm the full ground gait and common flight poses after the first idle image.
+ let next=23;
+ const warm=()=>{
+  if(next<=38){requestCharacterFrame(next++);setTimeout(warm,90);}
+  else for(const index of [14,15,16,17,18,19,20,21,22,5,7,8])requestCharacterFrame(index);
+ };
+ setTimeout(warm,1200);
+}
 function applyCharacterFrame(index){
   if(!realisticAvatar)return;
   ensureJCGlow();
+  // Existing 39 photographic frames remain untouched; the new hundred poses
+  // are actual articulated 3D body poses, so display their rig, not pose-38.
+  const showRig=!!getJCPose(index)&&!devilMode&&!!portrait;
+  if(portrait)portrait.visible=showRig;
+  realisticAvatar.visible=!showRig;
+  if(jcSilhouetteGlow)jcSilhouetteGlow.visible=!showRig&&!devilMode;
+  if(showRig)return;
   if(devilMode&&devilTexture){if(realisticAvatar.material.map!==devilTexture){realisticAvatar.material.map=devilTexture;realisticAvatar.material.needsUpdate=true;}return;}
   const safeIndex=Math.max(0,Math.min(characterFrames.length-1,Math.floor(index)));
   requestCharacterFrame(safeIndex);
-  const frame=characterFrames[safeIndex]||characterFrames[0];
+  const frame=characterFrames[safeIndex]||characterFrames[poseIndex]||characterFrames[0];
   if(!frame)return;
   const material=realisticAvatar.material;
   if(material.map!==frame.texture){material.map=frame.texture;material.needsUpdate=true;}
@@ -338,11 +355,33 @@ try {personalBest = Number(localStorage.getItem('jc-restoration-best')) || 0;} c
 const runLabel=hud.querySelector('#jcRun'), feedbackLabel=hud.querySelector('#jcFeedback');
 const targetLabel=hud.querySelector('#jcTarget'), flightLabel=hud.querySelector('#jcFlight');
 function feedback(text) {feedbackLabel.textContent=text;feedbackUntil=performance.now()+2100;}
-function showPose(index,duration=800){
-  if(index<0||index>38)return;
-  poseOverride=index;poseOverrideUntil=performance.now()+duration;
+let jcPoseSequence=null;
+function showPose(index,duration=800,sequence=false){
+  if(!Number.isInteger(index)||index<0||index>=JC_POSE_START+JC_POSE_COUNT)return false;
+  const started=performance.now(),span=Math.min(8000,Math.max(120,Number.isFinite(duration)?duration:800));
+  poseOverride=index;poseOverrideUntil=started+span;
+  jcPoseSequence=sequence&&getJCPose(index)?{index,started,span}:null;
   if(portrait?.userData.character){portrait.userData.character.setPose(index,playerStepPhase,0,performance.now(),flightHeight>0);poseIndex=index;}
   applyCharacterFrame(index);
+  return true;
+}
+// A developer-facing 100-pose picker is enabled with ?poseLab=1 on desktop
+// or mobile. It is not loaded during normal play and uses no extra textures.
+window.JC_POSE_BANK=Object.freeze({
+  count:JC_POSE_COUNT,
+  list:()=>JC_POSES.map(({id,name,category,stage})=>({id,name,category,stage})),
+  play:(id,duration=1400)=>playing&&!!portrait&&showPose(Number(id),duration)
+});
+if(new URLSearchParams(location.search).has('poseLab')){
+  const panel=document.createElement('div');
+  panel.id='jcPoseLab';
+  panel.style.cssText='position:fixed;top:15%;right:8px;z-index:9999;max-width:min(340px,70vw);padding:9px;background:#08121de8;color:white;border:1px solid #bca35b;border-radius:7px;display:flex;gap:6px;align-items:center;font:12px sans-serif';
+  const select=document.createElement('select');select.setAttribute('aria-label','Select JC articulated pose');
+  for(const pose of JC_POSES){const option=document.createElement('option');option.value=pose.id;option.textContent=pose.name;select.appendChild(option);}
+  select.style.cssText='min-width:0;max-width:200px;background:#15212a;color:#fff';
+  const preview=document.createElement('button');preview.textContent='Preview';
+  preview.onclick=()=>window.JC_POSE_BANK.play(Number(select.value),1600);
+  panel.append(select,preview);document.body.append(panel);
 }
 const miracleLoads=new Map();
 const activeMiracleSprites=new Map();
@@ -451,6 +490,7 @@ let castingUntil = 0, poseIndex = -1, selectedAbility = 'light-pulse', selectedG
 const cooldowns = new Map(), redeemedBuildings = new Set();
 const miracleTextures = new Map();
 let poseOverride = -1, poseOverrideUntil = 0, lastImpact = 0;
+function nextJCMiraclePose(id){return getJCPoseForAction(id,0)?.id??miraclePose[id]??5;}
 // Flight poses are states, not consecutive frames of a looping animation.
 const miraclePose = {
   flight:14,hypersonic:20,teleport:7,'beam-down':8,dash:15,hover:14,leap:18,glide:17,'sky-lift':22,skydive:19,'phase-step':7,recall:7,'time-step':7,
@@ -935,7 +975,11 @@ function cast(id = selectedAbility) {
   feedback(ability.name);
   if((typeof devilMode==='undefined'||!devilMode)&&typeof boostJCGlow==='function')boostJCGlow(['judgment-storm','redemption-wave','divine-beam','radiance-nova'].includes(id)?2200:1300);
   const flightAbilities=new Set(['flight','hypersonic','hover','leap','glide','sky-lift','skydive','beam-down']);
-  if(!flightAbilities.has(id))showPose(miraclePose[id] ?? 5, id === 'redemption-wave' ? 2400 : 800);
+  if(!flightAbilities.has(id)){
+    const isDevil=typeof devilMode!=='undefined'&&devilMode;
+    const castPose=isDevil?(miraclePose[id]??5):(typeof nextJCMiraclePose==='function'?nextJCMiraclePose(id):(miraclePose[id]??5));
+    showPose(castPose,id==='redemption-wave'?2400:800,!isDevil);
+  }
   spawnMiracleSprite(id);
   if(!runActive&&!runFinished)runActive=true;
   npcSystem?.signal(id,player.position,id==='redemption-wave'?120:85);
@@ -1202,10 +1246,11 @@ function frameStep(now) {
   const lateral=desired.dot(right);
   const horizontalSpeed=Math.hypot(velocity.x,velocity.z);
   const flightPose=selectFlightPose({diving,braking,rising:riseInput,descending:dropInput,gliding:glide,lateral,boosting:boost,fast:horizontalSpeed>4});
-  if(!flying&&horizontalSpeed>.2)playerStepPhase=advanceGait(playerStepPhase,horizontalSpeed,dt,sprint);
+  if(!flying&&horizontalSpeed>1.1)playerStepPhase=advanceGait(playerStepPhase,horizontalSpeed,dt,sprint);
+  else if(!flying)playerStepPhase=0;
   const locomotionPose=selectGroundPose(horizontalSpeed,playerStepPhase,sprint);
   const basePose=flying?flightPose:locomotionPose;
-  const pose=now<poseOverrideUntil?poseOverride:(now<castingUntil?5:basePose);
+  const pose=now<poseOverrideUntil?(jcPoseSequence?getJCPoseSequenceFrame(jcPoseSequence.index,jcPoseSequence.started,jcPoseSequence.span,now):poseOverride):(now<castingUntil?5:basePose);
   if (pose !== poseIndex) poseIndex=pose;
   portrait.userData.character.setPose(pose,playerStepPhase,horizontalSpeed,now,flying);
   applyCharacterFrame(pose);
@@ -1379,7 +1424,7 @@ const group = game.loaded.get('C15_R14');
   await new Promise(resolve=>requestAnimationFrame(()=>resolve()));
   {const [carX,carZ]=clearSpot(x+6,z+3);jcCar=createJCCar(game.scene,carX,carZ,groundAt(carX,carZ));}
   createSouls(x, z);
-  fireSystem=createFireSystem(game.scene);pickups=createStreetPickups(game.scene,player,groundAt,clearSpot,{onCharge:amount=>{electricCharge=Math.min(100,electricCharge+amount);feedback(`LIGHTNING CHARGED · ${Math.round(electricCharge)}%`);},onHeal:amount=>{grace=Math.min(100,grace+12);feedback(`FIRST AID · ${amount} HEALTH RESTORED`);},onUse:actor=>{if(actor&&typeof actor==='object')npcSystem?.signal('picked-up-item',actor.position,18);else if(actor==='sidearm'){const target=(npcSystem?.npcs||[]).filter(n=>!n.collapse&&n.faction==='demon'&&n.position.distanceTo(player.position)<55&&(n.position.x-player.position.x)*Math.sin(yaw)-(n.position.z-player.position.z)*Math.cos(yaw)>2).sort((a,b)=>a.position.distanceToSquared(player.position)-b.position.distanceToSquared(player.position))[0];if(target){target.health=Math.max(0,(target.health??100)-30);target.state='fear';target.emotionUntil=performance.now()+2400;target.event={type:'JC-sidearm',position:player.position.clone(),time:performance.now()};npcSystem?.signal('gunfire',player.position,42);feedback(`SIDEARM HIT · ${target.name}`);}else feedback('SIDEARM · NO HOSTILE TARGET IN FRONT');}else npcSystem?.signal('flare',player.position,70);},onStatus:text=>feedback(text)});
+  fireSystem=createFireSystem(game.scene);pickups=createStreetPickups(game.scene,player,groundAt,clearSpot,{onCharge:amount=>{electricCharge=Math.min(100,electricCharge+amount);feedback(`LIGHTNING CHARGED · ${Math.round(electricCharge)}%`);},onHeal:amount=>{grace=Math.min(100,grace+12);feedback(`FIRST AID · ${amount} HEALTH RESTORED`);},onUse:actor=>{if(actor&&typeof actor==='object')npcSystem?.signal('picked-up-item',actor.position,18);else if(actor==='sidearm'){if(!devilMode)showPose(getJCPoseForAction('sidearm-shot',0)?.id??10,650,true);const target=(npcSystem?.npcs||[]).filter(n=>!n.collapse&&n.faction==='demon'&&n.position.distanceTo(player.position)<55&&(n.position.x-player.position.x)*Math.sin(yaw)-(n.position.z-player.position.z)*Math.cos(yaw)>2).sort((a,b)=>a.position.distanceToSquared(player.position)-b.position.distanceToSquared(player.position))[0];if(target){target.health=Math.max(0,(target.health??100)-30);target.state='fear';target.emotionUntil=performance.now()+2400;target.event={type:'JC-sidearm',position:player.position.clone(),time:performance.now()};npcSystem?.signal('gunfire',player.position,42);feedback(`SIDEARM HIT · ${target.name}`);}else feedback('SIDEARM · NO HOSTILE TARGET IN FRONT');}else npcSystem?.signal('flare',player.position,70);},onStatus:text=>feedback(text)});
   npcSystem=createNpcSystem({scene:game.scene,player,groundAt,canSee:visibleToNpc,findPickup:(npc,options)=>pickups?.nearestFor?.(npc,options)||null,findIncident:(position,max)=>systemicWorld?.nearestIncident?.(position,max)||null,onIncidentResponse:(npc,incidentId)=>{const incident=systemicWorld?.incidents?.find?.(row=>row.id===incidentId);return incident?systemicWorld?.npcResponse?.(incident,npc):null;},isSafe:(x,z,r=2)=>!blockedAt(x,groundAt(x,z)+1.55,z,r),isRoadway:(x,z)=>game.roads?.isRoadway?.(x,z)||false,count:500,crowdCount:(game.stable3D?(game.mobileMap?180:320):500),getInfluencer:()=>devilMode?'satan':'jesus',camera:game.camera,mobile:!!game.mobileMap,vehicleAt:(x,z,r)=>game.traffic?.vehicleAt?.(x,z,r)||null,onVehicleHit:npc=>{pickups?.drop(npc.position);npcSystem?.signal('traffic-impact',npc.position,28);},onReport:text=>{npcReadout.textContent=text;}});
   systemicWorld=createSystemicWorld({player,npcSystem,fireSystem,groundAt,clearSpot,onStatus:text=>feedback(text),getFaction:()=>devilMode?'satan':'jc'});window.JC_SYSTEMIC_WORLD=systemicWorld;
   livingWorld=createLivingWorldDirector({player,npcSystem,systemicWorld,fireSystem,groundAt,clearSpot,onStatus:text=>feedback(text),getFaction:()=>devilMode?'satan':'jc'});window.JC_LIVING_WORLD=livingWorld;
