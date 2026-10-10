@@ -4,6 +4,7 @@ export function transitionFlight(state, action) {
     flying: false, hypersonic: false, glide: false, diving: false,
     height: 0, descending: 0, ...state
   };
+  current.height=Number.isFinite(current.height)?Math.max(0,current.height):0;
   switch (action) {
     case 'takeoff':
       return {...current, flying:true, hypersonic:false, glide:false, diving:false, height:Math.max(6,current.height), descending:0};
@@ -39,4 +40,4 @@ export function transitionFlight(state, action) {
   }
 }
 
-export function shouldTouchDown(flying,previousHeight,height,verticalVelocity){return flying&&previousHeight>0&&height===0&&verticalVelocity<=0;}
+export function shouldTouchDown(flying,previousHeight,height,verticalVelocity){return Boolean(flying)&&Number.isFinite(previousHeight)&&previousHeight>0&&Number.isFinite(height)&&height<=0&&Number.isFinite(verticalVelocity)&&verticalVelocity<=0;}
