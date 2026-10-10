@@ -41,6 +41,8 @@ export function createNpcDecisionQueue({
   concurrency = 2,
   timeoutMs = 9000,
   cooldownMs = 30000,
+  maxQueued = 256,
+  maxHistory = 2048,
   now = () => Date.now(),
 } = {}) {
   const pending = new Map();
@@ -49,6 +51,9 @@ export function createNpcDecisionQueue({
   let active = 0;
   const maxConcurrent = Number.isFinite(concurrency) ? Math.max(1, Math.min(4, Math.floor(concurrency))) : 2;
   const requestTimeout = Number.isFinite(timeoutMs) ? Math.max(1, timeoutMs) : 9000;
+  const safeCooldown = Number.isFinite(cooldownMs) ? Math.max(0, cooldownMs) : 30000;
+  const queueLimit = Number.isFinite(maxQueued) ? Math.max(0, Math.floor(maxQueued)) : 256;
+  const historyLimit = Number.isFinite(maxHistory) ? Math.max(0, Math.floor(maxHistory)) : 2048;
   function pump() {
     while (active < maxConcurrent && queue.length) {
       const job = queue.shift();
@@ -84,8 +89,15 @@ export function createNpcDecisionQueue({
       if (id == null || !payload || typeof payload !== 'object') return Promise.resolve(null);
       if (pending.has(id)) return pending.get(id).promise;
       const time = now();
-      if (time - (lastSent.get(id) ?? -Infinity) < cooldownMs) return Promise.resolve(null);
-      lastSent.set(id, time);
+      if (!Number.isFinite(time)) return Promise.resolve(null);
+      const previous = lastSent.get(id);
+      if (previous !== undefined && time >= previous && time - previous < safeCooldown) return Promise.resolve(null);
+      if (active >= maxConcurrent && queue.length >= queueLimit) return Promise.resolve(null);
+      if (lastSent.has(id)) lastSent.delete(id);
+      if (historyLimit > 0) {
+        lastSent.set(id, time);
+        while (lastSent.size > historyLimit) lastSent.delete(lastSent.keys().next().value);
+      }
       let resolve;
       const promise = new Promise(r => { resolve = r; });
       const job = {id, payload, promise, resolve, cancelled:false};
