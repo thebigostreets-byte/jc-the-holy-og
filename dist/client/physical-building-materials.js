@@ -4,10 +4,14 @@ import {identityPalette} from './building-identities.js';
 let pending;
 export function loadPhysicalMaterials(){
  return pending ||= new Promise((resolve,reject)=>{
-  const image=new Image(),timer=setTimeout(()=>reject(Error('Material download timed out')),8000);
-  image.onerror=()=>{clearTimeout(timer);reject(Error('Materials unavailable'));};
-  image.onload=()=>{clearTimeout(timer);try{
+  const image=new Image();
+  let settled=false;
+  const fail=error=>{if(settled)return;settled=true;clearTimeout(timer);reject(error);};
+  const timer=setTimeout(()=>fail(Error('Material download timed out')),8000);
+  image.onerror=()=>fail(Error('Materials unavailable'));
+  image.onload=()=>{if(settled)return;settled=true;clearTimeout(timer);
    const maps=[];
+   try{
    for(let i=0;i<6;i++){
     const canvas=document.createElement('canvas');canvas.width=canvas.height=512;
     canvas.getContext('2d').drawImage(image,(i%3)*image.width/3,Math.floor(i/3)*image.height/2,image.width/3,image.height/2,0,0,512,512);
@@ -17,9 +21,9 @@ export function loadPhysicalMaterials(){
     maps.push(map);
    }
    resolve(maps);
-  }catch(error){reject(error);}};
+  }catch(error){for(const map of maps)map.dispose?.();reject(error);}};
   image.src='./facades/physical-materials-v1.webp';
- });
+ }).catch(error=>{pending=undefined;throw error;});
 }
 export function buildingHash(id){let hash=2166136261;for(const c of id){hash^=c.charCodeAt(0);hash=Math.imul(hash,16777619);}return hash>>>0;}
 const LANDMARK_FACADES=[
