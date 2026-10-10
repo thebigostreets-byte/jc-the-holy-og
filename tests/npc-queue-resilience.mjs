@@ -36,4 +36,25 @@ assert.strictEqual(dedupe.request('same', {message:'repeat'}),first);
 await Promise.resolve();
 finish({ok:true,json:async()=>({reply:'One'})});
 assert.equal((await first).reply,'One');
+
+const bounded = createNpcDecisionQueue({fetcher:()=>new Promise(()=>{}), concurrency:1, maxQueued:1, timeoutMs:25, cooldownMs:0});
+const activeJob=bounded.request('a',{message:'active'});
+const queuedJob=bounded.request('b',{message:'queued'});
+assert.equal(await bounded.request('c',{message:'rejected'}),null,'queue limit rejects overflow');
+assert.equal(bounded.queuedCount,1,'pending work remains bounded');
+assert.equal(await activeJob,null);
+assert.equal(await queuedJob,null);
+
+let fakeClock=1000;
+const rollback=createNpcDecisionQueue({now:()=>fakeClock,cooldownMs:30000,fetcher:async()=>({ok:true,json:async()=>({reply:'ok'})})});
+assert.equal((await rollback.request('clock',{message:'first'})).reply,'ok');
+fakeClock=500;
+assert.equal((await rollback.request('clock',{message:'clock moved backwards'})).reply,'ok','clock rollback cannot freeze requests');
+fakeClock=Number.NaN;
+assert.equal(await rollback.request('invalid',{message:'invalid time'}),null);
+
+const negativeCooldown=createNpcDecisionQueue({cooldownMs:-10,fetcher:async()=>({ok:true,json:async()=>({reply:'ok'})})});
+assert.equal((await negativeCooldown.request('same',{message:'first'})).reply,'ok');
+assert.equal((await negativeCooldown.request('same',{message:'second'})).reply,'ok','negative cooldown safely clamps to zero');
+
 console.log('PASS: NPC near-tier responsiveness, invalid clock guard, timeout recovery, sync fetch failure, stalled JSON, request dedupe');
