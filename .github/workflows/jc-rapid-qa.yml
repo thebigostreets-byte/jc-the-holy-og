@@ -1,0 +1,86 @@
+name: JC Rapid QA
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 9 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jc-qa-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast-regressions:
+    name: Fast - ${{ matrix.suite }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: flight
+            command: node tests/flight-state.mjs
+          - suite: controls
+            command: node tests/control-upgrade.mjs
+          - suite: npc
+            command: node tests/npc-motion.mjs
+          - suite: gameplay
+            command: node tests/gameplay-regressions.mjs
+          - suite: performance-guards
+            command: node tests/performance-guardrails.mjs
+          - suite: dialogue
+            command: node scripts/validate-dialogue.mjs
+          - suite: worker
+            command: node scripts/validate-worker.mjs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Execute test
+        run: ${{ matrix.command }}
+
+  risk-register:
+    name: Risk register integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/check-risk-register.mjs
+
+  deep-assets-build:
+    name: Deep - hydrated asset build
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Restore and verify checksum-pinned assets
+        run: npm run hydrate
+      - name: Build deployable client/server
+        run: npm run build
+      - name: Verify hydrated assets
+        run: npm run verify:assets
+      - name: Confirm build output
+        run: test -f dist/server/index.js && test -d dist/client
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jc-deep-build-diagnostics
+          path: |
+            dist/.openai/hosting.json
+            scripts/public-assets.json
+          if-no-files-found: ignore
