@@ -1,0 +1,24 @@
+name: JC fire-system regressions
+on:
+  pull_request:
+    paths:
+      - 'fire-system.js'
+      - 'dist/client/fire-system.js'
+      - 'tests/fire-system.mjs'
+      - '.github/workflows/fire-system-regressions.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fire-system:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify fire lifecycle and deployed module parity
+        run: |
+          node --check fire-system.js
+          node --check dist/client/fire-system.js
+          node tests/fire-system.mjs
