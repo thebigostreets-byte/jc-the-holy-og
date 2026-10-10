@@ -32,7 +32,9 @@ export function advancePedal(value,target,dt,rise=14,fall=9){
   return Math.abs(next)<.006&&Math.abs(desired)<.001?0:clamp(next,-1,1);
 }
 export function advanceGait(phase,speed,dt,sprint=false){
-  return (finiteNumber(phase)+Math.min(sprint?14:10,Math.max(0,finiteNumber(speed))*(sprint?1.1:1.35))*clamp(finiteNumber(dt),0,.05))%8;
+  const increment=Math.min(sprint?14:10,Math.max(0,finiteNumber(speed))*(sprint?1.1:1.35))*clamp(finiteNumber(dt),0,.05);
+  const wrapped=(finiteNumber(phase)%8+increment)%8;
+  return wrapped<0?wrapped+8:wrapped;
 }
 export function advanceChain(previous,time){
   const prior=previous&&typeof previous==='object'?previous:{};
