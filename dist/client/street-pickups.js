@@ -1,18 +1,73 @@
 import * as THREE from './three.module.js';
+
+const finitePosition=position=>position&&Number.isFinite(position.x)&&Number.isFinite(position.y)&&Number.isFinite(position.z);
+const validTime=now=>Number.isFinite(now)&&now>=0;
+
 export function createStreetPickups(scene,player,groundAt,clearSpot,{onCharge=()=>{},onHeal=()=>{},onUse=()=>{},onStatus=()=>{}}={}){
  const kinds=[{id:'battery',name:'STORM CELL',color:0x89d8ff},{id:'medkit',name:'FIRST AID',color:0x92ffbd},{id:'relic',name:'MIRACLE RELIC',color:0xffd675},{id:'flare',name:'SIGNAL FLARE',color:0xff664d},{id:'sidearm',name:'SIDEARM',color:0xffbd72}];
  const geo=new THREE.OctahedronGeometry(.7,1),mat=new THREE.MeshStandardMaterial({vertexColors:true,emissive:0x1a1a1a,roughness:.36,metalness:.2}),mesh=new THREE.InstancedMesh(geo,mat,25),dummy=new THREE.Object3D(),rows=[],inventory=new Map();mesh.count=25;mesh.frustumCulled=false;scene.add(mesh);
  for(let i=0;i<25;i++){const kind=kinds[i%5],angle=i*2.3999632297,r=13+(i%5)*5,x=player.position.x+Math.cos(angle)*r,z=player.position.z+Math.sin(angle)*r,[px,pz]=clearSpot(x,z);const row={kind,position:new THREE.Vector3(px,groundAt(px,pz)+.9,pz),active:true,respawn:0,phase:i*.8};rows.push(row);mesh.setColorAt(i,new THREE.Color(kind.color));}
- let count=0,lastNpcScan=-Infinity;
- function use(){const kind=kinds.find(k=>(inventory.get(k.id)||0)>0);if(!kind){onStatus('No street item collected yet');return false;}inventory.set(kind.id,inventory.get(kind.id)-1);if(kind.id==='battery')onCharge(45);else if(kind.id==='medkit')onHeal(35);else onUse(kind.id);onStatus(`${kind.name} USED`);return true;}
- function drop(position){const row=rows.find(r=>!r.active&&performance.now()>=r.respawn);if(!row)return false;row.active=true;row.position.copy(position);row.position.y=groundAt(position.x,position.z)+.9;return true;}
- function grantItem(id,count=1){if(!kinds.some(k=>k.id===id))return false;inventory.set(id,Math.min(99,(inventory.get(id)||0)+Math.max(1,Math.floor(Number(count)||1))));return true;}
- function update(now,npcs=[]){const scanNpcs=now-lastNpcScan>=150;if(scanNpcs)lastNpcScan=now;for(let i=0;i<rows.length;i++){const r=rows[i];if(!r.active&&now>=r.respawn){r.position.x=player.position.x+Math.cos(r.phase+now*.00002)*24;r.position.z=player.position.z+Math.sin(r.phase+now*.00002)*24;r.position.y=groundAt(r.position.x,r.position.z)+.9;r.active=true;}if(r.active){let collector=null;if(scanNpcs)for(const npc of npcs){if(npc.collapse||npc.inventory?.length>=2)continue;if(npc.position.distanceTo(r.position)<1.8){collector=npc;break;}}if(collector){collector.inventory||=[];collector.inventory.push(r.kind.id);collector.lastPickup=now;r.active=false;r.respawn=now+18000;collector.event={type:'picked-up-'+r.kind.id,position:r.position.clone(),time:now};collector.state='respond';collector.emotionUntil=now+1300;}else if(player.position.distanceTo(r.position)<2.5){r.active=false;r.respawn=now+18000;inventory.set(r.kind.id,(inventory.get(r.kind.id)||0)+1);count++;onStatus(`PICKED UP ${r.kind.name} ×${inventory.get(r.kind.id)} · PRESS J TO USE`);}dummy.position.set(r.position.x,r.position.y+Math.sin(now*.004+r.phase)*.18,r.position.z);dummy.rotation.set(now*.0007+r.phase,now*.001+r.phase,0);dummy.scale.setScalar(r.active?1:0);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);}}for(const npc of npcs){if(!npc.inventory?.length||now<(npc.nextItemUse||0))continue;const item=npc.inventory.shift();npc.nextItemUse=now+3500;if(item==='medkit')npc.health=Math.min(100,(npc.health??100)+45);else if(item==='battery'){npc.health=Math.min(100,(npc.health??100)+10);npc.state=npc.faction==='authority'?'respond':'wander';npc.emotionUntil=now+2000;}else if(item==='relic'){onUse(npc);npc.state='awe';npc.emotionUntil=now+3200;}else if(item==='flare'){npc.state=npc.faction==='authority'?'respond':'fear';npc.emotionUntil=now+2400;onStatus(`${npc.name} SET OFF A SIGNAL FLARE`);onUse(npc);}else if(item==='sidearm'){npc.hasWeapon=true;npc.state='respond';npc.emotionUntil=now+1600;}}mesh.instanceMatrix.needsUpdate=true;}
+ let count=0,lastNpcScan=-Infinity,disposed=false;
+ function use(){if(disposed)return false;const kind=kinds.find(k=>(inventory.get(k.id)||0)>0);if(!kind){onStatus('No street item collected yet');return false;}inventory.set(kind.id,inventory.get(kind.id)-1);if(kind.id==='battery')onCharge(45);else if(kind.id==='medkit')onHeal(35);else onUse(kind.id);onStatus(`${kind.name} USED`);return true;}
+ function drop(position){
+  if(disposed||!finitePosition(position))return false;
+  const row=rows.find(r=>!r.active&&performance.now()>=r.respawn);if(!row)return false;
+  const y=groundAt(position.x,position.z);if(!Number.isFinite(y))return false;
+  row.active=true;row.position.copy(position);row.position.y=y+.9;return true;
+ }
+ function grantItem(id,amount=1){
+  if(disposed||!kinds.some(k=>k.id===id)||!Number.isFinite(amount)||amount<1)return false;
+  const quantity=Math.floor(amount);if(quantity<1)return false;
+  const held=inventory.get(id)||0;if(held>=99)return false;
+  inventory.set(id,Math.min(99,held+quantity));return true;
+ }
+ function update(now,npcs=[]){
+  if(disposed||!validTime(now)||!finitePosition(player.position))return;
+  if(!Array.isArray(npcs))npcs=[];
+  const scanNpcs=now<lastNpcScan||now-lastNpcScan>=150;if(scanNpcs)lastNpcScan=now;
+  for(let i=0;i<rows.length;i++){
+   const r=rows[i];
+   if(!r.active&&now>=r.respawn){
+    const x=player.position.x+Math.cos(r.phase+now*.00002)*24,z=player.position.z+Math.sin(r.phase+now*.00002)*24;
+    const y=groundAt(x,z);
+    if(Number.isFinite(y)){r.position.set(x,y+.9,z);r.active=true;}
+   }
+   if(r.active){
+    let collector=null;
+    if(scanNpcs)for(const npc of npcs){
+     if(!npc||npc.collapse||!finitePosition(npc.position)||!Array.isArray(npc.inventory)&&npc.inventory!=null||Array.isArray(npc.inventory)&&npc.inventory.length>=2)continue;
+     if(npc.position.distanceTo(r.position)<1.8){collector=npc;break;}
+    }
+    if(collector){
+     collector.inventory||=[];collector.inventory.push(r.kind.id);collector.lastPickup=now;r.active=false;r.respawn=now+18000;
+     collector.event={type:'picked-up-'+r.kind.id,position:r.position.clone(),time:now};collector.state='respond';collector.emotionUntil=now+1300;
+    }else if(player.position.distanceTo(r.position)<2.5&&(inventory.get(r.kind.id)||0)<99){
+     r.active=false;r.respawn=now+18000;inventory.set(r.kind.id,(inventory.get(r.kind.id)||0)+1);count++;
+     onStatus(`PICKED UP ${r.kind.name} ×${inventory.get(r.kind.id)} · PRESS J TO USE`);
+    }
+   }
+   dummy.position.set(r.position.x,r.position.y+Math.sin(now*.004+r.phase)*.18,r.position.z);
+   dummy.rotation.set(now*.0007+r.phase,now*.001+r.phase,0);dummy.scale.setScalar(r.active?1:0);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);
+  }
+  for(const npc of npcs){
+   if(!npc||!Array.isArray(npc.inventory)||!npc.inventory.length)continue;
+   if(!Number.isFinite(npc.nextItemUse))npc.nextItemUse=0;
+   if(now<npc.nextItemUse)continue;
+   const item=npc.inventory.shift();npc.nextItemUse=now+3500;
+   if(item==='medkit')npc.health=Math.min(100,(Number.isFinite(npc.health)?npc.health:100)+45);
+   else if(item==='battery'){npc.health=Math.min(100,(Number.isFinite(npc.health)?npc.health:100)+10);npc.state=npc.faction==='authority'?'respond':'wander';npc.emotionUntil=now+2000;}
+   else if(item==='relic'){onUse(npc);npc.state='awe';npc.emotionUntil=now+3200;}
+   else if(item==='flare'){npc.state=npc.faction==='authority'?'respond':'fear';npc.emotionUntil=now+2400;onStatus(`${npc.name} SET OFF A SIGNAL FLARE`);onUse(npc);}
+   else if(item==='sidearm'){npc.hasWeapon=true;npc.state='respond';npc.emotionUntil=now+1600;}
+  }
+  mesh.instanceMatrix.needsUpdate=true;
+ }
  function nearestFor(npc,{max=45,kind=null}={}){
-  if(!npc?.position)return null;let best=null,bestDistance=Math.max(1,Number(max)||45);
+  if(disposed||!finitePosition(npc?.position))return null;
+  let best=null,bestDistance=Number.isFinite(max)&&max>0?max:45;
   for(const row of rows){if(!row.active)continue;if(kind&&row.kind.id!==kind)continue;const d=npc.position.distanceTo(row.position);if(d<bestDistance){best=row;bestDistance=d;}}
   return best?{kind:best.kind.id,name:best.kind.name,position:best.position.clone(),distance:bestDistance}:null;
  }
  function held(){return kinds.filter(k=>(inventory.get(k.id)||0)>0).map(k=>`${k.name} ×${inventory.get(k.id)}`).join(' · ')||'empty';}
- return {update,use,drop,grantItem,nearestFor,held,get count(){return count;},dispose(){scene.remove(mesh);geo.dispose();mat.dispose();}};
+ return {update,use,drop,grantItem,nearestFor,held,get count(){return count;},dispose(){if(disposed)return;disposed=true;scene.remove(mesh);geo.dispose();mat.dispose();}};
 }

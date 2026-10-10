@@ -1,0 +1,29 @@
+name: Street pickup safety regressions
+on:
+  push:
+    branches:
+      - 'fix/street-pickup-inventory-safety-*'
+  pull_request:
+    paths:
+      - 'street-pickups.js'
+      - 'dist/client/street-pickups.js'
+      - 'tests/street-pickup-safety.mjs'
+      - '.github/workflows/street-pickup-regressions.yml'
+  workflow_dispatch:
+jobs:
+  street-pickup-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify syntax
+        run: |
+          node --check street-pickups.js
+          node --check dist/client/street-pickups.js
+          node --check tests/street-pickup-safety.mjs
+      - name: Run pickup safety tests
+        run: node tests/street-pickup-safety.mjs
+      - name: Verify source and deployment copy parity
+        run: cmp street-pickups.js dist/client/street-pickups.js
