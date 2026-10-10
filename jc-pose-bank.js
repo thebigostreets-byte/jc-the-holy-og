@@ -71,3 +71,13 @@ export function getJCPoseForAction(action,stage=2) {
   const phase=Number.isInteger(stage)?((stage%5)+5)%5:2;
   return JC_POSES[actions[action]*5+phase];
 }
+
+export function getJCPoseSequenceFrame(index,startedAt,duration,now){
+  const pose=getJCPose(index);
+  if(!pose)return null;
+  const first=pose.id-((pose.id-JC_POSE_START)%5);
+  if(!Number.isFinite(startedAt)||!Number.isFinite(now))return first;
+  const safeDuration=Number.isFinite(duration)&&duration>0?duration:800;
+  const stage=Math.min(4,Math.max(0,Math.floor(((now-startedAt)/safeDuration)*5)));
+  return first+stage;
+}

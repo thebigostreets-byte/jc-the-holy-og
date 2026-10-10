@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {JC_POSE_START,JC_POSE_COUNT,JC_POSES,getJCPose,getJCPoseForAction} from '../jc-pose-bank.js';
+import {JC_POSE_START,JC_POSE_COUNT,JC_POSES,getJCPose,getJCPoseForAction,getJCPoseSequenceFrame} from '../jc-pose-bank.js';
 assert.equal(JC_POSE_START,39);
 assert.equal(JC_POSE_COUNT,100);
 assert.equal(JC_POSES.length,100);
@@ -32,4 +32,15 @@ assert.equal(getJCPoseForAction('missing'),null);
 assert.equal(getJCPoseForAction('__proto__'),null);
 assert.equal(getJCPoseForAction(null),null);
 assert.equal(getJCPoseForAction('heal',999).id,getJCPoseForAction('heal',4).id);
+for(let family=0;family<20;family++){
+  const first=39+family*5;
+  for(let phase=0;phase<5;phase++){
+    assert.equal(getJCPoseSequenceFrame(first,1000,1000,1000+phase*200+10),first+phase);
+  }
+  assert.equal(getJCPoseSequenceFrame(first,1000,1000,2000),first+4);
+}
+assert.equal(getJCPoseSequenceFrame(38,0,1000,0),null);
+assert.equal(getJCPoseSequenceFrame(139,0,1000,0),null);
+assert.equal(getJCPoseSequenceFrame(39,0,0,0),39);
+console.log('PASS: 20 five-stage articulated pose sequences');
 console.log('PASS: 100 distinct articulated poses, stable indexes, bounded joints and action mapping');
