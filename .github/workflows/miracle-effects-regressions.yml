@@ -1,0 +1,29 @@
+name: Miracle effect resilience regressions
+on:
+  push:
+    branches:
+      - 'fix/miracle-effects-resilience-*'
+  pull_request:
+    paths:
+      - 'jc-miracle-effects.js'
+      - 'dist/client/jc-miracle-effects.js'
+      - 'tests/miracle-effects-resilience.mjs'
+      - '.github/workflows/miracle-effects-regressions.yml'
+  workflow_dispatch:
+jobs:
+  miracle-effects-resilience:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify JavaScript syntax
+        run: |
+          node --check jc-miracle-effects.js
+          node --check dist/client/jc-miracle-effects.js
+          node --check tests/miracle-effects-resilience.mjs
+      - name: Run focused miracle effect tests
+        run: node tests/miracle-effects-resilience.mjs
+      - name: Verify source/deployment parity
+        run: cmp jc-miracle-effects.js dist/client/jc-miracle-effects.js
