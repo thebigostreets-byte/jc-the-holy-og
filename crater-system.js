@@ -1,7 +1,10 @@
 import * as THREE from './three.module.js';
 export function craterDepth(x,z,craters){
  let depth=0;
- for(const c of craters){const t=Math.hypot(x-c.x,z-c.z)/c.radius;if(t<1)depth=Math.max(depth,c.depth*(1-t*t)**2);}
+ for(const c of craters){
+  if(!c||!Number.isFinite(c.x)||!Number.isFinite(c.z)||!Number.isFinite(c.radius)||c.radius<=0||!Number.isFinite(c.depth)||c.depth<0)continue;
+  const t=Math.hypot(x-c.x,z-c.z)/c.radius;if(t<1)depth=Math.max(depth,c.depth*(1-t*t)**2);
+ }
  return depth;
 }
 // Locally subdivide the source surface so a crater is real geometry even on
@@ -38,5 +41,5 @@ export function createCraterSystem(game,mobile=false){
   });
  }
  window.addEventListener('jc-tiles-loaded',apply);window.addEventListener('jc-roads-loaded',apply);
- return {strike(point){const c={id:++serial,x:point.x,z:point.z,radius:12,depth:3.2,expires:performance.now()+lifetime};records.push(c);if(records.length>limit)records.shift();apply();return c;},update(now=performance.now()){const expired=records.some(c=>now>=c.expires);if(expired){for(let i=records.length-1;i>=0;i--)if(now>=records[i].expires)records.splice(i,1);apply();}},records,dispose(){window.removeEventListener('jc-tiles-loaded',apply);window.removeEventListener('jc-roads-loaded',apply);records.length=0;apply();}};
+ return {strike(point){if(!point||!Number.isFinite(point.x)||!Number.isFinite(point.z))return null;const c={id:++serial,x:point.x,z:point.z,radius:12,depth:3.2,expires:performance.now()+lifetime};records.push(c);if(records.length>limit)records.shift();apply();return c;},update(now=performance.now()){const expired=records.some(c=>now>=c.expires);if(expired){for(let i=records.length-1;i>=0;i--)if(now>=records[i].expires)records.splice(i,1);apply();}},records,dispose(){window.removeEventListener('jc-tiles-loaded',apply);window.removeEventListener('jc-roads-loaded',apply);records.length=0;apply();}};
 }
