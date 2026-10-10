@@ -28,7 +28,7 @@ window.jcCanOpenGraphics=function(){
 };
 window.jcLoadingRecovery=function(message){
  // The live canvas is authoritative: never cover playable 3D with a startup modal.
- if(window.studio || window.JC_PLAYER_READY || window.JC_CITY_READY){
+ if(window.JC_PLAYER_READY || window.JC_CITY_READY){
   console.warn('JC background failure (3D retained):',message);
   document.getElementById('jcRecovery')?.remove();
   window.JC_BOOT_FAILED=false;
@@ -45,7 +45,7 @@ window.jcLoadingRecovery=function(message){
  let recovery=document.getElementById('jcRecovery');if(recovery){recovery.querySelector('p').textContent=message;const fallback=recovery.querySelector('[data-lite-fallback]');if(fallback)fallback.onclick=()=>window.jcOpenLiteFallback(message);return;}
  recovery=document.createElement('div');recovery.id='jcRecovery';recovery.style.cssText='position:fixed;inset:0;z-index:999;background:#091018ed;color:white;display:grid;place-content:center;padding:24px;text-align:center;font:16px Arial;gap:16px';
  const text=document.createElement('p');text.textContent=message;recovery.append(text);
- const retry=document.createElement('button');retry.textContent='Close 3D context and retry';retry.onclick=()=>{window.jcReleaseGraphics();const url=new URL(location.href);url.searchParams.set('retry3d',Date.now().toString());url.searchParams.set('v','playerfirst-20261003j');location.replace(url.href);};recovery.append(retry);const lite=document.createElement('button');lite.dataset.liteFallback='1';lite.textContent='Open mobile/lite play mode';lite.style.marginLeft='8px';lite.onclick=()=>window.jcOpenLiteFallback(message);recovery.append(lite);if(/WebGL|graphics|3D graphics|context/i.test(message)){setTimeout(()=>{if(window.JC_BOOT_FAILED)window.jcOpenLiteFallback(message);},1800);}
+ const retry=document.createElement('button');retry.textContent='Close 3D context and retry';retry.onclick=()=>{window.jcReleaseGraphics();const url=new URL(location.href);url.searchParams.set('retry3d',Date.now().toString());url.searchParams.set('v','playerfirst-20261003j');location.replace(url.href);};recovery.append(retry);const lite=document.createElement('button');lite.dataset.liteFallback='1';lite.textContent='Open mobile/lite play mode';lite.style.marginLeft='8px';lite.onclick=()=>window.jcOpenLiteFallback(message);recovery.append(lite);if(/WebGL|graphics|3D graphics|context/i.test(message)){setTimeout(()=>{if(window.JC_BOOT_FAILED&&!window.JC_PLAYER_READY&&!window.JC_CITY_READY)window.jcOpenLiteFallback(message);},1800);}
  document.body.append(recovery);
 };
 // Optional textures, audio and secondary scripts must not kill an already rendered game.
@@ -66,7 +66,7 @@ setTimeout(()=>{if(window.JC_BOOT_FAILED)return;const play=new URLSearchParams(l
 
 // An earlier asynchronous startup failure must not permanently obscure a later successful scene.
 const jcRecoveryCleanup=setInterval(()=>{
- if(window.studio||window.JC_PLAYER_READY||window.JC_CITY_READY){
+ if(window.JC_PLAYER_READY||window.JC_CITY_READY){
   const recovery=document.getElementById('jcRecovery');
   if(recovery&&!/lost its graphics connection|could not start WebGL/i.test(recovery.textContent||'')){
    recovery.remove();window.JC_BOOT_FAILED=false;
