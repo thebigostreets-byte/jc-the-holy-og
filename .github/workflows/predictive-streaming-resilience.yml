@@ -1,0 +1,20 @@
+name: Predictive streaming resilience
+on:
+  pull_request:
+    paths:
+      - 'predictive-streaming.js'
+      - 'dist/client/predictive-streaming.js'
+      - 'tests/predictive-streaming*.mjs'
+      - '.github/workflows/predictive-streaming-resilience.yml'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check predictive-streaming.js && node --check dist/client/predictive-streaming.js
+      - run: node tests/predictive-streaming.mjs && node tests/predictive-streaming-resilience.mjs
+      - run: cmp predictive-streaming.js dist/client/predictive-streaming.js
