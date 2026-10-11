@@ -15,7 +15,7 @@ on:
       - '.github/workflows/predictive-streaming-resilience.yml'
   workflow_dispatch:
 jobs:
-  test:
+  focused:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,3 +25,14 @@ jobs:
       - run: node --check predictive-streaming.js && node --check dist/client/predictive-streaming.js
       - run: node tests/predictive-streaming.mjs && node tests/predictive-streaming-resilience.mjs
       - run: cmp predictive-streaming.js dist/client/predictive-streaming.js
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run hydrate && npm run verify:assets && npm run build
+      - run: node tests/deployable-client-sync.mjs
+      - run: node tests/gameplay-regressions.mjs && node tests/performance-guardrails.mjs
