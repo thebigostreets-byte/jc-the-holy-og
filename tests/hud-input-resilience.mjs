@@ -36,8 +36,9 @@ for (const yaw of [1e308, -1e308]) {
 // Even finite world coordinates can overflow subtraction or scaling.
 for (const position of [{x:1e308,z:0}, {x:0,z:-1e308}]) {
  const result = minimapPoint(position,{x:-1e308,z:1e308},1,200);
- eq(result, {x:100,y:100}, 'finite coordinate subtraction overflow must not reach HUD canvas');
+ eq(result, {x:-21,y:-21}, 'finite coordinate subtraction overflow must be skipped off-canvas');
 }
-eq(minimapPoint({x:1,z:1},{x:0,z:0},1e-308,200), {x:100,y:100}, 'finite input scale overflow must not reach HUD canvas');
+eq(minimapPoint({x:1,z:1},{x:0,z:0},1e-308,200), {x:-21,y:-21}, 'finite input scale overflow must be skipped off-canvas');
+eq(minimapPoint({x:500,z:0},{x:0,z:0},100,200), {x:600,y:100}, 'ordinary offscreen markers stay offscreen');
 eq(readFileSync(new URL('../jc-hud-model.js',import.meta.url),'utf8'),readFileSync(new URL('../dist/client/jc-hud-model.js',import.meta.url),'utf8'),'source/deploy parity');
 console.log(`PASS: ${checks} HUD input resilience assertions`);
