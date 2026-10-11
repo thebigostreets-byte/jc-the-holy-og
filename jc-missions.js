@@ -31,7 +31,14 @@ function load(storage){
     const saved=storage?.getItem(STORAGE_KEY);
     if(typeof saved==='string'&&saved.length>65536)return fresh();
     const raw=JSON.parse(saved||'null');
-    if(raw?.version===1&&raw.counts&&typeof raw.counts==='object')return {...fresh(),...raw,counts:Object.fromEntries(DEFINITIONS.map(def=>[def.id,clampCount(raw.counts[def.id],def.target)])),visited:cleanVisited(raw.visited)};
+    if(raw?.version===1&&raw.counts&&typeof raw.counts==='object'){
+      const base=fresh();
+      const now=base.updatedAt;
+      const validTime=value=>Number.isSafeInteger(value)&&value>=0&&value<=now;
+      const startedAt=validTime(raw.startedAt)?raw.startedAt:base.startedAt;
+      const updatedAt=validTime(raw.updatedAt)&&raw.updatedAt>=startedAt?raw.updatedAt:Math.max(startedAt,now);
+      return {...base,startedAt,updatedAt,counts:Object.fromEntries(DEFINITIONS.map(def=>[def.id,clampCount(raw.counts[def.id],def.target)])),visited:cleanVisited(raw.visited)};
+    }
   }catch{}
   return fresh();
 }
@@ -41,7 +48,7 @@ function readDefaultStorage(){
 export function createMissionTracker(storage=readDefaultStorage()){
   let state=load(storage);
   const listeners=new Set();
-  function persist(){state.updatedAt=Date.now();try{storage?.setItem(STORAGE_KEY,JSON.stringify(state));}catch{};listeners.forEach(fn=>{try{fn(getSnapshot());}catch{}});}
+  function persist(){state.updatedAt=Math.max(state.updatedAt,Date.now());try{storage?.setItem(STORAGE_KEY,JSON.stringify(state));}catch{};listeners.forEach(fn=>{try{fn(getSnapshot());}catch{}});}
   function getSnapshot(){
     return {version:1,missions:DEFINITIONS.map(def=>({...def,value:Math.min(def.target,state.counts[def.id]||0),complete:(state.counts[def.id]||0)>=def.target})),visited:[...state.visited],allComplete:DEFINITIONS.every(def=>(state.counts[def.id]||0)>=def.target)};
   }
