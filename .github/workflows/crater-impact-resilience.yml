@@ -6,6 +6,7 @@ on:
       - 'dist/client/crater-system.js'
       - 'tests/crater-impact-resilience.mjs'
       - 'tests/crater-resource-budget.mjs'
+      - 'tests/crater-color-transform.mjs'
       - '.github/workflows/crater-impact-resilience.yml'
   workflow_dispatch:
 jobs:
@@ -22,9 +23,11 @@ jobs:
           node --check dist/client/crater-system.js
           node --check tests/crater-impact-resilience.mjs
           node --check tests/crater-resource-budget.mjs
+          node --check tests/crater-color-transform.mjs
       - name: Check authored and deployable parity
         run: cmp crater-system.js dist/client/crater-system.js
       - name: Run crater impact regression tests
         run: |
           node tests/crater-impact-resilience.mjs
           node tests/crater-resource-budget.mjs
+          node tests/crater-color-transform.mjs
