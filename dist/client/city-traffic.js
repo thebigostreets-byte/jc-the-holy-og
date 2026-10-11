@@ -24,13 +24,13 @@ export function advanceTrafficCar(car,dt){
 }
 
 export function createCityTraffic(game){
-  const active=new Map(),listeners=[],vehicleCells=new Map();let disposed=false,accumulator=0;
+  const active=new Map(),listeners=[],vehicleCells=new Map(),dummy=new THREE.Object3D();let disposed=false,accumulator=0;
   const bodyGeo=new THREE.BoxGeometry(4.5,1.35,2.05),roofGeo=new THREE.BoxGeometry(2.25,.8,1.8),lampGeo=new THREE.BoxGeometry(.16,.2,.32);
   const bodyMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.42,metalness:.32}),roofMat=new THREE.MeshStandardMaterial({color:0x18232d,roughness:.25,metalness:.24}),lampMat=new THREE.MeshBasicMaterial({color:0xffdf9c});
   function remove(id){const v=active.get(id);if(!v)return;game.scene.remove(v.group);active.delete(id);}
   function add({detail}){if(disposed||!detail?.tile||!Array.isArray(detail.records)||!Array.isArray(game.origin)||!game.origin.slice(0,2).every(Number.isFinite))return;remove(detail.tile);const candidates=detail.records.filter(r=>['MAJOR STREET','COLLECTOR','COUNTY HIGHWAY','LOCAL'].includes(r?.kind)&&Array.isArray(r.points)&&r.points.length>1&&r.points.every(p=>Array.isArray(p)&&p.length>=2&&Number.isFinite(p[0])&&Number.isFinite(p[1])));if(!candidates.length)return;
     const cars=[];for(let i=0;i<Math.min(9,candidates.length*2);i++){const road=candidates[(i*7+Math.floor(i/3))%candidates.length],pts=road.points.map(p=>[p[0]-game.origin[0],game.origin[1]-p[1]]),seg=(i*3)%Math.max(1,pts.length-1),a=pts[seg],b=pts[seg+1];if(!a||!b)continue;const length=Math.hypot(b[0]-a[0],b[1]-a[1]);if(length<15)continue;cars.push({pts,seg,length,t:(i*.271)%1,lane:(i%2?1:-1)*(road.kind==='LOCAL'?1.2:2.5),speed:5+(i%5)*1.7,color:[0xd94d56,0xe5d9c2,0x3976a3,0x252b34,0xc1a53f,0x42a18d][i%6]});}
-    if(!cars.length)return;const group=new THREE.Group();group.name=`Las Vegas moving traffic · ${detail.tile}`;const cap=cars.length,dummy=new THREE.Object3D(),body=new THREE.InstancedMesh(bodyGeo,bodyMat,cap),roof=new THREE.InstancedMesh(roofGeo,roofMat,cap),lamps=new THREE.InstancedMesh(lampGeo,lampMat,cap*2);body.count=roof.count=cap;lamps.count=cap*2;body.frustumCulled=roof.frustumCulled=lamps.frustumCulled=false;
+    if(!cars.length)return;const group=new THREE.Group();group.name=`Las Vegas moving traffic · ${detail.tile}`;const cap=cars.length,body=new THREE.InstancedMesh(bodyGeo,bodyMat,cap),roof=new THREE.InstancedMesh(roofGeo,roofMat,cap),lamps=new THREE.InstancedMesh(lampGeo,lampMat,cap*2);body.count=roof.count=cap;lamps.count=cap*2;body.frustumCulled=roof.frustumCulled=lamps.frustumCulled=false;
     for(let i=0;i<cap;i++){body.setColorAt(i,new THREE.Color(cars[i].color));}
     group.add(body,roof,lamps);game.scene.add(group);active.set(detail.tile,{group,cars,body,roof,lamps});
   }
