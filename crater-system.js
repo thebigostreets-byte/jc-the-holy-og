@@ -104,7 +104,7 @@ export function createCraterSystem(game,mobile=false){
    const key=near.map(c=>c.id).join(',');if(mesh.userData.craterKey===key)return;
    // Carving creates non-indexed triangles without material groups. Never
    // apply it to grouped/multi-material geometry (or malformed meshes).
-   if(Array.isArray(mesh.material)||!mesh.material||typeof mesh.material.clone!=='function'||!mesh.geometry?.getAttribute?.('position')){
+   if(Array.isArray(mesh.material)||mesh.geometry?.groups?.length||!mesh.material||typeof mesh.material.clone!=='function'||!mesh.geometry?.getAttribute?.('position')){
     restore(mesh);return;
    }
    const base=mesh.userData.jcCraterBase||mesh.geometry;

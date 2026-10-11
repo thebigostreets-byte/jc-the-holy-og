@@ -49,4 +49,20 @@ check(good.geometry!==base,'healthy neighboring tile still deforms');
 system.dispose();
 check(good.geometry===base,'healthy tile restored on shutdown');
 check(handlers.size===0,'tile listeners removed on shutdown');
+// Grouped geometry with one material still uses draw-range groups. Do not
+// silently discard those groups while creating nonindexed crater triangles.
+const groupedBase=new Geometry().setAttribute('position',base.getAttribute('position'));
+groupedBase.groups=[{start:0,count:3,materialIndex:0}];
+const groupedMaterial=mat();
+const grouped={isMesh:true,parent:{name:'ground_inferred'},geometry:groupedBase,material:groupedMaterial,userData:{},matrixWorld:identity,bounds};
+const healthyGroupedNeighbor={isMesh:true,parent:{name:'ground_inferred'},geometry:base,material:mat(),userData:{},matrixWorld:identity,bounds};
+const groupedScene={updateMatrixWorld(){},traverse(fn){for(const mesh of [grouped,healthyGroupedNeighbor])fn(mesh)}};
+const groupedSystem=ctx.createCraterSystem({scene:groupedScene},true);
+check(groupedSystem.strike({x:0,z:0})!==null,'grouped-terrain impact accepted');
+check(grouped.geometry===groupedBase,'grouped single-material geometry not rewritten');
+check(grouped.material===groupedMaterial,'grouped terrain original material preserved');
+check(!grouped.userData.jcCraterBase,'grouped terrain not tracked as deformed');
+check(healthyGroupedNeighbor.geometry!==base,'healthy ungrouped neighbor still receives impact');
+groupedSystem.dispose();
+check(healthyGroupedNeighbor.geometry===base,'ungrouped neighbor restored after grouped impact');
 console.log(`PASS: ${checks} crater color and transform assertions`);
