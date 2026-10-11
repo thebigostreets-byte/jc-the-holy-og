@@ -23,5 +23,19 @@ jobs:
           node --check tests/city-traffic-safety.mjs
       - name: Check source-deployment parity
         run: cmp city-traffic.js dist/client/city-traffic.js
+      - name: Restore pinned Three.js runtime for tests
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          const lock=JSON.parse(readFileSync('scripts/game-assets-lock.json','utf8'));
+          const entry=lock.assets.find(x=>x.path==='three.module.js');
+          if(!entry)throw Error('Three.js asset lock missing');
+          const response=await fetch(new URL(entry.path,lock.origin),{signal:AbortSignal.timeout(45000)});
+          if(!response.ok)throw Error('Pinned Three.js asset fetch failed: HTTP '+response.status);
+          const bytes=Buffer.from(await response.arrayBuffer());
+          if(bytes.length!==entry.bytes||createHash('sha256').update(bytes).digest('hex')!==entry.sha256)throw Error('Pinned Three.js asset checksum mismatch');
+          writeFileSync('three.module.js',bytes);
+          NODE
       - name: Run traffic safety regressions
         run: node tests/city-traffic-safety.mjs
