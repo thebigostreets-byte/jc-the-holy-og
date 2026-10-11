@@ -4,6 +4,8 @@ export function cachedGroundSample(x,z,cache,raycast,fallback,{cellSize=8,maxEnt
   if(!Number.isFinite(x)||!Number.isFinite(z))return 0;
   const cell=Number.isFinite(cellSize)&&cellSize>0?cellSize:8;
   const limit=Number.isFinite(maxEntries)?Math.min(4096,Math.max(0,Math.floor(maxEntries))):512;
+  // Disabling caching also releases entries left by an earlier cache budget.
+  if(limit===0&&cache.size)cache.clear();
   const gx=Math.round(x/cell),gz=Math.round(z/cell);
   if(!Number.isFinite(gx)||!Number.isFinite(gz))return 0;
   const key=`${gx}:${gz}`;
@@ -25,10 +27,9 @@ export function cachedGroundSample(x,z,cache,raycast,fallback,{cellSize=8,maxEnt
     try{result=fallback(sx,sz);}catch{result=NaN;}
   }
   const height=Number.isFinite(result)?result:0;
-  if(limit>0&&Number.isFinite(result)){
-    cache.set(key,height);
-    while(cache.size>limit)cache.delete(cache.keys().next().value);
-  }
+  if(limit>0&&Number.isFinite(result))cache.set(key,height);
+  // A failed probe must not leave a pre-populated cache above budget.
+  while(cache.size>limit)cache.delete(cache.keys().next().value);
   return height;
 }
 
