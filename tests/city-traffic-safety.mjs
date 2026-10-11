@@ -33,7 +33,7 @@ const matrixA=new THREE.Matrix4(),matrixB=new THREE.Matrix4();
 body.getMatrixAt(0,matrixA);
 lamps.getMatrixAt(0,matrixA);
 lamps.getMatrixAt(1,matrixB);
-assert.notEqual(matrixA.elements[12],matrixB.elements[12],'left and right headlights occupy separate positions');
+assert.ok(Math.hypot(matrixA.elements[12]-matrixB.elements[12],matrixA.elements[14]-matrixB.elements[14])>1,'left and right headlights occupy separate positions');
 body.getMatrixAt(0,matrixA);
 const x=matrixA.elements[12],z=matrixA.elements[14];
 assert.ok(traffic.vehicleAt(x,z,3),'nearby vehicle lookup succeeds');
