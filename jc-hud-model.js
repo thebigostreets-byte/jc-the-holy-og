@@ -18,7 +18,9 @@ export function minimapPoint(position, center, halfRange, size) {
     return { x: middle, y: middle };
   }
   const scale = side / (2 * halfRange);
-  return { x: middle + (position.x - center.x) * scale, y: middle + (position.z - center.z) * scale };
+  const x = middle + (position.x - center.x) * scale;
+  const y = middle + (position.z - center.z) * scale;
+  return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : { x: middle, y: middle };
 }
 
 export function compassHeading(yaw) {
