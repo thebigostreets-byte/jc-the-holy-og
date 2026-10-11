@@ -1,0 +1,22 @@
+name: NPC memory resilience
+on:
+  pull_request:
+    paths:
+      - 'npc-memory.js'
+      - 'dist/client/npc-memory.js'
+      - 'tests/npc-memory.mjs'
+      - 'tests/npc-memory-resilience.mjs'
+      - '.github/workflows/npc-memory-resilience.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check npc-memory.js
+      - run: node tests/npc-memory.mjs
+      - run: node tests/npc-memory-resilience.mjs
+      - run: cmp npc-memory.js dist/client/npc-memory.js
