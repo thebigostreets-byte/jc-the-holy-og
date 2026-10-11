@@ -56,6 +56,9 @@ export function createCraterSystem(game,mobile=false){
  }
  function apply(){
   if(disposed)return;
+  // No active craters: only previously altered meshes need restoration.
+  // Avoid traversing every streamed Vegas road/ground tile on expiry.
+  if(!records.length){for(const mesh of [...tracked])restore(mesh);return;}
   game.scene.updateMatrixWorld(true);
   const visible=new Set();
   game.scene.traverse(mesh=>{
@@ -64,19 +67,40 @@ export function createCraterSystem(game,mobile=false){
    const bounds=new THREE.Box3().setFromObject(mesh),near=records.filter(c=>c.x+c.radius>=bounds.min.x&&c.x-c.radius<=bounds.max.x&&c.z+c.radius>=bounds.min.z&&c.z-c.radius<=bounds.max.z);
    if(!near.length){restore(mesh);return;}
    const key=near.map(c=>c.id).join(',');if(mesh.userData.craterKey===key)return;
-   if(!mesh.userData.jcCraterBase){
-    // Retain the original geometry: other streamed meshes may share it.
-    mesh.userData.jcCraterBase=mesh.geometry;
-    tracked.add(mesh);
-    mesh.userData.jcCraterMaterial=mesh.material;
-    // Never enable vertex colors on a material shared with unrelated meshes.
-    mesh.material=mesh.material.clone();
+   // Carving creates non-indexed triangles without material groups. Never
+   // apply it to grouped/multi-material geometry (or malformed meshes).
+   if(Array.isArray(mesh.material)||!mesh.material||typeof mesh.material.clone!=='function'||!mesh.geometry?.getAttribute?.('position')){
+    restore(mesh);return;
    }
-   const next=carveGeometry(mesh.userData.jcCraterBase,mesh.matrixWorld,near,mobile?6000:18000);
-   if(!next.getAttribute('color')){const color=new Float32Array(next.getAttribute('position').count*3);color.fill(1);next.setAttribute('color',new THREE.BufferAttribute(color,3));}
-   mesh.material.vertexColors=true;mesh.material.needsUpdate=true;
-   if(mesh.geometry!==mesh.userData.jcCraterBase)mesh.geometry.dispose();
-   mesh.geometry=next;mesh.userData.craters=near;mesh.userData.craterKey=key;
+   const base=mesh.userData.jcCraterBase||mesh.geometry;
+   let next=null,clonedMaterial=null;
+   try{
+    // Build before touching the visible mesh: a bad tile cannot prevent
+    // subsequent meshes from receiving impacts or corrupt shared assets.
+    next=carveGeometry(base,mesh.matrixWorld,near,mobile?6000:18000);
+    if(!next.getAttribute('color')){
+     const color=new Float32Array(next.getAttribute('position').count*3);
+     color.fill(1);next.setAttribute('color',new THREE.BufferAttribute(color,3));
+    }
+    if(!mesh.userData.jcCraterBase){
+     clonedMaterial=mesh.material.clone();
+     clonedMaterial.vertexColors=true;clonedMaterial.needsUpdate=true;
+     mesh.userData.jcCraterBase=base;
+     mesh.userData.jcCraterMaterial=mesh.material;
+     tracked.add(mesh);
+     mesh.material=clonedMaterial;
+    }else{
+     mesh.material.vertexColors=true;mesh.material.needsUpdate=true;
+    }
+    const previous=mesh.geometry;
+    mesh.geometry=next;mesh.userData.craters=near;mesh.userData.craterKey=key;
+    if(previous!==base)previous.dispose();
+   }catch{
+    // Restore this mesh alone and let other city tiles continue loading.
+    if(next&&mesh.geometry!==next)next.dispose();
+    if(clonedMaterial&&mesh.material!==clonedMaterial)clonedMaterial.dispose();
+    restore(mesh);
+   }
   });
   // Streamed-out tiles are no longer in scene.traverse: release them too.
   for(const mesh of [...tracked])if(!visible.has(mesh))restore(mesh);
