@@ -1,0 +1,21 @@
+name: JC Control Math Finite Inputs
+on:
+  pull_request:
+    paths:
+      - 'jc-control-math.js'
+      - 'dist/client/jc-control-math.js'
+      - 'tests/control-math-finite-inputs.mjs'
+      - '.github/workflows/control-math-finite-inputs.yml'
+  workflow_dispatch:
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check jc-control-math.js
+      - run: node --check dist/client/jc-control-math.js
+      - run: cmp jc-control-math.js dist/client/jc-control-math.js
+      - run: node --test tests/control-math-finite-inputs.mjs
