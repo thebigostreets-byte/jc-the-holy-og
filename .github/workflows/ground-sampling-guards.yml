@@ -1,0 +1,25 @@
+name: Terrain and GLB decoding regression
+on:
+  push:
+    paths:
+      - 'ground-sampling.js'
+      - 'dist/client/ground-sampling.js'
+      - 'tests/ground-sampling-guards.mjs'
+      - '.github/workflows/ground-sampling-guards.yml'
+  pull_request:
+    paths:
+      - 'ground-sampling.js'
+      - 'dist/client/ground-sampling.js'
+      - 'tests/ground-sampling-guards.mjs'
+      - '.github/workflows/ground-sampling-guards.yml'
+jobs:
+  terrain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check ground-sampling.js
+      - run: node tests/ground-sampling-guards.mjs
+      - run: cmp -s ground-sampling.js dist/client/ground-sampling.js

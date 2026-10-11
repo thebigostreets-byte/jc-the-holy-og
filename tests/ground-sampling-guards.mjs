@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {cachedGroundSample,decodeGlbAttribute} from '../ground-sampling.js';
+let checks=0;
+function eq(actual,expected,label){assert.deepEqual(actual,expected,label);checks++;}
+function yes(condition,label){assert.ok(condition,label);checks++;}
+function throws(fn,label){assert.throws(fn,{name:'RangeError'},label);checks++;}
+const cache=new Map();let probes=0,falls=0;
+const probe=(x,z)=>{probes++;return x-z;},fallback=()=>{falls++;return 130;};
+eq(cachedGroundSample(1,1,cache,probe,fallback),0,'first probe');
+eq(cachedGroundSample(2,2,cache,probe,fallback),0,'cached probe');eq(probes,1,'memoized');
+eq(cachedGroundSample(NaN,1,cache,probe,fallback),0,'NaN coordinate');
+eq(cachedGroundSample(1,Infinity,cache,probe,fallback),0,'infinite coordinate');eq(probes,1,'invalid positions avoid raycast');eq(cache.size,1,'invalid positions do not cache');
+let broken=new Map([['0:0',NaN]]);
+eq(cachedGroundSample(1,1,broken,probe,fallback),0,'bad cache entry refreshed');yes(Number.isFinite(broken.get('0:0')),'finite refreshed cache');
+eq(cachedGroundSample(40,0,cache,()=>{throw new Error('missing tile')},fallback),130,'raycast exception fallback');
+eq(cachedGroundSample(48,0,cache,()=>NaN,()=>{throw new Error('fallback failure')}),0,'fallback exception safe default');
+yes(!cache.has('6:0'),'failed samples are not cached');
+eq(cachedGroundSample(1,1,new Map(),probe,fallback,{cellSize:0,maxEntries:NaN}),0,'invalid options normalized');
+const bounded=new Map();for(let i=0;i<100;i++)cachedGroundSample(i*8,0,bounded,probe,fallback,{maxEntries:3});yes(bounded.size<=3,'cache cap');
+const oversized=new Map(Array.from({length:8},(_,i)=>[`${i}:0`,i]));
+eq(cachedGroundSample(7*8,0,oversized,probe,fallback,{maxEntries:3}),7,'prepopulated cache hit');
+yes(oversized.size<=3,'cache hit enforces budget');
+const disabled=new Map();cachedGroundSample(1,1,disabled,probe,fallback,{maxEntries:0});eq(disabled.size,0,'zero disables cache');
+const packedBytes=new Uint8Array(32),pv=new DataView(packedBytes.buffer);
+[1,2,3,4].forEach((v,i)=>pv.setFloat32(i*4,v,true));
+const a=decodeGlbAttribute(packedBytes,0,2,2,Float32Array,4,8,'getFloat32');eq([...a],[1,2,3,4],'packed attributes');
+pv.setFloat32(0,99,true);eq(a[0],1,'packed data copied');
+const buffer=Buffer.alloc(16);for(let i=0;i<4;i++)buffer.writeFloatLE(i+1,i*4);
+const b=decodeGlbAttribute(buffer,0,2,2,Float32Array,4,8,'getFloat32');buffer.writeFloatLE(99,0);eq(b[0],1,'Buffer packed attributes own memory');
+const strided=new Uint8Array(24),sv=new DataView(strided.buffer);
+[[0,5],[4,6],[12,7],[16,8]].forEach(([o,v])=>sv.setFloat32(o,v,true));
+eq([...decodeGlbAttribute(strided,0,2,2,Float32Array,4,12,'getFloat32')],[5,6,7,8],'strided attributes');
+throws(()=>decodeGlbAttribute(strided,-1,2,2,Float32Array,4,12,'getFloat32'),'negative offset');
+throws(()=>decodeGlbAttribute(strided,0,1000000000,2,Float32Array,4,12,'getFloat32'),'truncated buffer');
+throws(()=>decodeGlbAttribute(strided,0,2,2,Float32Array,4,4,'getFloat32'),'overlapping stride');
+throws(()=>decodeGlbAttribute(strided,0,-1,2,Float32Array,4,12,'getFloat32'),'negative count');
+throws(()=>decodeGlbAttribute(strided,0,2,0,Float32Array,4,12,'getFloat32'),'zero item size');
+throws(()=>decodeGlbAttribute(strided,0,2,2,Float32Array,2,12,'getFloat32'),'wrong component size');
+const empty=decodeGlbAttribute(new Uint8Array(0),0,0,1,Uint8Array,1,1,'getUint8');eq(empty.length,0,'empty valid attribute');
+const a2=decodeGlbAttribute(new Uint8Array([7,8,9]),0,3,1,Uint8Array,1,1,'getUint8');eq([...a2],[7,8,9],'uint8 packed');
+const src=readFileSync(new URL('../ground-sampling.js',import.meta.url),'utf8');yes(src.includes('while(cache.size>limit)'),'bounded LRU');
+console.log(`${checks} terrain and GLB decoding assertions passed.`);
