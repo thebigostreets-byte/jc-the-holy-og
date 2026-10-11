@@ -1,5 +1,12 @@
 name: Predictive streaming resilience
 on:
+  push:
+    branches: [fix/predictive-streaming-integrity-oct11-pass28]
+    paths:
+      - 'predictive-streaming.js'
+      - 'dist/client/predictive-streaming.js'
+      - 'tests/predictive-streaming*.mjs'
+      - '.github/workflows/predictive-streaming-resilience.yml'
   pull_request:
     paths:
       - 'predictive-streaming.js'
