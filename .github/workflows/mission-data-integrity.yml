@@ -1,0 +1,36 @@
+name: Mission data integrity
+on:
+  pull_request:
+    paths:
+      - 'jc-missions.js'
+      - 'dist/client/jc-missions.js'
+      - 'tests/missions.mjs'
+      - 'tests/mission-resilience.mjs'
+      - 'tests/mission-data-integrity.mjs'
+      - 'tests/mission-storage-faults.mjs'
+      - '.github/workflows/mission-data-integrity.yml'
+  push:
+    branches:
+      - 'fix/mission-progress-resilience-oct11-secondary-tested'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mission-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and source parity
+        run: |
+          node --check jc-missions.js
+          node --check dist/client/jc-missions.js
+          cmp jc-missions.js dist/client/jc-missions.js
+      - name: Campaign and resilience regressions
+        run: |
+          node tests/missions.mjs
+          node tests/mission-resilience.mjs
+          node tests/mission-data-integrity.mjs
+          node tests/mission-storage-faults.mjs
