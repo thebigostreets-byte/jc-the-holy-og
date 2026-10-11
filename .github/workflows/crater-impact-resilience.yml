@@ -1,0 +1,30 @@
+name: Crater impact resilience
+on:
+  pull_request:
+    paths:
+      - 'crater-system.js'
+      - 'dist/client/crater-system.js'
+      - 'tests/crater-impact-resilience.mjs'
+      - 'tests/crater-resource-budget.mjs'
+      - '.github/workflows/crater-impact-resilience.yml'
+  workflow_dispatch:
+jobs:
+  crater-resilience:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          node --check crater-system.js
+          node --check dist/client/crater-system.js
+          node --check tests/crater-impact-resilience.mjs
+          node --check tests/crater-resource-budget.mjs
+      - name: Check authored and deployable parity
+        run: cmp crater-system.js dist/client/crater-system.js
+      - name: Run crater impact regression tests
+        run: |
+          node tests/crater-impact-resilience.mjs
+          node tests/crater-resource-budget.mjs
