@@ -19,11 +19,19 @@ eq(abilityWheelPage([null, ...abilities], 'miracle', Infinity).items.map(a=>a.id
 // Invalid map settings or positions must never propagate NaN to the HUD canvas.
 eq(minimapPoint({x:10,z:20},{x:0,z:0},100,200), {x:110,y:120}, 'normal minimap');
 for (const halfRange of [0, -5, NaN, Infinity]) {
- eq(minimapPoint({x:10,z:20},{x:0,z:0},halfRange,200), {x:100,y:100}, `invalid map range ${halfRange}`);
+ eq(minimapPoint({x:10,z:20},{x:0,z:0},halfRange,200), {x:-21,y:-21}, `invalid range hides off-center NPC ${halfRange}`);
+ eq(minimapPoint({x:0,z:0},{x:0,z:0},halfRange,200), {x:100,y:100}, `invalid range retains player center ${halfRange}`);
 }
-eq(minimapPoint({x:NaN,z:20},{x:0,z:0},100,200), {x:100,y:100}, 'invalid map position');
-eq(minimapPoint(null,{x:0,z:0},100,200), {x:100,y:100}, 'missing position');
-eq(minimapPoint({x:10,z:20},{x:0,z:0},100,Infinity), {x:0,y:0}, 'invalid map size');
+eq(minimapPoint({x:NaN,z:20},{x:0,z:0},100,200), {x:-21,y:-21}, 'invalid map position cannot create a phantom NPC marker');
+eq(minimapPoint(null,{x:0,z:0},100,200), {x:-21,y:-21}, 'missing position cannot create a phantom NPC marker');
+eq(minimapPoint({x:Infinity,z:20},{x:0,z:0},100,200), {x:-21,y:-21}, 'infinite NPC position hidden');
+eq(minimapPoint({x:20,z:10},null,100,200), {x:-21,y:-21}, 'missing map center hidden');
+eq(minimapPoint({x:20,z:10},{x:NaN,z:0},100,200), {x:-21,y:-21}, 'corrupted map center hidden');
+eq(minimapPoint({x:10,z:20},{x:10,z:20},100,200), {x:100,y:100}, 'valid player position stays centered');
+for (const size of [0, -20, NaN, Infinity, undefined]) {
+ eq(minimapPoint({x:10,z:20},{x:0,z:0},100,size), {x:-21,y:-21}, `invalid canvas size hides NPC ${size}`);
+ eq(minimapPoint({x:0,z:0},{x:0,z:0},100,size), {x:-21,y:-21}, `invalid canvas size hides player ${size}`);
+}
 // Compass remains finite for sensor glitches and extreme but finite yaw.
 eq(compassHeading(Math.PI/2), 90, 'east');
 eq(compassHeading(-Math.PI/2), 270, 'west');

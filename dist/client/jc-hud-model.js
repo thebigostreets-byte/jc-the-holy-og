@@ -12,10 +12,21 @@ export function abilityWheelPage(abilities, group, page = 0, pageSize = ABILITIE
 export function minimapPoint(position, center, halfRange, size) {
   const side = Number.isFinite(size) && size > 0 ? size : 0;
   const middle = side / 2;
-  if (!Number.isFinite(halfRange) || halfRange <= 0 ||
-      !position || !center ||
+  // A zero-size or corrupt canvas cannot host a valid map marker.
+  if (side === 0) return { x: -21, y: -21 };
+  // Invalid world positions must not masquerade as nearby NPCs or buildings.
+  // updateMinimap() skips points at (-21, -21), while valid player-center
+  // coordinates continue to render at the middle of the radar.
+  if (!position || !center ||
       ![position.x, position.z, center.x, center.z].every(Number.isFinite)) {
-    return { x: middle, y: middle };
+    return { x: -21, y: -21 };
+  }
+  if (!Number.isFinite(halfRange) || halfRange <= 0) {
+    // With an unusable radar scale, only the player's exact center is safe
+    // to draw; other valid entities must not stack on top of the player.
+    return position.x === center.x && position.z === center.z
+      ? { x: middle, y: middle }
+      : { x: -21, y: -21 };
   }
   const scale = side / (2 * halfRange);
   const x = middle + (position.x - center.x) * scale;
