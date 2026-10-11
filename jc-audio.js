@@ -30,17 +30,37 @@ export function createJcAudio(){
     }
   }catch{}
 
-  let context=null,masterGain=null,musicGain=null,effectsGain=null,ambientStarted=false;
+  let context=null,masterGain=null,musicGain=null,effectsGain=null,ambientStarted=false,disposed=false;
+  const ambientVoices=new Set(),effectVoices=new Set();
+  const MAX_EFFECT_VOICES=32;
+  function releaseVoice(record){
+    if(!record)return;
+    ambientVoices.delete(record);effectVoices.delete(record);
+    try{record.oscillator?.stop?.();}catch{}
+    try{record.oscillator?.disconnect?.();}catch{}
+    try{record.voice?.disconnect?.();}catch{}
+  }
+  function releaseAudio(){
+    for(const record of [...effectVoices,...ambientVoices])releaseVoice(record);
+    ambientStarted=false;
+    try{masterGain?.disconnect?.();}catch{}
+    try{musicGain?.disconnect?.();}catch{}
+    try{effectsGain?.disconnect?.();}catch{}
+    try{const result=context?.close?.();result?.catch?.(()=>{});}catch{}
+    context=null;masterGain=null;musicGain=null;effectsGain=null;
+  }
   function setParam(param,value){
     if(!param)return;
     if(context&&typeof param.setTargetAtTime==='function')param.setTargetAtTime(value,context.currentTime,.025);
     else param.value=value;
   }
   function startAmbient(){
-    if(!context||ambientStarted||settings.music<=0)return;
+    if(!context||disposed||ambientStarted||settings.music<=0)return;
     ambientStarted=true;
     [110,164.81,220,329.63].forEach((frequency,index)=>{
-      const oscillator=context.createOscillator(),voice=context.createGain();
+      const record={oscillator:null,voice:null};ambientVoices.add(record);
+      record.oscillator=context.createOscillator();record.voice=context.createGain();
+      const {oscillator,voice}=record;
       oscillator.type=index===3?'sine':'triangle';
       oscillator.frequency.value=frequency;
       voice.gain.value=[.06,.035,.025,.012][index];
@@ -48,52 +68,77 @@ export function createJcAudio(){
     });
   }
   function apply(){
-    if(!context)return;
+    if(!context||disposed)return;
     setParam(masterGain.gain,settings.muted?0:settings.master);
     setParam(musicGain.gain,settings.music);
     setParam(effectsGain.gain,settings.effects);
     if(settings.music>0)startAmbient();
   }
   function start(){
+    if(disposed)return false;
     if(!context){
-      const AudioCtor=window.AudioContext||window.webkitAudioContext;
-      if(!AudioCtor)return false;
       try{
+        const AudioCtor=typeof window!=='undefined'&&(window.AudioContext||window.webkitAudioContext);
+        if(!AudioCtor)return false;
         context=new AudioCtor();
         masterGain=context.createGain();musicGain=context.createGain();effectsGain=context.createGain();
         musicGain.connect(masterGain);effectsGain.connect(masterGain);masterGain.connect(context.destination);
         apply();
-      }catch(error){console.warn('JC audio unavailable',error);context=null;return false;}
+      }catch(error){console.warn('JC audio unavailable',error);releaseAudio();return false;}
     }
-    if(context.state==='suspended')Promise.resolve(context.resume()).catch(()=>{});
+    if(context.state==='suspended'){
+      try{Promise.resolve(context.resume()).catch(()=>{});}catch{return false;}
+    }
     return true;
   }
   function persist(){
     try{localStorage.setItem(STORAGE_KEY,JSON.stringify(settings));}catch{}
   }
   function set(key,value){
+    if(disposed)return getSettings();
     if(key==='muted')settings.muted=!!value;
     else if(['master','music','effects'].includes(key))settings[key]=clamp(value);
     else return getSettings();
-    persist();apply();return getSettings();
+    persist();try{apply();}catch(error){console.warn('JC audio update failed',error);releaseAudio();}return getSettings();
   }
   function getSettings(){return {...settings};}
   function play(name='cast'){
+    if(disposed||settings.muted||settings.effects<=0||!start())return false;
     const pattern=PATTERNS[name]||PATTERNS.cast;
-    if(!start()||settings.muted||settings.effects<=0)return false;
+    if(effectVoices.size+pattern.length>MAX_EFFECT_VOICES)return false;
+    let played=0;
     for(const [frequency,duration,waveform,level,endFrequency=0,delay=0] of pattern){
-      const oscillator=context.createOscillator(),voice=context.createGain();
-      const at=context.currentTime+delay,peak=Math.max(.0001,level);
-      oscillator.type=waveform;oscillator.frequency.setValueAtTime(frequency,at);
-      if(endFrequency>0)oscillator.frequency.exponentialRampToValueAtTime(endFrequency,at+duration);
-      voice.gain.setValueAtTime(.0001,at);
-      voice.gain.exponentialRampToValueAtTime(peak,at+.015);
-      voice.gain.exponentialRampToValueAtTime(.0001,at+duration);
-      oscillator.connect(voice);voice.connect(effectsGain);
-      oscillator.start(at);oscillator.stop(at+duration+.025);
-      oscillator.addEventListener?.('ended',()=>{oscillator.disconnect();voice.disconnect();},{once:true});
+      let record=null;
+      try{
+        record={oscillator:null,voice:null};effectVoices.add(record);
+        record.oscillator=context.createOscillator();record.voice=context.createGain();
+        const {oscillator,voice}=record;
+        const at=context.currentTime+delay,peak=Math.max(.0001,level);
+        oscillator.type=waveform;oscillator.frequency.setValueAtTime(frequency,at);
+        if(endFrequency>0)oscillator.frequency.exponentialRampToValueAtTime(endFrequency,at+duration);
+        voice.gain.setValueAtTime(.0001,at);
+        voice.gain.exponentialRampToValueAtTime(peak,at+.015);
+        voice.gain.exponentialRampToValueAtTime(.0001,at+duration);
+        oscillator.connect(voice);voice.connect(effectsGain);
+        oscillator.addEventListener?.('ended',()=>releaseVoice(record),{once:true});
+        oscillator.start(at);oscillator.stop(at+duration+.025);
+        played++;
+      }catch(error){
+        releaseVoice(record);
+        console.warn('JC sound effect skipped',error);
+        return played>0;
+      }
     }
-    return true;
+    return played>0;
+  }
+  function dispose(){
+    if(disposed)return;
+    disposed=true;
+    if(typeof window!=='undefined'){
+      window.removeEventListener?.('pointerdown',activate,true);
+      window.removeEventListener?.('keydown',activate,true);
+    }
+    releaseAudio();
   }
 
   const activate=()=>start();
@@ -101,5 +146,5 @@ export function createJcAudio(){
     window.addEventListener('pointerdown',activate,{capture:true,passive:true});
     window.addEventListener('keydown',activate,{capture:true});
   }
-  return {start,play,set,getSettings};
+  return {start,play,set,getSettings,dispose};
 }

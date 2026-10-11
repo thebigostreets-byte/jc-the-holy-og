@@ -1,0 +1,24 @@
+name: JC Audio Lifecycle
+on:
+  pull_request:
+    paths:
+      - jc-audio.js
+      - dist/client/jc-audio.js
+      - tests/audio-lifecycle.mjs
+      - .github/workflows/jc-audio-lifecycle.yml
+  workflow_dispatch:
+jobs:
+  audio-lifecycle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify source syntax and deployment parity
+        run: |
+          node --check jc-audio.js
+          node --check dist/client/jc-audio.js
+          cmp jc-audio.js dist/client/jc-audio.js
+      - name: Run audio lifecycle regressions
+        run: node tests/audio-lifecycle.mjs
