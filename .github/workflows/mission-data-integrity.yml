@@ -8,10 +8,11 @@ on:
       - 'tests/mission-resilience.mjs'
       - 'tests/mission-data-integrity.mjs'
       - 'tests/mission-storage-faults.mjs'
+      - 'tests/mission-state-hygiene.mjs'
       - '.github/workflows/mission-data-integrity.yml'
   push:
     branches:
-      - 'fix/mission-progress-resilience-oct11-secondary-tested'
+      - 'fix/mission-state-hygiene-oct11-second'
   workflow_dispatch:
 permissions:
   contents: read
@@ -34,3 +35,4 @@ jobs:
           node tests/mission-resilience.mjs
           node tests/mission-data-integrity.mjs
           node tests/mission-storage-faults.mjs
+          node tests/mission-state-hygiene.mjs
