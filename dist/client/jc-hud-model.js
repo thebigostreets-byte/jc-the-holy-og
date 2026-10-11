@@ -28,9 +28,11 @@ export function minimapPoint(position, center, halfRange, size) {
       ? { x: middle, y: middle }
       : { x: -21, y: -21 };
   }
-  const scale = side / (2 * halfRange);
-  const x = middle + (position.x - center.x) * scale;
-  const y = middle + (position.z - center.z) * scale;
+  // Normalize the world delta before applying the canvas radius. Computing
+  // side / (2 * halfRange) first can underflow to zero for a huge valid range
+  // or overflow to Infinity for a tiny one, stacking or hiding valid markers.
+  const x = middle + ((position.x - center.x) / halfRange) * middle;
+  const y = middle + ((position.z - center.z) / halfRange) * middle;
   return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : { x: -21, y: -21 };
 }
 

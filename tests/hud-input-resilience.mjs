@@ -32,6 +32,9 @@ for (const size of [0, -20, NaN, Infinity, undefined]) {
  eq(minimapPoint({x:10,z:20},{x:0,z:0},100,size), {x:-21,y:-21}, `invalid canvas size hides NPC ${size}`);
  eq(minimapPoint({x:0,z:0},{x:0,z:0},100,size), {x:-21,y:-21}, `invalid canvas size hides player ${size}`);
 }
+// Finite extreme radar ranges must not collapse scale to 0 or Infinity.
+eq(minimapPoint({x:1e308,z:0},{x:0,z:0},1e308,200), {x:200,y:100}, 'huge finite range preserves NPC distance instead of stacking on player');
+eq(minimapPoint({x:0,z:0},{x:0,z:0},Number.MIN_VALUE,200), {x:100,y:100}, 'tiny finite range preserves exact player-center marker');
 // Compass remains finite for sensor glitches and extreme but finite yaw.
 eq(compassHeading(Math.PI/2), 90, 'east');
 eq(compassHeading(-Math.PI/2), 270, 'west');
