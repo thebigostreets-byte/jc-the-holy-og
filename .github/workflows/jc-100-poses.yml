@@ -29,11 +29,11 @@ jobs:
           node --check jc-map-game.js
           node tests/jc-pose-bank.mjs
           node --check jc-pose-kinematics.js
-          node tests/all-jc-poses.mjs
       - name: Hydrate assets and build deployable client
         run: |
           npm ci
           npm run hydrate
+          node tests/all-jc-poses.mjs
           npm run verify:assets
           npm run build
           cmp jc-pose-bank.js dist/client/jc-pose-bank.js

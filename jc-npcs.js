@@ -13,6 +13,13 @@ const AVATARS = [
   ['demon-01','demon'],['demon-02','demon'],['demon-03','demon'],['demon-04','demon'],
 ];
 
+// Signals may originate from serializable mission/world event positions as well
+// as Vector3-based player/NPC positions. Normalize both at the API boundary.
+export function npcSignalCenter(position) {
+  if(!Number.isFinite(position?.x)||!Number.isFinite(position?.z))return null;
+  if(position.isVector3)return position.clone();
+  return new THREE.Vector3(position.x,Number.isFinite(position.y)?position.y:0,position.z);
+}
 function chooseOpen(x,z,isSafe) {
   if (isSafe(x,z,2)) return [x,z];
   for (let radius=5;radius<=32;radius+=5) for(let n=0;n<12;n++) {
@@ -86,7 +93,8 @@ export function createNpcSystem({scene,player,groundAt,isSafe,canSee=()=>true,fi
   }
 
   function signal(type,position,radius=95) {
-    const now=performance.now(),center=position.clone();
+    const now=performance.now(),center=npcSignalCenter(position);
+    if(!center)return;
     for(const npc of npcs) {
       if(npc.position.distanceTo(center)>radius||!canWitness(npc,center,Math.min(112,radius)))continue;
       const witnessed=eventWitnessText[type]||`saw ${String(type).replace(/[-_]/g,' ')} happen nearby`;
