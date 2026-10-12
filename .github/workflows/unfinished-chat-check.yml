@@ -41,7 +41,8 @@ jobs:
             tests/predictive-streaming.mjs \
             tests/sin-city-state.mjs \
             tests/vegas-streets.mjs \
-            tests/world-time.mjs; do
+            tests/world-time.mjs \
+            tests/startup-recovery.mjs; do
             echo "::group::$file"
             node "$file"
             echo "::endgroup::"

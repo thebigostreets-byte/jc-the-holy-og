@@ -19,11 +19,17 @@ const photorealDetailMaps=createPhotorealDetailMaps(THREE);
 import {PACKAGED_CITY_TILE_IDS,PACKAGED_CITY_TILE_COUNT} from './city-tile-index.js';
 const $=id=>document.getElementById(id);
 const statusText=message=>{$('loading').textContent=message;};
+window.JC_BOOT_STAGE='manifest';
 statusText('Opening the city…');
 async function fetchBytes(url){
  let failure;
- for(let attempt=0;attempt<3;attempt++){
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),45000);
+ // The manifest and starting Strip tile must not spend minutes in retries.
+ // Other city files retain the original generous network budget.
+ const critical=/city-manifest\.json|tiles\/C15_R14\.glb(?:\.gz)?/.test(url);
+ const attempts=critical?2:3;
+ const timeoutMs=critical?18000:45000;
+ for(let attempt=0;attempt<attempts;attempt++){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
   try{const response=await fetch(url,{signal:controller.signal});
    if(!response.ok){const error=Error('Download failed: '+url+' ('+response.status+').');error.permanent=response.status>=400&&response.status<500&&response.status!==408&&response.status!==429;throw error;}
    return new Uint8Array(await response.arrayBuffer());
@@ -105,10 +111,23 @@ async function parseGLB(raw,name){const dv=new DataView(raw.buffer,raw.byteOffse
  function acc(i){if(cache.has(i))return cache.get(i);const a=g.accessors[i],v=g.bufferViews[a.bufferView],n={SCALAR:1,VEC2:2,VEC3:3,VEC4:4}[a.type];const ty={5120:[Int8Array,1,'getInt8'],5122:[Int16Array,2,'getInt16'],5126:[Float32Array,4,'getFloat32'],5125:[Uint32Array,4,'getUint32'],5123:[Uint16Array,2,'getUint16'],5121:[Uint8Array,1,'getUint8']}[a.componentType],stride=v.byteStride||n*ty[1],off=binStart+(v.byteOffset||0)+(a.byteOffset||0);let out=decodeGlbAttribute(raw,off,a.count,n,ty[0],ty[1],stride,ty[2]);const e=a.extras;if(e?.jcEncoding){const packed=out;out=new Float32Array(packed.length);for(let j=0;j<out.length;j++){const k=j%n;out[j]=e.jcEncoding==='normal8'?packed[j]/127:e.sourceMin[k]+packed[j]/65535*(e.sourceMax[k]-e.sourceMin[k]);}}const z=new THREE.BufferAttribute(out,n);cache.set(i,z);return z;}
  const textures=await Promise.all((g.textures||[]).map(async t=>{const im=g.images[t.source],sa=g.samplers?.[t.sampler];if(im.uri)return textureFrom(await bytes(pathRelative(name,im.uri)),im.uri.endsWith('generated_stucco.png')?'image/webp':im.uri.endsWith('.png')?'image/png':'image/jpeg',sa);const v=g.bufferViews[im.bufferView];return textureFrom(raw.subarray(binStart+(v.byteOffset||0),binStart+(v.byteOffset||0)+v.byteLength),im.mimeType,sa);}));
  // Cosmetic fetches must not indefinitely block first-frame geometry.
-  const optional=(promise,fallback,label)=>Promise.race([
-    promise,
-    new Promise(resolve=>setTimeout(()=>{console.warn(label+' timed out during city bootstrap');resolve(fallback);},7000))
-  ]).catch(error=>{console.warn(label+' failed during city bootstrap',error);return fallback;});
+  const optional=async(promise,fallback,label)=>{
+    let timer;
+    try{
+      return await Promise.race([
+        Promise.resolve(promise),
+        new Promise(resolve=>{timer=setTimeout(()=>{
+          console.warn(label+' timed out during city bootstrap');
+          resolve(fallback);
+        },7000);})
+      ]);
+    }catch(error){
+      console.warn(label+' failed during city bootstrap',error);
+      return fallback;
+    }finally{
+      clearTimeout(timer);
+    }
+  };
   const [facadeMaps,physicalMaps,identities,generated]=await Promise.all([
     optional(facadePromise,[],'Facades'),
     optional(physicalPromise,[],'Physical materials'),
