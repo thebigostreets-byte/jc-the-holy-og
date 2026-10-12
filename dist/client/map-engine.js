@@ -104,7 +104,17 @@ const physicalPromise=loadPhysicalMaterials().catch(error=>{console.warn('Physic
 async function parseGLB(raw,name){const dv=new DataView(raw.buffer,raw.byteOffset,raw.byteLength);if(dv.getUint32(0,true)!==0x46546c67)throw Error('Invalid GLB');const jl=dv.getUint32(12,true),g=JSON.parse(new TextDecoder().decode(raw.subarray(20,20+jl))),binStart=28+jl,cache=new Map();
  function acc(i){if(cache.has(i))return cache.get(i);const a=g.accessors[i],v=g.bufferViews[a.bufferView],n={SCALAR:1,VEC2:2,VEC3:3,VEC4:4}[a.type];const ty={5120:[Int8Array,1,'getInt8'],5122:[Int16Array,2,'getInt16'],5126:[Float32Array,4,'getFloat32'],5125:[Uint32Array,4,'getUint32'],5123:[Uint16Array,2,'getUint16'],5121:[Uint8Array,1,'getUint8']}[a.componentType],stride=v.byteStride||n*ty[1],off=binStart+(v.byteOffset||0)+(a.byteOffset||0);let out=decodeGlbAttribute(raw,off,a.count,n,ty[0],ty[1],stride,ty[2]);const e=a.extras;if(e?.jcEncoding){const packed=out;out=new Float32Array(packed.length);for(let j=0;j<out.length;j++){const k=j%n;out[j]=e.jcEncoding==='normal8'?packed[j]/127:e.sourceMin[k]+packed[j]/65535*(e.sourceMax[k]-e.sourceMin[k]);}}const z=new THREE.BufferAttribute(out,n);cache.set(i,z);return z;}
  const textures=await Promise.all((g.textures||[]).map(async t=>{const im=g.images[t.source],sa=g.samplers?.[t.sampler];if(im.uri)return textureFrom(await bytes(pathRelative(name,im.uri)),im.uri.endsWith('generated_stucco.png')?'image/webp':im.uri.endsWith('.png')?'image/png':'image/jpeg',sa);const v=g.bufferViews[im.bufferView];return textureFrom(raw.subarray(binStart+(v.byteOffset||0),binStart+(v.byteOffset||0)+v.byteLength),im.mimeType,sa);}));
- const [facadeMaps,physicalMaps,identities,generated]=await Promise.all([facadePromise,physicalPromise,identityPromise,generatedPromise]);
+ // Cosmetic fetches must not indefinitely block first-frame geometry.
+  const optional=(promise,fallback,label)=>Promise.race([
+    promise,
+    new Promise(resolve=>setTimeout(()=>{console.warn(label+' timed out during city bootstrap');resolve(fallback);},7000))
+  ]).catch(error=>{console.warn(label+' failed during city bootstrap',error);return fallback;});
+  const [facadeMaps,physicalMaps,identities,generated]=await Promise.all([
+    optional(facadePromise,[],'Facades'),
+    optional(physicalPromise,[],'Physical materials'),
+    optional(identityPromise,{},'Building identities'),
+    optional(generatedPromise,{},'Generated materials')
+  ]);
  const heights=new Map(g.nodes.map(n=>[n.name,n.extras?.heightMetres||0]));
  const importedIdentity=id=>{const e=edits.get(id);return e?.identityName?{name:e.identityName,type:e.identityType||'landmark',address:e.identityAddress||'Las Vegas Strip',sourceUpdated:'City Builder imported identity'}:null;};
  const resolvedIdentities=new Map(g.nodes.map(n=>[n.name,importedIdentity(n.name)||resolveBuildingIdentity(n.name,n.extras||{},identities)]));
@@ -289,11 +299,26 @@ window.studio.environment=createCityEnvironment(window.studio,{mobile:mobileMap}
 window.studio.buildingViews=createBuildingImpostors(window.studio,{mobile:mobileMap,enabled:params.get('buildingViews')==='on'&&!stable3D});
 window.studio.photoCutouts=createPhotoCutoutLod(window.studio,{mobile:mobileMap,enabled:params.get('photoCutouts')!=='off'});
 $('fullCityProof').src=payload.fullCityProof;
-window.studio.ready=loadArea('C15_R14',streamRadius);
+// Open only the spawn tile first. Neighbour tiles stream after the first frame.
+window.JC_BOOT_STAGE='strip-spawn-tile';
+window.studio.ready=loadArea('C15_R14',0);
 await window.studio.ready;
 lastWanted='';
-if(!loaded.has('C15_R14'))throw Error('The Strip tile could not load: '+(window.JC_TILE_LOAD_ERROR||'No city geometry was returned.'));
+if(!loaded.has('C15_R14')){
+  // Never leave the city blocked indefinitely on a missing/corrupt Strip GLB.
+  // The generated fallback is visibly synthetic; a later retry may replace it.
+  const spawn=byId.get('C15_R14');
+  if(!spawn)throw Error('The Strip spawn tile is missing from the city manifest.');
+  console.warn('Strip tile unavailable; starting with generated fallback',window.JC_TILE_LOAD_ERROR);
+  const fallback=createMissingTileFallback(spawn);
+  loaded.set('C15_R14',fallback);
+  world.add(fallback);
+  tileRevision++;
+  window.JC_CITY_FALLBACK=true;
+}
 window.JC_CITY_READY=true;
+$('loading').style.display='none';
+window.JC_BOOT_STAGE='city-ready';
 window.JC_CITY_BOOT_MODE=stable3D?'stability-first':'maximum';
 window.JC_CITY_BOOT_BUILDINGS=loaded.get('C15_R14')?.children.length||0;
 window.JC_CITY_SOURCE_BUILDINGS=loaded.get('C15_R14')?.userData?.totalBuildings||window.JC_CITY_BOOT_BUILDINGS;
