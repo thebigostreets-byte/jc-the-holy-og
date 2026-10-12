@@ -94,7 +94,7 @@ for(let g=0;g<20;g++){
  }
 }
 const game=readFileSync(new URL('../jc-map-game.js',import.meta.url),'utf8');
-assert.match(game,/poseFootOffset/,'feet are placed against the world ground');
+assert.match(game,/jcJointPose\(pose\)\.rootY/,'feet are placed against the world ground');
 assert.match(game,/poseDisplayHeight/,'sprites use pose-specific silhouette fitting');
 assert.match(game,/failedCharacterFrames/,'failed artwork requests cannot spin forever');
 assert.match(game,/window\.JC_POSE_BANK\.all\(\)/,'pose lab previews every pose');

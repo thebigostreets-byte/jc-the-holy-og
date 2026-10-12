@@ -28,7 +28,7 @@ assert.match(source,/case 'flight':if\(flying\)beamDown\(\);else setFlight\('tak
 assert.match(source,/if\(riseHeld\)desired\.y\+=1;if\(dropHeld\)desired\.y-=1/,'opposite vertical inputs cancel cleanly');
 assert.match(source,/flightHeight=THREE\.MathUtils\.clamp\(flightHeight\+velocity\.y\*dt,0,2000\)/,'flight altitude follows smoothed vertical velocity');
 assert.match(source,/else if\(shouldTouchDown\(flying,previousHeight,flightHeight,velocity.y\)\)/,'touchdown requires actual ground contact');
-assert.match(source,/if\(!flightAbilities\.has\(id\)\)showPose/,'flight casts do not pin a stale ability pose over live flight poses');
+assert.match(source,/if\(!flightAbilities\.has\(id\)\)\s*\{[\s\S]*?showPose\(/,'flight casts do not pin a stale ability pose over live flight poses');
 console.log('PASS: flight mode transitions, clean takeoff/landing, glide/dive/boost switching, touchdown, recall reset and live pose priority');
 
 assert.equal(shouldTouchDown(true,120,119,-20),false,'descending at altitude stays in flight');
