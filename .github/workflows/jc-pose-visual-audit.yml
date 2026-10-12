@@ -36,6 +36,10 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Render all 39 image poses and 139 articulated states
         run: node tests/pose-visual-audit.mjs
+      - name: Preserve source sprites for visual defects review
+        run: |
+          mkdir -p artifacts/source-poses
+          cp -a dist/client/poses/*.webp artifacts/source-poses/
       - name: Preserve contact sheets and metrics
         if: always()
         uses: actions/upload-artifact@v4
