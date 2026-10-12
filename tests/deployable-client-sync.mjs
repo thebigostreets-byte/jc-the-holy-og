@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 const publicAssets=new Set(JSON.parse(await readFile('scripts/public-assets.json','utf8')));
 const deployableFiles=[
   'map.html',
+  'map-startup.js',
   'building-identities.js',
   'photo-cutout-lod.js',
   'photo-cutout-rules.js',
