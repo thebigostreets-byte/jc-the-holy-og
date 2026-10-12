@@ -1,5 +1,5 @@
 import * as THREE from './three.module.js';
-import {getJCPose} from './jc-pose-bank.js';
+import {jcJointPose} from './jc-pose-kinematics.js';
 
 const palette={
   civilian:{skin:0xc78f70,cloth:0x293b50,accent:0xd29c60,pants:0x202b38},
@@ -81,7 +81,7 @@ export function createCharacter3D({faction='civilian',player=false,ordinal=0}={}
       const sole=orb(knee,mat(0xd7d3c9,.82,0),[0,-.65,.12],[.175,.035,.275]);
       const cross=orb(knee,trim,[side*.02,-.56,.365],[.028,.06,.012]);
     }
-    legs.push({leg,knee,side});
+    legs.push({leg,knee,shoe,side});
   }
   if(faction==='angel'){
     const halo=new THREE.Mesh(new THREE.TorusGeometry(.25,.035,6,20),glow);halo.position.set(0,3.02,0);halo.rotation.x=Math.PI/2;group.add(halo);
@@ -89,23 +89,37 @@ export function createCharacter3D({faction='civilian',player=false,ordinal=0}={}
   }
   if(faction==='demon')for(const side of [-1,1]){const horn=segment(head,trim,new THREE.ConeGeometry(.085,.32,7),[side*.16,.28,-.04]);horn.rotation.z=side*-.34;}
   if(faction==='authority'){const cap=orb(head,trim,[0,.24,0],[.27,.09,.25]);cap.material=trim;}
-  const poses=Array.from({length:39},(_,i)=>({arm:[0,0],elbow:[0,0],body:0,lean:0}));
-  // 0–13 miracles and interaction gestures.
-  [[-.15,-.15],[.15,.15],[-1.08,-.82],[1.12,1.12],[-.55,-.45],[1.85,-1.85],[-1.55,1.55],[-.8,-.8],[2.35,2.35],[-.45,.8],[1.35,-1.2],[.72,.72],[-1.2,1.2],[2.65,2.65]].forEach((a,i)=>{poses[i].arm=a;poses[i].elbow=i===5?[-.5,-.5]:[0,0];poses[i].body=[0,0,.06,-.06,0,.08,-.05,0,.03,0,0,0,.04,.1][i];});
-  // 14–21 hover, strafe, glide, rise, dive, cruise, and braking.
-  const flight=[[1.05,-1.05],[-.1,-1.3],[1.3,.1],[.65,-.65],[-2.1,-2.1],[1.6,1.6],[.15,-.15],[.95,.95]];
-  flight.forEach((a,i)=>{poses[14+i].arm=a;poses[14+i].elbow=i===7?[-1.05,-1.05]:[.05,.05];poses[14+i].body=i===4?.48:i===5?-.12:0;poses[14+i].lean=i===1?-.24:i===2?.24:0;});
   const api={setPose(index=0,gait=0,speed=0,now=0,flying=false){
-    const extra=getJCPose(index),pose=extra||poses[index]||poses[0],step=extra?0:(index>=31&&index<=38)?1:index>=23&&index<=30?.66:0;
-    torso.rotation.z=pose.body+pose.lean+(step?Math.sin(gait)*.04:0);
-    torso.rotation.x=(flying?-.08:Math.sin(gait)*step*.025)+(extra?pose.body*.28:0);
-    torso.rotation.y=extra?pose.twist:0;
-    head.rotation.y=extra?pose.head:0;
-    for(const {arm,elbow,side} of arms){const swing=step?Math.sin(gait+(side>0?Math.PI:0))*.56:0;arm.rotation.x=(pose.arm[side>0?1:0]||0)+swing;arm.rotation.z=side*(pose.lean*.4);elbow.rotation.x=(pose.elbow[side>0?1:0]||0)+(step?-.14:0);}
-    for(const {leg,knee,side} of legs){const swing=step?Math.sin(gait+(side>0?Math.PI:0))*(index>=31&&index<=38?.78:.48):0;leg.rotation.x=extra?pose.leg[side>0?1:0]:swing+(index===19?-.36:0);
-      knee.rotation.x=extra?pose.knee[side>0?1:0]:step?Math.max(0,Math.sin(gait+(side>0?Math.PI:0)))*.62:index===19?.8:0;}
-    group.rotation.z=THREE.MathUtils.lerp(group.rotation.z,pose.lean*.22,.3);
-    group.userData.lastPose=index;group.userData.lastSpeed=speed;group.userData.lastUpdated=now;
+    const pose=jcJointPose(index);
+    // Time-based joint damping avoids instant limb snaps between the five
+    // miracle phases. First pose / tab resume snaps safely, without a giant dt.
+    const stamp=Number.isFinite(now)?now:0,prior=group.userData.lastUpdated;
+    const delta=Number.isFinite(prior)?stamp-prior:Infinity;
+    const smooth=delta<=0||delta>200||!Number.isFinite(delta)?1:
+      1-Math.exp(-Math.min(.05,delta/1000)*24);
+    const blend=(current,target)=>current+(target-current)*smooth;
+    torso.rotation.x=blend(torso.rotation.x,pose.pitch+(flying?-.055:0));
+    torso.rotation.y=blend(torso.rotation.y,pose.twist);
+    torso.rotation.z=blend(torso.rotation.z,pose.lean);
+    head.rotation.y=blend(head.rotation.y,pose.head);
+    head.rotation.x=blend(head.rotation.x,-pose.pitch*.12);
+    for(const {arm,elbow,side} of arms){
+      const i=side>0?1:0;
+      arm.rotation.x=blend(arm.rotation.x,pose.arm[i]);
+      arm.rotation.z=blend(arm.rotation.z,side*(pose.lean*.35));
+      elbow.rotation.x=blend(elbow.rotation.x,pose.elbow[i]);
+    }
+    for(const {leg,knee,shoe,side} of legs){
+      const i=side>0?1:0;
+      leg.rotation.x=blend(leg.rotation.x,pose.leg[i]);
+      knee.rotation.x=blend(knee.rotation.x,pose.knee[i]);
+      shoe.rotation.x=blend(shoe.rotation.x,pose.ankle[i]);
+    }
+    group.rotation.z=blend(group.rotation.z,pose.lean*.22);
+    group.userData.lastPose=pose.id;
+    group.userData.lastSpeed=Number.isFinite(speed)?speed:0;
+    group.userData.lastUpdated=stamp;
+    group.userData.poseFootOffset=pose.rootY;
   }};
   group.userData.character=api;group.userData.dispose=()=>group.traverse(o=>{if(o.isMesh){o.geometry===sph||o.geometry===cyl||o.geometry===smallCyl?null:o.geometry.dispose();if(o.material&&!Object.values({skin,shirt,trim,pants,boot,iris,glow}).includes(o.material))o.material.dispose();}});
   return group;
