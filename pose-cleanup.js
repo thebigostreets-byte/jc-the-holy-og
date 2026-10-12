@@ -79,5 +79,11 @@ export function cleanPoseImage(image) {
   const drawX=(POSE_FRAME_WIDTH-drawWidth)/2;
   const drawY=POSE_FRAME_HEIGHT-bottomPadding-drawHeight;
   frame.getContext('2d').drawImage(source,x0,y0,cropWidth,cropHeight,drawX,drawY,drawWidth,drawHeight);
+  // Normalize visual BODY length (long axis), not merely the portrait canvas
+  // height: horizontal flying cutouts must be as large as standing JC.
+  // Render-quad size may vary; alpha bounds still share a planted baseline.
+  const longest=Math.max(drawWidth,drawHeight,1);
+  frame.poseDisplayHeight=Math.min(5.55,Math.max(3.3,POSE_FRAME_HEIGHT*3.35/longest));
+  frame.poseVisibleLength=longest;
   return frame;
 }

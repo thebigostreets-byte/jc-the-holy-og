@@ -21,6 +21,7 @@ import {cleanPoseImage} from './pose-cleanup.js';
 import {abilityWheelPage,minimapPoint,compassHeading} from './jc-hud-model.js';
 import {selectFlightPose,selectGroundPose} from './jc-character-pose.js';
 import {JC_POSE_START,JC_POSE_COUNT,JC_POSES,getJCPose,getJCPoseForAction,getJCPoseSequenceFrame} from './jc-pose-bank.js';
+import {jcJointPose,JC_TOTAL_POSES} from './jc-pose-kinematics.js';
 import {setNpcApiKey,clearNpcApiKey} from './npc-dialogue.js';
 import {createJcAudio} from './jc-audio.js';
 import {createFireSystem} from './fire-system.js';
@@ -248,7 +249,7 @@ function boostJCGlow(ms=1300){if(!devilMode)jcGlowBoostUntil=Math.max(jcGlowBoos
 function updateJCGlow(now){
   ensureJCGlow();if(!jcAura||devilMode)return;
   const pulse=Math.sin(now*.0046),boost=now<jcGlowBoostUntil?1:0;
-  const bodyHeight=Math.max(3.1,realisticAvatar?.scale?.y||3.63),bodyWidth=Math.max(2.2,realisticAvatar?.scale?.x||2.42);
+  const bodyHeight=Math.min(3.9,Math.max(3.1,realisticAvatar?.scale?.y||3.63)),bodyWidth=Math.min(3.35,Math.max(2.2,realisticAvatar?.scale?.x||2.42));
   jcAura.position.set(realisticAvatar.position.x,realisticAvatar.position.y+.08,-.06);
   jcAura.scale.set(bodyWidth*2.55+(pulse*.10)+(boost*.55),bodyHeight*2.08+(pulse*.14)+(boost*.68),1);
   jcAura.material.opacity=.74+pulse*.06+boost*.16;
@@ -256,24 +257,33 @@ function updateJCGlow(now){
   jcSilhouetteGlow.material.opacity=.25+pulse*.03+boost*.12;
   jcGlowLight.intensity=1.65+pulse*.16+boost*.95;
 }
-const characterFrameLoads=new Map();
+const characterFrameLoads=new Map(),failedCharacterFrames=new Set();
 function requestCharacterFrame(index){
-  const safeIndex=Math.max(0,Math.min(characterFrames.length-1,Math.floor(index)));
-  if(characterFrames[safeIndex]||characterFrameLoads.has(safeIndex))return;
+  const safeIndex=Number.isInteger(index)&&index>=0&&index<characterFrames.length?index:0;
+  if(characterFrames[safeIndex]||characterFrameLoads.has(safeIndex)||failedCharacterFrames.has(safeIndex))return;
   const image=new Image();
   const pending=new Promise(resolve=>{
     image.onload=()=>{
       try{
-        const cleaned=cleanPoseImage(image),texture=new THREE.CanvasTexture(cleaned);
+        const cleaned=cleanPoseImage(image);
+        if(!cleaned.poseHasPixels)throw Error('The pose image contains no visible JC pixels');
+        const texture=new THREE.CanvasTexture(cleaned);
         texture.colorSpace=THREE.SRGBColorSpace;
         texture.minFilter=THREE.LinearFilter;
         texture.generateMipmaps=false;
-        characterFrames[safeIndex]={texture,aspect:cleaned.width/cleaned.height};
-        if(poseIndex===safeIndex)applyCharacterFrame(safeIndex);
-      }catch(error){console.warn('Character pose could not be prepared',safeIndex,error);}
+        characterFrames[safeIndex]={texture,aspect:cleaned.width/cleaned.height,
+          displayHeight:cleaned.poseDisplayHeight||3.63};
+        if(poseIndex===safeIndex||(!characterFrames[poseIndex]&&poseIndex>=0))applyCharacterFrame(poseIndex);
+      }catch(error){
+        failedCharacterFrames.add(safeIndex);
+        console.warn('Character pose could not be prepared',safeIndex,error);
+      }
+      characterFrameLoads.delete(safeIndex);
       resolve();
     };
     image.onerror=()=>{
+      failedCharacterFrames.add(safeIndex);
+      characterFrameLoads.delete(safeIndex);
       console.warn('Character pose image unavailable',safeIndex);
       resolve();
     };
@@ -302,13 +312,13 @@ function applyCharacterFrame(index){
   if(jcSilhouetteGlow)jcSilhouetteGlow.visible=!showRig&&!devilMode;
   if(showRig)return;
   if(devilMode&&devilTexture){if(realisticAvatar.material.map!==devilTexture){realisticAvatar.material.map=devilTexture;realisticAvatar.material.needsUpdate=true;}return;}
-  const safeIndex=Math.max(0,Math.min(characterFrames.length-1,Math.floor(index)));
+  const safeIndex=Number.isInteger(index)&&index>=0&&index<characterFrames.length?index:0;
   requestCharacterFrame(safeIndex);
-  const frame=characterFrames[safeIndex]||characterFrames[poseIndex]||characterFrames[0];
+  const frame=characterFrames[safeIndex]||characterFrames[0];
   if(!frame)return;
   const material=realisticAvatar.material;
   if(material.map!==frame.texture){material.map=frame.texture;material.needsUpdate=true;}
-  const height=index>=14&&index<=22?3.05:3.63;
+  const height=frame.displayHeight||3.63;
   realisticAvatar.scale.set(height*frame.aspect,height,1);
   realisticAvatar.position.y=height*.5;
   syncJCGlowToPose();
@@ -370,14 +380,22 @@ function showPose(index,duration=800,sequence=false){
 window.JC_POSE_BANK=Object.freeze({
   count:JC_POSE_COUNT,
   list:()=>JC_POSES.map(({id,name,category,stage})=>({id,name,category,stage})),
-  play:(id,duration=1400)=>playing&&!!portrait&&showPose(Number(id),duration)
+  play:(id,duration=1400)=>playing&&!!portrait&&showPose(Number(id),duration),
+  all:()=>Array.from({length:JC_TOTAL_POSES},(_,id)=>{
+    const pose=jcJointPose(id);
+    return {id,name:pose.name,kind:pose.kind,frame:pose.frame};
+  })
 });
 if(new URLSearchParams(location.search).has('poseLab')){
   const panel=document.createElement('div');
   panel.id='jcPoseLab';
   panel.style.cssText='position:fixed;top:15%;right:8px;z-index:9999;max-width:min(340px,70vw);padding:9px;background:#08121de8;color:white;border:1px solid #bca35b;border-radius:7px;display:flex;gap:6px;align-items:center;font:12px sans-serif';
   const select=document.createElement('select');select.setAttribute('aria-label','Select JC articulated pose');
-  for(const pose of JC_POSES){const option=document.createElement('option');option.value=pose.id;option.textContent=pose.name;select.appendChild(option);}
+  for(const pose of window.JC_POSE_BANK.all()){
+    const option=document.createElement('option');option.value=pose.id;
+    option.textContent=pose.id+' · '+pose.name;
+    select.appendChild(option);
+  }
   select.style.cssText='min-width:0;max-width:200px;background:#15212a;color:#fff';
   const preview=document.createElement('button');preview.textContent='Preview';
   preview.onclick=()=>window.JC_POSE_BANK.play(Number(select.value),1600);
@@ -1261,7 +1279,11 @@ function frameStep(now) {
     realisticAvatar.position.y=realisticAvatar.scale.y*.5+(flying?Math.sin(now*.004)*.06:0);
   }
   portrait.rotation.y=Math.PI+yaw;
-  portrait.position.y = velocity.lengthSq() > 1 && !flying ? Math.sin(now * .014) * .035 : 0;
+  // Offset the articulated rig to keep planted feet near the street;
+  // the photographic cutout is anchored separately by its normalized canvas.
+  portrait.position.y=portrait.visible&&!flying?
+    (jcJointPose(pose).rootY||0):
+    (velocity.lengthSq()>1&&!flying?Math.sin(now*.014)*.035:0);
   devilWings?.userData.update(now,flying,hypersonic);
   for (const s of souls) {
     if (!s.visible) continue;
@@ -1396,10 +1418,11 @@ const group = game.loaded.get('C15_R14');
   realisticAvatar = new THREE.Sprite(realisticMaterial);
   loadTextureSafe(imageLoader,'./jc-realistic.webp',fallbackMiracleTexture).then(texture=>{
     texture.colorSpace=THREE.SRGBColorSpace;
-    const old=realisticMaterial.map;
-    realisticMaterial.map=texture;realisticMaterial.needsUpdate=true;
-    ensureJCGlow();syncJCGlowToPose();
-    if(old&&old!==bootstrapFacade)old.dispose?.();
+    // Async default artwork must never overwrite an already selected pose.
+    if(!characterFrames[poseIndex]&&!devilMode){
+      realisticMaterial.map=texture;realisticMaterial.needsUpdate=true;
+      ensureJCGlow();syncJCGlowToPose();
+    }else if(texture!==bootstrapFacade)texture.dispose?.();
   }).catch(error=>console.warn('JC portrait stayed on bootstrap texture',error));
   realisticAvatar.name = 'JC realistic player avatar';
   realisticAvatar.scale.set(2.42, 3.63, 1);
