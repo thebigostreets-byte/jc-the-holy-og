@@ -13,6 +13,7 @@ export function craterDepth(x,z,craters){
 // the city's coarse 50 m terrain. Preserve original photographic UVs.
 export function carveGeometry(base,matrix,craters,maxTriangles=18000){
  const p=base.getAttribute('position'),uv=base.getAttribute('uv'),uv1=base.getAttribute('uv1'),sourceColor=base.getAttribute('color'),ix=base.index;
+ if(!p||!Number.isSafeInteger(p.count)||p.count<3)throw new RangeError('Invalid crater position buffer');
  // A partially streamed tile can have a singular or nonfinite transform.
  // Reject it before inversion so NaN positions never reach the GPU.
  if(matrix?.elements){
@@ -33,10 +34,18 @@ export function carveGeometry(base,matrix,craters,maxTriangles=18000){
  }
  let triangleCount=count/3;
  const vertex=i=>{
+  // Never submit out-of-range indices or nonfinite positions to WebGL.
+  if(!Number.isSafeInteger(i)||i<0||i>=p.count)throw new RangeError('Invalid crater vertex index');
   const v=new THREE.Vector3().fromBufferAttribute(p,i).applyMatrix4(matrix);
-  return [v.x,v.y,v.z,uv?.getX(i)||0,uv?.getY(i)||0,uv1?.getX(i)||0,uv1?.getY(i)||0,
-   sourceColor?.getX(i)??1,sourceColor?.getY(i)??1,sourceColor?.getZ(i)??1,
-   colorSize===4?(sourceColor?.getW(i)??1):1];
+  if(![v.x,v.y,v.z].every(Number.isFinite))throw new RangeError('Nonfinite crater vertex position');
+  // Bad optional UV/tint data must not poison otherwise valid terrain.
+  const safe=(attr,method,fallback)=>{
+   const value=attr?.[method]?.(i);
+   return Number.isFinite(value)?value:fallback;
+  };
+  return [v.x,v.y,v.z,safe(uv,'getX',0),safe(uv,'getY',0),safe(uv1,'getX',0),safe(uv1,'getY',0),
+   safe(sourceColor,'getX',1),safe(sourceColor,'getY',1),safe(sourceColor,'getZ',1),
+   colorSize===4?safe(sourceColor,'getW',1):1];
  };
  function emit(tri,level=0){
   const near=craters.some(c=>c.x+c.radius>=Math.min(...tri.map(v=>v[0]))&&c.x-c.radius<=Math.max(...tri.map(v=>v[0]))&&c.z+c.radius>=Math.min(...tri.map(v=>v[2]))&&c.z-c.radius<=Math.max(...tri.map(v=>v[2])));
@@ -56,16 +65,20 @@ export function carveGeometry(base,matrix,craters,maxTriangles=18000){
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(out,3));if(uv)g.setAttribute('uv',new THREE.Float32BufferAttribute(outUV,2));if(uv1)g.setAttribute('uv1',new THREE.Float32BufferAttribute(outUV1,2));g.setAttribute('color',new THREE.Float32BufferAttribute(colors,colorSize));g.computeVertexNormals();g.computeBoundingSphere();g.computeBoundingBox();return g;
 }
 export function createCraterSystem(game,mobile=false){
- const records=[],tracked=new Set(),limit=mobile?4:8,lifetime=8500;let serial=0,disposed=false;
+ const records=[],tracked=new Set(),limit=mobile?4:8,lifetime=8500;let serial=0,disposed=false,lastSignature='';
+ // Geometry identity includes mutable public record coordinates and size.
+ const geometrySignature=()=>records.map(c=>[c.id,c.x,c.z,c.radius,c.depth].join(':')).join('|');
  // The records array is exposed for HUD use; tolerate stale or externally
  // corrupted entries without letting one bad record block healthy impacts.
  function sanitizeRecords(){
   let changed=false;
+  const seen=new Set();
   for(let i=records.length-1;i>=0;i--){
    const c=records[i];
-   if(!c||!Number.isSafeInteger(c.id)||c.id<=0||
+   if(!c||!Number.isSafeInteger(c.id)||c.id<=0||seen.has(c.id)||
       ![c.x,c.z,c.radius,c.depth,c.expires].every(Number.isFinite)||
       c.radius<=0||c.depth<=0){records.splice(i,1);changed=true;}
+   else seen.add(c.id);
   }
   if(records.length>limit){records.splice(0,records.length-limit);changed=true;}
   return changed;
@@ -114,7 +127,7 @@ export function createCraterSystem(game,mobile=false){
   sanitizeRecords();
   // No active craters: only previously altered meshes need restoration.
   // Avoid traversing every streamed Vegas road/ground tile on expiry.
-  if(!records.length){for(const mesh of [...tracked])restore(mesh);return;}
+  if(!records.length){for(const mesh of [...tracked])restore(mesh);lastSignature='';return;}
   // Streamed scenes can temporarily fail to update during context recovery.
   // Keep the impact queued for the next tile event rather than crashing combat.
   try{game.scene.updateMatrixWorld(true);}catch{return;}
@@ -137,7 +150,8 @@ export function createCraterSystem(game,mobile=false){
    if(mesh.userData.jcCraterBase &&
       (mesh.geometry!==mesh.userData.jcCraterAppliedGeometry ||
        mesh.material!==mesh.userData.jcCraterAppliedMaterial))restore(mesh);
-   const key=near.map(c=>c.id).join(',');if(mesh.userData.craterKey===key)return;
+   const key=near.map(c=>[c.id,c.x,c.z,c.radius,c.depth].join(':')).join('|');
+   if(mesh.userData.jcCraterBase&&mesh.userData.craterKey===key)return;
    // Carving creates non-indexed triangles without material groups. Never
    // apply it to grouped/multi-material geometry (or malformed meshes).
    if(Array.isArray(mesh.material)||mesh.geometry?.groups?.length||!mesh.material||typeof mesh.material.clone!=='function'||!mesh.geometry?.getAttribute?.('position')){
@@ -179,6 +193,7 @@ export function createCraterSystem(game,mobile=false){
   // must not release still-visible terrain resources.
   // Streamed-out tiles are no longer in scene.traverse: release them too.
   for(const mesh of [...tracked])if(!visible.has(mesh))restore(mesh);
+  lastSignature=geometrySignature();
  }
  window.addEventListener('jc-tiles-loaded',apply);window.addEventListener('jc-roads-loaded',apply);
  return {strike(point){
@@ -187,18 +202,23 @@ export function createCraterSystem(game,mobile=false){
   // infinite deadline, especially on browsers recovering a suspended tab.
   let now;try{now=performance.now();}catch{return null;}
   if(!Number.isFinite(now)||now<0||now>Number.MAX_SAFE_INTEGER-lifetime)return null;
+  sanitizeRecords();
+  // External record insertion must not reuse an existing cache identity.
+  for(const entry of records)serial=Math.max(serial,entry.id);
+  if(serial>=Number.MAX_SAFE_INTEGER)return null;
   const c={id:++serial,x:point.x,z:point.z,radius:12,depth:3.2,expires:now+lifetime};records.push(c);if(records.length>limit)records.shift();apply();return c;
  },update(now=performance.now()){
   if(disposed||!Number.isFinite(now))return;
   const invalid=sanitizeRecords();
   const expired=records.some(c=>now>=c.expires);if(expired){for(let i=records.length-1;i>=0;i--)if(now>=records[i].expires)records.splice(i,1);}
-  if(invalid||expired)apply();
+  if(invalid||expired||geometrySignature()!==lastSignature)apply();
  },records,dispose(){
   if(disposed)return;
   disposed=true;
   window.removeEventListener('jc-tiles-loaded',apply);window.removeEventListener('jc-roads-loaded',apply);
   records.length=0;
   for(const mesh of [...tracked])restore(mesh);
-  game.scene.traverse(mesh=>restore(mesh));
+  // A damaged scene graph must not make shutdown throw after resources are released.
+  try{game.scene.traverse(mesh=>restore(mesh));}catch{}
  }};
 }

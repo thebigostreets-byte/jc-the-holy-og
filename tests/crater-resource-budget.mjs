@@ -178,4 +178,56 @@ time=95000;integrity.update(time);
 check(integrity.records.length===0,'valid impacts still expire after corrupt clock readings');
 integrity.dispose();
 check(handlers.size===0,'record-integrity system unregisters listeners');
+// Regression: public impact IDs must remain unique even after external injection.
+const duplicateSystem=ctx.createCraterSystem({scene:{updateMatrixWorld(){},traverse(){} }},true);
+const newest={id:42,x:1,z:1,radius:12,depth:3,expires:110000};
+duplicateSystem.records.push({id:42,x:0,z:0,radius:12,depth:3,expires:110000},newest);
+duplicateSystem.update(96000);
+check(duplicateSystem.records.length===1&&duplicateSystem.records[0]===newest,'duplicate public crater IDs keep newest valid entry');
+check(duplicateSystem.strike({x:0,z:0}).id===43,'next impact ID advances beyond external record IDs');
+duplicateSystem.dispose();
+// Regression: changes to existing crater geometry invalidate the mesh cache.
+const mutableMesh={isMesh:true,parent:{name:'ground_inferred'},geometry:base,material:material(),userData:{},matrixWorld:identity,bounds:bounds(0)};
+const mutableScene={updateMatrixWorld(){},traverse(fn){fn(mutableMesh)}};
+const mutableSystem=ctx.createCraterSystem({scene:mutableScene},true);
+time=97000;mutableSystem.strike({x:0,z:0});
+const oldMutableGeo=mutableMesh.geometry,oldMutableKey=mutableMesh.userData.craterKey;
+mutableSystem.records[0].x=1;
+handlers.get('jc-tiles-loaded')();
+check(mutableMesh.geometry!==oldMutableGeo&&oldMutableGeo.disposed,'changed crater coordinates trigger tile-event recarve');
+check(mutableMesh.userData.craterKey!==oldMutableKey,'crater cache key includes mutable shape');
+const nextMutableGeo=mutableMesh.geometry;
+mutableSystem.records[0].depth=1.8;
+mutableSystem.update(97500);
+check(mutableMesh.geometry!==nextMutableGeo,'valid crater edit triggers recarve on update');
+const thirdMutableGeo=mutableMesh.geometry;
+mutableSystem.records.push({id:90,x:1,z:1,radius:12,depth:2,expires:110000});
+mutableSystem.update(97600);
+check(mutableMesh.geometry!==thirdMutableGeo,'externally appended valid crater applies on update');
+mutableSystem.dispose();
+// Regression: reject malformed terrain indices and world-space positions.
+const badVertex=new Geometry().setAttribute('position',new Attr(new Float32Array([NaN,0,0,100,0,0,0,0,100]),3));
+assert.throws(()=>ctx.carveGeometry(badVertex,identity,[],10),/Nonfinite crater vertex position/);checks++;
+const badIndex=new Geometry().setAttribute('position',base.getAttribute('position'));
+badIndex.index={count:3,getX(i){return i===1?99:i}};
+assert.throws(()=>ctx.carveGeometry(badIndex,identity,[],10),/Invalid crater vertex index/);checks++;
+// Regression: optional UV/color corruption must not reach the GPU as NaN.
+const badTint=new Geometry().setAttribute('position',base.getAttribute('position'));
+badTint.setAttribute('uv',new Attr(new Float32Array([NaN,Infinity,.4,.5,.6,.7]),2));
+badTint.setAttribute('color',new Attr(new Float32Array([Infinity,NaN,.25,.2,.4,.6,.7,.8,.9]),3));
+const sanitized=ctx.carveGeometry(badTint,identity,[],10);
+check(Array.from(sanitized.getAttribute('uv').array).every(Number.isFinite),'invalid UVs use finite fallback');
+check(Array.from(sanitized.getAttribute('color').array).every(Number.isFinite),'invalid color channels use finite fallback');
+check(sanitized.getAttribute('color').getZ(0)===.25,'valid tint channel preserved');
+// Regression: shutdown remains safe if streamed scene traversal fails.
+const shutdownMesh={isMesh:true,parent:{name:'ground_inferred'},geometry:base,material:material(),userData:{},matrixWorld:identity,bounds:bounds(0)};
+let brokenScene=false;
+const shutdownScene={updateMatrixWorld(){},traverse(fn){if(brokenScene)throw Error('broken scene graph');fn(shutdownMesh)}};
+const shutdownSystem=ctx.createCraterSystem({scene:shutdownScene},true);
+time=98000;shutdownSystem.strike({x:0,z:0});
+const shutdownBase=shutdownMesh.userData.jcCraterBase,shutdownCarved=shutdownMesh.geometry;
+brokenScene=true;
+assert.doesNotThrow(()=>shutdownSystem.dispose());checks++;
+check(shutdownMesh.geometry===shutdownBase&&shutdownCarved.disposed,'shutdown restores and frees owned geometry despite scene failure');
+check(handlers.size===0,'shutdown releases listeners after traversal failure');
 console.log(`PASS: ${checks} crater resource-budget assertions`);
