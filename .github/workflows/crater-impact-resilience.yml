@@ -1,5 +1,15 @@
 name: Crater impact resilience
 on:
+  push:
+    branches:
+      - fix/crater-integration-20261011-pass11
+    paths:
+      - 'crater-system.js'
+      - 'dist/client/crater-system.js'
+      - 'tests/crater-impact-resilience.mjs'
+      - 'tests/crater-resource-budget.mjs'
+      - 'tests/crater-color-transform.mjs'
+      - '.github/workflows/crater-impact-resilience.yml'
   pull_request:
     paths:
       - 'crater-system.js'
