@@ -32,7 +32,7 @@ try {
  revision=1;atlas.update();
  assert.equal(highDetail.visible,false,'loaded real buildings replace preview');
  const mat=tiles.material;
- const shader={uniforms:{},vertexShader:'#include <common>\n#include <uv_vertex>',fragmentShader:'#include <map_fragment>'};
+ const shader={uniforms:{},vertexShader:'#include <common>\n#include <uv_vertex>',fragmentShader:'#include <common>\n#include <map_fragment>'};
  mat.onBeforeCompile(shader);
  assert.ok(shader.uniforms.cityNightMix,'day/night mix uniform installed');
  assert.match(shader.vertexShader,/attribute vec2 cityCell/);
