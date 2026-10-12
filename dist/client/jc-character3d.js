@@ -25,7 +25,12 @@ function mat(color,roughness=.7,metalness=0,emissive=0){return new THREE.MeshSta
 function orb(parent,material,position,scale){const m=new THREE.Mesh(sph,material);m.position.set(...position);m.scale.set(...scale);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
 function segment(parent,material,geometry,position){const m=new THREE.Mesh(geometry,material);m.position.set(...position);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
 export function createCharacter3D({faction='civilian',player=false,ordinal=0}={}){
-  const colors=npcAppearance(faction,ordinal,player),group=new THREE.Group();group.name=`${faction} ${player?'player':'NPC'} full 3D character`;
+  const colors=npcAppearance(faction,ordinal,player),group=new THREE.Group();
+  group.name=`${faction} ${player?'player':'NPC'} full 3D character`;
+  if(player&&faction==='angel'){
+    colors.cloth=0xf9f7f1;colors.pants=0xf6f5ef;colors.accent=0xd6af54;
+    group.scale.setScalar(1.23);
+  }
   if(!player)group.scale.set(colors.width,colors.height,colors.width);
   const skin=mat(colors.skin,.62,0),shirt=mat(colors.cloth,.82,.01),trim=mat(colors.accent,.42,.22, faction==='angel'?0x362600:faction==='demon'?0x31000b:0),pants=mat(colors.pants,.88,.01),boot=mat(0x171a21,.48,.12),iris=mat(faction==='demon'?0xff435d:0x27384a,.18,0, faction==='demon'?0x8e0011:0),glow=mat(colors.accent,.28,.32,colors.accent);
   const torso=new THREE.Group();torso.position.y=1.76;group.add(torso);
@@ -67,15 +72,15 @@ export function createCharacter3D({faction='civilian',player=false,ordinal=0}={}
   // Shoulders, articulated arms, fingers, and hands.
   const arms=[],legs=[];
   for(const side of [-1,1]){
-    const arm=new THREE.Group();arm.position.set(side*.43,.39,0);torso.add(arm);
+    const arm=new THREE.Group();arm.name=side<0?'JC left arm':'JC right arm';arm.position.set(side*.43,.39,0);torso.add(arm);
     orb(arm,trim,[0,0,0],[.19,.18,.19]);segment(arm,shirt,cyl,[0,-.32,0]);
-    const elbow=new THREE.Group();elbow.position.y=-.62;arm.add(elbow);orb(elbow,skin,[0,-.02,0],[.115,.12,.115]);segment(elbow,shirt,smallCyl,[0,-.27,0]);
+    const elbow=new THREE.Group();elbow.name=side<0?'JC left elbow':'JC right elbow';elbow.position.y=-.62;arm.add(elbow);orb(elbow,skin,[0,-.02,0],[.115,.12,.115]);segment(elbow,shirt,smallCyl,[0,-.27,0]);
     const hand=new THREE.Group();hand.position.y=-.57;elbow.add(hand);orb(hand,skin,[0,0,.025],[.12,.13,.105]);
     for(let finger=0;finger<4;finger++){const f=segment(hand,skin,new THREE.CylinderGeometry(.012,.016,.12,6),[(finger-1.5)*.035,-.09,.08]);f.rotation.x=.18;}
     arms.push({arm,elbow,hand,side});
-    const leg=new THREE.Group();leg.position.set(side*.2,1.42,0);group.add(leg);orb(leg,trim,[0,0,0],[.18,.17,.19]);segment(leg,pants,cyl,[0,-.39,0]);
-    const knee=new THREE.Group();knee.position.y=-.74;leg.add(knee);orb(knee,pants,[0,0,0],[.13,.14,.14]);segment(knee,pants,smallCyl,[0,-.28,0]);
-    const shoe=orb(knee,boot,[0,-.57,.10],[.17,.105,.27]);
+    const leg=new THREE.Group();leg.name=side<0?'JC left leg':'JC right leg';leg.position.set(side*.2,1.42,0);group.add(leg);orb(leg,trim,[0,0,0],[.18,.17,.19]);segment(leg,pants,cyl,[0,-.39,0]);
+    const knee=new THREE.Group();knee.name=side<0?'JC left knee':'JC right knee';knee.position.y=-.74;leg.add(knee);orb(knee,pants,[0,0,0],[.13,.14,.14]);segment(knee,pants,smallCyl,[0,-.28,0]);
+    const shoe=orb(knee,boot,[0,-.57,.10],[.17,.105,.27]);shoe.name=side<0?'JC left shoe':'JC right shoe';
     if(faction==='angel'){
       shoe.material=mat(0xf5f2e8,.58,.03);
       const sole=orb(knee,mat(0xd7d3c9,.82,0),[0,-.65,.12],[.175,.035,.275]);
@@ -83,7 +88,7 @@ export function createCharacter3D({faction='civilian',player=false,ordinal=0}={}
     }
     legs.push({leg,knee,shoe,side});
   }
-  if(faction==='angel'){
+  if(faction==='angel'&&!player){
     const halo=new THREE.Mesh(new THREE.TorusGeometry(.25,.035,6,20),glow);halo.position.set(0,3.02,0);halo.rotation.x=Math.PI/2;group.add(halo);
     for(const side of [-1,1]){const wing=orb(group,mat(0xfff6e3),[side*.48,1.98,-.16],[.23,.67,.09]);wing.rotation.z=side*-.42;}
   }

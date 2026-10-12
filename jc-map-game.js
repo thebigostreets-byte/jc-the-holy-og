@@ -1282,7 +1282,7 @@ function frameStep(now) {
   // Offset the articulated rig to keep planted feet near the street;
   // the photographic cutout is anchored separately by its normalized canvas.
   portrait.position.y=portrait.visible&&!flying?
-    (jcJointPose(pose).rootY||0):
+    (jcJointPose(pose).rootY||0)*portrait.scale.y:
     (velocity.lengthSq()>1&&!flying?Math.sin(now*.014)*.035:0);
   devilWings?.userData.update(now,flying,hypersonic);
   for (const s of souls) {
