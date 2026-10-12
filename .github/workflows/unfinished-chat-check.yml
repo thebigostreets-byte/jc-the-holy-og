@@ -54,7 +54,8 @@ jobs:
             tests/sin-city-state.mjs \
             tests/vegas-streets.mjs \
             tests/world-time.mjs \
-            tests/startup-recovery.mjs; do
+            tests/startup-recovery.mjs \
+            tests/distant-city-startup.mjs; do
             echo "::group::$file"
             node "$file"
             echo "::endgroup::"
