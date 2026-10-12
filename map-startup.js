@@ -26,17 +26,15 @@ window.jcCanOpenGraphics=function(){
   return true;
  }catch{return false;}
 };
+function jcPlayableReady(){
+ // The city engine object exists before tiles finish downloading. Never
+ // mistake it for a visible scene, or dismiss a still-needed recovery overlay.
+ const play=new URLSearchParams(location.search).get('play')==='1';
+ return play?!!window.JC_PLAYER_READY:!!window.JC_CITY_READY;
+}
 window.jcLoadingRecovery=function(message){
- // The live canvas is authoritative: never cover playable 3D with a startup modal.
- if(window.studio || window.JC_PLAYER_READY || window.JC_CITY_READY){
+ if(jcPlayableReady()){
   console.warn('JC background failure (3D retained):',message);
-  document.getElementById('jcRecovery')?.remove();
-  window.JC_BOOT_FAILED=false;
-  return;
- }
- const fatalGraphics=/lost its graphics connection|WebGL 2 and WebGL 1 are unavailable|could not start WebGL/i.test(String(message));
- if(!fatalGraphics&&(window.JC_PLAYER_READY||window.JC_CITY_READY)){
-  console.warn('Suppressed stale 3D startup overlay after scene initialized:',message);
   document.getElementById('jcRecovery')?.remove();
   window.JC_BOOT_FAILED=false;
   return;
@@ -62,11 +60,11 @@ addEventListener('unhandledrejection',event=>{
  if(window.JC_PLAYER_READY||window.JC_CITY_READY){console.warn('Nonfatal background task failure',message);event.preventDefault();return;}
  console.error('JC preboot rejection:',message);
 });
-setTimeout(()=>{if(window.JC_BOOT_FAILED)return;const play=new URLSearchParams(location.search).get('play')==='1';if(!window.JC_CITY_READY||(play&&!window.JC_PLAYER_READY)){const stage=window.JC_BOOT_STAGE||(!window.JC_CITY_READY?'city':'player');window.jcLoadingRecovery('Full 3D startup is taking too long at '+stage+'. You can retry full 3D or choose lite mode.');}},90000);
+setTimeout(()=>{if(window.JC_BOOT_FAILED)return;const play=new URLSearchParams(location.search).get('play')==='1';if(!window.JC_CITY_READY||(play&&!window.JC_PLAYER_READY)){const stage=window.JC_BOOT_STAGE||(!window.JC_CITY_READY?'city':'player');window.jcLoadingRecovery('Full 3D startup is taking too long at '+stage+'. You can retry full 3D or choose lite mode.');}},45000);
 
 // An earlier asynchronous startup failure must not permanently obscure a later successful scene.
 const jcRecoveryCleanup=setInterval(()=>{
- if(window.studio||window.JC_PLAYER_READY||window.JC_CITY_READY){
+ if(jcPlayableReady()){
   const recovery=document.getElementById('jcRecovery');
   if(recovery&&!/lost its graphics connection|could not start WebGL/i.test(recovery.textContent||'')){
    recovery.remove();window.JC_BOOT_FAILED=false;

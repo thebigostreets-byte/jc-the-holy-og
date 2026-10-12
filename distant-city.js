@@ -7,9 +7,18 @@ export function createDistantCity(game){
  const root=new THREE.Group();root.name='Georeferenced Las Vegas satellite preview';game.scene.add(root);
  const loader=new THREE.TextureLoader(),overview=loader.load('./assets/overview.jpg');overview.colorSpace=THREE.SRGBColorSpace;
  const geometry=new THREE.PlaneGeometry(1000,1000),cells=new Float32Array(game.sections.length*2);
+ // One atlas coordinate per instance; the initial update must never dereference
+ // an absent geometry attribute before the first city frame.
+ geometry.setAttribute('cityCell',new THREE.InstancedBufferAttribute(cells,2));
  const nightMix={value:0};
  const material=new THREE.MeshBasicMaterial({map:overview,depthWrite:false,polygonOffset:true,polygonOffsetFactor:2});
- material.onBeforeCompile=shader=>{shader.uniforms.cityNightMix=nightMix;const nightFragment=['#include <map_fragment>','float lum=dot(diffuseColor.rgb,vec3(.299,.587,.114));','float n=fract(sin(dot(floor(vMapUv*vec2(1400.0)),vec2(127.1,311.7)))*43758.5453);','vec3 dark=vec3(.012,.022,.052)+diffuseColor.rgb*vec3(.065,.095,.15);','vec3 lights=vec3(1.0,.58,.27)*smoothstep(.20,.62,lum)*step(.988,n)*.8;','diffuseColor.rgb=mix(diffuseColor.rgb,dark+lights,cityNightMix);'].join('\\n');shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',nightFragment);};
+ material.onBeforeCompile=shader=>{
+  shader.uniforms.cityNightMix=nightMix;
+  shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nuniform float cityNightMix;');
+  shader.vertexShader=shader.vertexShader
+    .replace('#include <common>','#include <common>\nattribute vec2 cityCell;')
+    .replace('#include <uv_vertex>','#include <uv_vertex>\n#ifdef USE_MAP\nvMapUv=cityCell+vMapUv/35.0;\n#endif');
+const nightFragment=['#include <map_fragment>','float lum=dot(diffuseColor.rgb,vec3(.299,.587,.114));','float n=fract(sin(dot(floor(vMapUv*vec2(1400.0)),vec2(127.1,311.7)))*43758.5453);','vec3 dark=vec3(.012,.022,.052)+diffuseColor.rgb*vec3(.065,.095,.15);','vec3 lights=vec3(1.0,.58,.27)*smoothstep(.20,.62,lum)*step(.988,n)*.8;','diffuseColor.rgb=mix(diffuseColor.rgb,dark+lights,cityNightMix);'].join('\n');shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',nightFragment);};
  material.customProgramCacheKey=()=> 'city-night-atlas-v1';
 
  const tiles=new THREE.InstancedMesh(geometry,material,game.sections.length);tiles.name='Actual satellite locations';tiles.frustumCulled=false;root.add(tiles);

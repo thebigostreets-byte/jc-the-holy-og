@@ -1,0 +1,43 @@
+name: JC City Browser Startup
+on:
+  push:
+    branches: [fix/jc-opening-city-startup-oct12]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'map-engine.js'
+      - 'map-startup.js'
+      - 'map.html'
+      - 'tests/browser-startup-smoke.mjs'
+      - '.github/workflows/jc-city-browser-startup.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile-webgl-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build real game and restore packed city assets
+        run: |
+          npm ci
+          npm run hydrate
+          npm run verify:assets
+          npm run build
+      - name: Install browser harness
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Validate mobile browser startup
+        run: node tests/browser-startup-smoke.mjs
+      - name: Preserve browser screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jc-city-startup-screenshot
+          path: artifacts/
+          if-no-files-found: ignore

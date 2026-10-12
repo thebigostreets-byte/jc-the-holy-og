@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import * as THREE from '../three.module.js';
+import {npcSignalCenter} from '../jc-npcs.js';
+const vec=new THREE.Vector3(10,5,-12);
+const clone=npcSignalCenter(vec);
+assert.ok(clone.isVector3);
+assert.notEqual(clone,vec,'normalizer does not mutate event source');
+assert.deepEqual(clone.toArray(),[10,5,-12]);
+assert.deepEqual(npcSignalCenter({x:2,y:6,z:-3}).toArray(),[2,6,-3],'mission event positions become Vector3');
+assert.deepEqual(npcSignalCenter({x:2,z:-3}).toArray(),[2,0,-3],'optional height defaults to terrain');
+for(const input of [null,undefined,{},'x',{x:NaN,y:0,z:2},{x:5,y:0,z:Infinity}])assert.equal(npcSignalCenter(input),null);
+console.log('PASS: NPC signal accepts valid mission events and Vector3 inputs without undefined clone errors.');
