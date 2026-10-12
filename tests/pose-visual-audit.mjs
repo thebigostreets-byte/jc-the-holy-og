@@ -91,4 +91,37 @@ try{
  console.log('POSE AUDIT SUMMARY:',JSON.stringify({artwork:result.artwork,articulated:result.articulated,renderAPI:result.renderAPI,edgeClipped:result.metrics.filter(x=>x.edgeClip).map(x=>x.id),opaqueFrames:result.metrics.filter(x=>x.coverage>.97).map(x=>x.id)}));
  assert.equal(errors.filter(x=>/Shader Error|TypeError|Unhandled/.test(x)).length,0,'no shader or JS exceptions during 139 renders');
  console.log('PASS: 39 original artwork files analyzed and all 139 articulated rigs GPU-rendered; sheets saved.');
+ // Integration smoke: use the actual Las Vegas game on a mobile-sized viewport.
+ // Verify every representative pose class can be selected in live play.
+ await page.setViewportSize({width:390,height:844});
+ await page.goto(base+'/map.html?play=1&quality=mobile&photoCutouts=off',{
+   waitUntil:'domcontentloaded',timeout:45000
+ });
+ await page.waitForFunction(
+   ()=>window.JC_BOOT_STAGE==='gameplay-ready'||window.JC_BOOT_FAILED===true,
+   {timeout:65000}
+ );
+ const state=await page.evaluate(()=>({
+   ready:window.JC_BOOT_STAGE==='gameplay-ready',
+   failed:!!window.JC_BOOT_FAILED,
+   active:document.getElementById('loading')?.style.display,
+   total:window.JC_POSE_BANK?.all?.().length,
+   runtimeError:window.JC_RUNTIME_ERROR||null
+ }));
+ assert.equal(state.ready,true,'Pose changes must not block city startup');
+ assert.equal(state.failed,false,'No 3D startup fatal error');
+ assert.equal(state.total,139,'All 139 poses selectable inside the live game');
+ assert.equal(state.runtimeError,null,'Pose startup must not cause a frame exception');
+ for(const id of [0,5,14,19,23,31,39,51,67,91,121,138]){
+   const played=await page.evaluate(id=>window.JC_POSE_BANK?.play(id,750),id);
+   assert.equal(played,true,'JC pose '+id+' is playable in the running city');
+   await page.waitForTimeout(90);
+ }
+ await page.screenshot({path:'artifacts/jc-pose-in-game-mobile.png',timeout:30000});
+ const after=await page.evaluate(()=>window.JC_RUNTIME_ERROR||null);
+ assert.equal(after,null,'Live pose switching keeps the game frame loop stable');
+ assert.ok(!errors.some(x=>/Shader Error|Cannot read properties|Cannot set properties/.test(x)),
+   'No shader or 3D character errors during live pose audition');
+ console.log('PASS: actual mobile-sized Las Vegas startup and 12 representative poses complete without gameplay frame errors.');
+
 }finally{await browser?.close();server.kill();}
