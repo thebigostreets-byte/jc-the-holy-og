@@ -23,6 +23,18 @@ jobs:
           done
       - name: Check source-to-deploy synchronization
         run: node tests/deployable-client-sync.mjs
+      - name: Build and validate the real release candidate
+        run: |
+          npm ci
+          npm run hydrate
+          npm run verify:assets
+          npm run build
+          node scripts/validate-site.mjs
+          node scripts/validate-dialogue.mjs
+          node scripts/validate-worker.mjs
+          node tests/gameplay-regressions.mjs
+          node tests/performance-guardrails.mjs
+          node tests/deployable-client-sync.mjs
       - name: Run regression suite
         run: |
           for file in \
