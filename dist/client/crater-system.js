@@ -57,23 +57,53 @@ export function carveGeometry(base,matrix,craters,maxTriangles=18000){
 }
 export function createCraterSystem(game,mobile=false){
  const records=[],tracked=new Set(),limit=mobile?4:8,lifetime=8500;let serial=0,disposed=false;
+ // The records array is exposed for HUD use; tolerate stale or externally
+ // corrupted entries without letting one bad record block healthy impacts.
+ function sanitizeRecords(){
+  let changed=false;
+  for(let i=records.length-1;i>=0;i--){
+   const c=records[i];
+   if(!c||!Number.isSafeInteger(c.id)||c.id<=0||
+      ![c.x,c.z,c.radius,c.depth,c.expires].every(Number.isFinite)||
+      c.radius<=0||c.depth<=0){records.splice(i,1);changed=true;}
+  }
+  if(records.length>limit){records.splice(0,records.length-limit);changed=true;}
+  return changed;
+ }
  function restore(mesh){
   const base=mesh.userData?.jcCraterBase;
   if(!base)return;
   // Disposal callbacks can throw on broken streamed resources. Restore
   // ownership and continue cleaning other meshes even if one callback fails.
-  if(mesh.geometry!==base){try{mesh.geometry?.dispose?.();}catch{}}
-  mesh.geometry=base;
+  // The streamer may reuse a mesh with brand-new shared geometry/material.
+  // Release only crater-owned resources; never dispose or overwrite replacements.
+  const craterGeometry=mesh.userData.jcCraterAppliedGeometry;
+  if(craterGeometry){
+   if(mesh.geometry===craterGeometry)mesh.geometry=base;
+   try{craterGeometry.dispose?.();}catch{}
+  }else{
+   // Compatibility with an in-memory crater from an older runtime revision.
+   if(mesh.geometry!==base){try{mesh.geometry?.dispose?.();}catch{}}
+   mesh.geometry=base;
+  }
   const originalMaterial=mesh.userData.jcCraterMaterial;
+  const craterMaterial=mesh.userData.jcCraterAppliedMaterial;
   if(originalMaterial){
-   if(mesh.material!==originalMaterial){try{mesh.material?.dispose?.();}catch{}}
-   mesh.material=originalMaterial;
+   if(craterMaterial){
+    if(mesh.material===craterMaterial)mesh.material=originalMaterial;
+    try{craterMaterial.dispose?.();}catch{}
+   }else{
+    if(mesh.material!==originalMaterial){try{mesh.material?.dispose?.();}catch{}}
+    mesh.material=originalMaterial;
+   }
   }else if(mesh.material&&'jcCraterVertexColors' in mesh.userData){
    mesh.material.vertexColors=mesh.userData.jcCraterVertexColors;
    mesh.material.needsUpdate=true;
   }
   delete mesh.userData.jcCraterBase;
   delete mesh.userData.jcCraterMaterial;
+  delete mesh.userData.jcCraterAppliedGeometry;
+  delete mesh.userData.jcCraterAppliedMaterial;
   delete mesh.userData.jcCraterVertexColors;
   delete mesh.userData.craterKey;
   delete mesh.userData.craters;
@@ -81,6 +111,7 @@ export function createCraterSystem(game,mobile=false){
  }
  function apply(){
   if(disposed)return;
+  sanitizeRecords();
   // No active craters: only previously altered meshes need restoration.
   // Avoid traversing every streamed Vegas road/ground tile on expiry.
   if(!records.length){for(const mesh of [...tracked])restore(mesh);return;}
@@ -101,6 +132,11 @@ export function createCraterSystem(game,mobile=false){
     near=records.filter(c=>c.x+c.radius>=bounds.min.x&&c.x-c.radius<=bounds.max.x&&c.z+c.radius>=bounds.min.z&&c.z-c.radius<=bounds.max.z);
    }catch{restore(mesh);return;}
    if(!near.length){restore(mesh);return;}
+   // A streamed tile can rebind geometry or material on the same Mesh object.
+   // Drop stale crater ownership before comparing keys or carving new assets.
+   if(mesh.userData.jcCraterBase &&
+      (mesh.geometry!==mesh.userData.jcCraterAppliedGeometry ||
+       mesh.material!==mesh.userData.jcCraterAppliedMaterial))restore(mesh);
    const key=near.map(c=>c.id).join(',');if(mesh.userData.craterKey===key)return;
    // Carving creates non-indexed triangles without material groups. Never
    // apply it to grouped/multi-material geometry (or malformed meshes).
@@ -122,13 +158,15 @@ export function createCraterSystem(game,mobile=false){
      clonedMaterial.vertexColors=true;clonedMaterial.needsUpdate=true;
      mesh.userData.jcCraterBase=base;
      mesh.userData.jcCraterMaterial=mesh.material;
+     mesh.userData.jcCraterAppliedMaterial=clonedMaterial;
      tracked.add(mesh);
      mesh.material=clonedMaterial;
     }else{
      mesh.material.vertexColors=true;mesh.material.needsUpdate=true;
     }
     const previous=mesh.geometry;
-    mesh.geometry=next;mesh.userData.craters=near;mesh.userData.craterKey=key;
+    mesh.geometry=next;mesh.userData.jcCraterAppliedGeometry=next;
+    mesh.userData.craters=near;mesh.userData.craterKey=key;
     if(previous!==base)previous.dispose();
    }catch{
     // Restore this mesh alone and let other city tiles continue loading.
@@ -145,10 +183,16 @@ export function createCraterSystem(game,mobile=false){
  window.addEventListener('jc-tiles-loaded',apply);window.addEventListener('jc-roads-loaded',apply);
  return {strike(point){
   if(disposed||!point||!Number.isFinite(point.x)||!Number.isFinite(point.z))return null;
-  const c={id:++serial,x:point.x,z:point.z,radius:12,depth:3.2,expires:performance.now()+lifetime};records.push(c);if(records.length>limit)records.shift();apply();return c;
+  // A broken clock must not create an impact with an unexpirable NaN or
+  // infinite deadline, especially on browsers recovering a suspended tab.
+  let now;try{now=performance.now();}catch{return null;}
+  if(!Number.isFinite(now)||now<0||now>Number.MAX_SAFE_INTEGER-lifetime)return null;
+  const c={id:++serial,x:point.x,z:point.z,radius:12,depth:3.2,expires:now+lifetime};records.push(c);if(records.length>limit)records.shift();apply();return c;
  },update(now=performance.now()){
   if(disposed||!Number.isFinite(now))return;
-  const expired=records.some(c=>now>=c.expires);if(expired){for(let i=records.length-1;i>=0;i--)if(now>=records[i].expires)records.splice(i,1);apply();}
+  const invalid=sanitizeRecords();
+  const expired=records.some(c=>now>=c.expires);if(expired){for(let i=records.length-1;i>=0;i--)if(now>=records[i].expires)records.splice(i,1);}
+  if(invalid||expired)apply();
  },records,dispose(){
   if(disposed)return;
   disposed=true;

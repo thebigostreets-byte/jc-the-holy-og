@@ -135,4 +135,47 @@ handlers.get('jc-tiles-loaded')();
 check(sceneWalks===walksBefore,'empty-crater tile event skips scene traversal');
 second.dispose();
 check(handlers.size===0,'second system disposal clears listeners');
+// Regression: a streaming tile may reuse the Mesh while rebinding shared assets.
+const reboundBase=new Geometry().setAttribute('position',base.getAttribute('position'));
+const reboundMat=material();
+const rebound={isMesh:true,parent:{name:'ground_inferred'},geometry:reboundBase,material:reboundMat,userData:{},matrixWorld:identity,bounds:bounds(0)};
+active=[rebound];
+const reboundSystem=ctx.createCraterSystem({scene},true);
+time=60000;
+check(reboundSystem.strike({x:0,z:0})!==null,'rebound impact accepted');
+const obsoleteGeo=rebound.geometry,obsoleteMat=rebound.material;
+const freshBase=new Geometry().setAttribute('position',base.getAttribute('position'));
+const freshMat=material();
+rebound.geometry=freshBase;rebound.material=freshMat;
+handlers.get('jc-tiles-loaded')();
+check(obsoleteGeo.disposed&&obsoleteMat.disposed,'old crater-owned resources released after tile rebind');
+check(!freshBase.disposed&&!freshMat.disposed,'new shared tile assets not disposed');
+check(rebound.userData.jcCraterBase===freshBase,'rebound geometry adopted as base');
+check(rebound.userData.jcCraterMaterial===freshMat,'rebound material adopted as base');
+check(rebound.geometry!==freshBase&&rebound.material!==freshMat,'rebound tile is re-carved');
+reboundSystem.dispose();
+check(rebound.geometry===freshBase&&rebound.material===freshMat,'rebound resources restored on disposal');
+// Regression: public crater records can be corrupted by HUD/debug integrations.
+const integrity=ctx.createCraterSystem({scene},true);
+time=70000;
+check(integrity.strike({x:0,z:0})!==null,'valid impact before corruption');
+integrity.records.push(null,{id:100,x:NaN,z:0,radius:12,depth:3,expires:90000});
+handlers.get('jc-roads-loaded')();
+check(integrity.records.length===1,'invalid records removed before tile processing');
+check(rebound.userData.jcCraterBase===freshBase,'healthy terrain remains carved after record cleanup');
+for(let i=0;i<9;i++)integrity.records.push({id:100+i,x:0,z:0,radius:12,depth:3,expires:90000});
+handlers.get('jc-tiles-loaded')();
+check(integrity.records.length===4,'external record injection respects mobile cap');
+check(integrity.records[0].id===105,'newest valid records retained');
+// Regression: a broken clock cannot create immortal impact records.
+const recordCount=integrity.records.length;
+for(const badTime of [NaN,Infinity,-1,Number.MAX_SAFE_INTEGER]){
+ time=badTime;
+ check(integrity.strike({x:0,z:0})===null,'invalid clock reading rejects impact');
+ check(integrity.records.length===recordCount,'invalid clock reading does not enqueue impact');
+}
+time=95000;integrity.update(time);
+check(integrity.records.length===0,'valid impacts still expire after corrupt clock readings');
+integrity.dispose();
+check(handlers.size===0,'record-integrity system unregisters listeners');
 console.log(`PASS: ${checks} crater resource-budget assertions`);
