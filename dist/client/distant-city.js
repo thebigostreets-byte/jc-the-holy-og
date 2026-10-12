@@ -14,6 +14,7 @@ export function createDistantCity(game){
  const material=new THREE.MeshBasicMaterial({map:overview,depthWrite:false,polygonOffset:true,polygonOffsetFactor:2});
  material.onBeforeCompile=shader=>{
   shader.uniforms.cityNightMix=nightMix;
+  shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\\nuniform float cityNightMix;');
   shader.vertexShader=shader.vertexShader
     .replace('#include <common>','#include <common>\nattribute vec2 cityCell;')
     .replace('#include <uv_vertex>','#include <uv_vertex>\n#ifdef USE_MAP\nvMapUv=cityCell+vMapUv/35.0;\n#endif');

@@ -38,6 +38,7 @@ try {
  assert.match(shader.vertexShader,/attribute vec2 cityCell/);
  assert.match(shader.vertexShader,/vMapUv=cityCell\+vMapUv\/35\.0/);
  assert.match(shader.fragmentShader,/float lum=/);
+ assert.match(shader.fragmentShader,/uniform float cityNightMix/,'night shader uniform declared in GLSL');
  assert.ok(shader.fragmentShader.includes('\nfloat lum='),'GLSL fragments use valid newlines, not literal backslash-n');
  atlas.dispose();
  assert.equal(scene.children.includes(root),false,'city preview disposes correctly');

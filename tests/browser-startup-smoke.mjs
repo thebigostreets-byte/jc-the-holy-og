@@ -39,8 +39,10 @@ try {
  if(!graphics)throw Error('Browser runner does not support WebGL; cannot assert city startup.');
  let outcome='timeout';
  try{
-  await page.waitForFunction(()=>window.JC_PLAYER_READY===true||window.JC_BOOT_FAILED===true,{timeout:65000});
-  outcome=await page.evaluate(()=>window.JC_PLAYER_READY?'player-ready':'boot-failed');
+  await page.waitForFunction(()=>window.JC_BOOT_STAGE==='gameplay-ready'||window.JC_BOOT_FAILED===true,{timeout:65000});
+  outcome=await page.evaluate(()=>window.JC_BOOT_STAGE==='gameplay-ready'?'gameplay-ready':'boot-failed');
+  // Wait for at least a few real frames to catch errors after player spawn.
+  if(outcome==='gameplay-ready')await page.waitForTimeout(900);
  }catch{}
  const status=await page.evaluate(()=>({
   stage:window.JC_BOOT_STAGE||null,cityReady:!!window.JC_CITY_READY,
@@ -53,7 +55,9 @@ try {
  console.log('Browser startup state:',JSON.stringify({outcome,status,diagnostics:diagnostics.slice(-16)}));
  await mkdir('artifacts',{recursive:true});
  await page.screenshot({path:'artifacts/jc-startup-mobile.png',timeout:15000}).catch(e=>note(e.message));
- assert.equal(outcome,'player-ready','JC must reach controllable player on mobile viewport');
+ assert.equal(outcome,'gameplay-ready','JC must finish gameplay bootstrap on mobile viewport');
+ assert.equal(status.runtimeError,null,'first gameplay frames must not throw');
+ assert.ok(!diagnostics.some(s=>/Shader Error|Fragment shader is not compiled|runtime frame recovered/.test(s)),'WebGL compilation and the runtime loop must stay healthy');
  assert.equal(status.loadingVisible,false,'Opening the city overlay must disappear');
  assert.equal(status.recoveryVisible,false,'Recovery overlay must disappear on success');
  console.log('PASS: JC loaded past Opening the city in real headless browser.');
