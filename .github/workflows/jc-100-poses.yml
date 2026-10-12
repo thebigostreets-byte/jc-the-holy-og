@@ -28,6 +28,8 @@ jobs:
           node --check jc-character3d.js
           node --check jc-map-game.js
           node tests/jc-pose-bank.mjs
+          node --check jc-pose-kinematics.js
+          node tests/all-jc-poses.mjs
       - name: Hydrate assets and build deployable client
         run: |
           npm ci
@@ -35,9 +37,14 @@ jobs:
           npm run verify:assets
           npm run build
           cmp jc-pose-bank.js dist/client/jc-pose-bank.js
+          cmp jc-pose-kinematics.js dist/client/jc-pose-kinematics.js
+          cmp jc-character-pose.js dist/client/jc-character-pose.js
+          cmp pose-cleanup.js dist/client/pose-cleanup.js
           cmp jc-character3d.js dist/client/jc-character3d.js
           cmp jc-map-game.js dist/client/jc-map-game.js
       - name: Core gameplay and performance regressions
         run: |
           node tests/gameplay-regressions.mjs
           node tests/performance-guardrails.mjs
+          node tests/pose-cleanup.mjs
+          node tests/character-pose-assets.mjs
