@@ -4,7 +4,7 @@ export const POSE_FRAME_HEIGHT=384;
 export const POSE_FRAME_BOTTOM_PADDING=10;
 const ALPHA_THRESHOLD=8;
 
-export function isolatePose(data,width,height,{componentGap}={}) {
+export function isolatePose(data,width,height,{componentGap,mainOnly=false}={}) {
   const count=width*height,labels=new Int32Array(count),queue=new Int32Array(count),components=[];
   let label=0;
   for(let start=0;start<count;start++) {
@@ -32,6 +32,10 @@ export function isolatePose(data,width,height,{componentGap}={}) {
   const gap=componentGap??Math.max(6,Math.round(Math.min(width,height)*.07));
   const retained=new Set(components.filter(c=>{
     if(c.label===main.label)return true;
+    // Original JC pose WebPs contain stray hands/shoes from adjacent poses.
+    // The main connected silhouette already includes the actual limbs.
+    // Do not retain *any* disconnected photographic fragments in JC cutouts.
+    if(mainOnly)return false;
     const dx=Math.max(0,c.minX-main.maxX,main.minX-c.maxX);
     const dy=Math.max(0,c.minY-main.maxY,main.minY-c.maxY);
     return Math.hypot(dx,dy)<=gap;
@@ -52,7 +56,7 @@ export function cleanPoseImage(image) {
   const context=source.getContext('2d',{willReadFrequently:true});
   context.drawImage(image,0,0);
   const pixels=context.getImageData(0,0,sourceWidth,sourceHeight);
-  isolatePose(pixels.data,sourceWidth,sourceHeight);
+  isolatePose(pixels.data,sourceWidth,sourceHeight,{mainOnly:true});
   context.putImageData(pixels,0,0);
 
   let x0=sourceWidth,y0=sourceHeight,x1=-1,y1=-1;
