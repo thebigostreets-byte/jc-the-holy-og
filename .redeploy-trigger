@@ -1,3 +1,4 @@
-JC THE HOLY OG GitHub Pages direct publish
-2026-10-13T09:01:00-07:00
-Current build: City Builder photo texture field + IndexedDB persistence.
+JC THE HOLY OG redeploy trigger
+branch: main
+requested_at: 2026-10-13T09:01:00-07:00
+reason: re-publish existing city builder single-building photo-texture upload support
