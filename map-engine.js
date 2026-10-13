@@ -3,7 +3,7 @@ import {loadGeneratedMaterials,generatedBuildingKind,addCasinoEntrance} from './
 import {createDistantCity} from './distant-city.js';
 import {decodeCityTile} from './city-tile-decoder.js';
 import {loadPhotoFacades} from './photo-facades.js';
-import {createRoadNetwork} from './city-roads.js';
+import {createRoadNetwork} from './city-roads.js?v=road-parking-pbr-20261013a';
 import {createCityTraffic} from './city-traffic.js';
 import {createCityEnvironment} from './city-environment.js';
 import {loadBuildingIdentities,resolveBuildingIdentity} from './building-identities.js';
