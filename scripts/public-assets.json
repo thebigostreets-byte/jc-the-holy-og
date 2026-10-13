@@ -24,6 +24,7 @@
   "background-music.js",
   "building-identities.js",
   "building-impostors.js",
+  "building-mirror-facades.js",
   "building-photo-library.js",
   "building-textures.js",
   "cache-reset.html",
