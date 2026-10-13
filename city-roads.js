@@ -83,6 +83,12 @@ export function createRoadNetwork(game){
  function nearestRoad(x,z,maxDistance=90){const ix=Math.floor(x/cellSize),iz=Math.floor(z/cellSize),candidates=[];for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)candidates.push(...(roadCells.get(`${ix+dx}:${iz+dz}`)||[]));let best=null,bestDistance=maxDistance;for(const segment of candidates){const dx=segment.x2-segment.x1,dz=segment.z2-segment.z1,len=dx*dx+dz*dz,t=len?THREE.MathUtils.clamp(((x-segment.x1)*dx+(z-segment.z1)*dz)/len,0,1):0,d=Math.hypot(x-(segment.x1+t*dx),z-(segment.z1+t*dz));if(d<bestDistance){bestDistance=d;best={name:segment.name,kind:segment.kind,distance:d};}}return best;}
  async function sync(){
   if(disposed)return;
+  // Fallback-only tiles must use the same asphalt as the real mapped road network.
+  for(const group of game.loaded.values())if(group.userData.generatedFallback){
+   for(const child of group.children)if(child.userData.jcFallbackRoad&&!child.userData.jcPbrRoad){
+    child.material?.dispose?.();child.material=surfaceMaterials.road;child.userData.jcPbrRoad=true;
+   }
+  }
   const token=++revision;
   // The packaged per-tile road JSON is optional. Keep the core Vegas road
   // network visible even when data/roads/*.json.gz was not published.
