@@ -1,5 +1,6 @@
 [
   "404.html",
+  "README.md",
   "ability-ui.css",
   "assets/building-cutouts/blood-bay-v1.webp",
   "assets/building-cutouts/manifest.json",
@@ -23,6 +24,7 @@
   "background-music.js",
   "building-identities.js",
   "building-impostors.js",
+  "building-photo-library.js",
   "building-textures.js",
   "cache-reset.html",
   "character-contact.js",
@@ -208,7 +210,6 @@
   "poses/pose-8.webp",
   "poses/pose-9.webp",
   "predictive-streaming.js",
-  "README.md",
   "real-city-climb-demo.html",
   "realistic-motion.js",
   "rear-walk.js",
