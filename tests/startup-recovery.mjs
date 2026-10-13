@@ -48,5 +48,7 @@ assert.match(engine,/window\.JC_CITY_READY=true/,'city readiness is explicit');
 assert.match(engine,/const timeoutMs=critical\?18000:45000/,'critical downloads have bounded attempts');
 assert.match(engine,/clearTimeout\(timer\)/,'optional bootstrap wait clears timers');
 const html=fs.readFileSync(new URL('../map.html',import.meta.url),'utf8');
-assert.match(html,/opening-city-recovery-20261012a/,'updated startup assets bypass stale mobile cache');
+assert.match(html,/map-startup\.js\?v=[\w-]+/,'startup script has a cache-busting version');
+assert.match(html,/map-engine\.js\?v=[\w-]+/,'3D renderer has a cache-busting version');
+assert.match(html,/building-mirror-facades\.js\?v=[\w-]+/,'casino mirror add-on has a cache-busting version');
 console.log('PASS: 45-second recovery, unready studio detection, playable-only cleanup, bounded spawn fetch and cache refresh.');
