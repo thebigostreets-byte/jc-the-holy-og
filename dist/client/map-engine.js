@@ -9,6 +9,7 @@ import {createCityEnvironment} from './city-environment.js';
 import {loadBuildingIdentities,resolveBuildingIdentity} from './building-identities.js';
 import {loadPhysicalMaterials,buildingSurface,wallUV} from './physical-building-materials.js?v=strip-casino-photo-20261008a';
 import * as THREE from './three.module.js';
+import {createBuildingPhotoLibrary} from './building-photo-library.js';
 import { OrbitControls } from './map-controls.js';
 import {createBuildingImpostors} from './building-impostors.js';
 import {createPhotoCutoutLod} from './photo-cutout-lod.js';
@@ -69,6 +70,7 @@ scene.add(new THREE.HemisphereLight(0x6078b0,0x15131d,.72));const sun=new THREE.
 const world=new THREE.Group();scene.add(world);const buildings=new Map(),chunks=new Map(),edits=new Map(),files=new Map();const loaded=new Map();let selected=null,box=null,loading=false,tileRevision=0;
 const base=payload.manifest.boundsEPSG32611, origin=[(base[0]+base[2])/2,(base[1]+base[3])/2], sections=payload.manifest.sections,byId=new Map(sections.map(s=>[s.id,s]));let current='C15_R14';
 let last=performance.now();const particles=[],particleCap=stable3D?48:(mobileMap?72:180);const status=t=>$('status').textContent=t;const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const photoLibrary=createBuildingPhotoLibrary(THREE,mobileMap);
 const locKey='illco-vegas-building-edits-v1';try{for(const [k,v] of Object.entries(JSON.parse(localStorage.getItem(locKey)||'{}')))edits.set(k,v);}catch{}
 function persist(){try{localStorage.setItem(locKey,JSON.stringify(Object.fromEntries(edits)));}catch{}}
 async function loadBytes(name){
@@ -172,9 +174,9 @@ async function parseGLB(raw,name){const dv=new DataView(raw.buffer,raw.byteOffse
  let built=0;for(const n of g.nodes){if(built>=bootBuildingLimit)break;built++;if(built%8===0||built===group.userData.bootBuildingLimit){statusText('Preparing playable city '+built+' / '+group.userData.bootBuildingLimit+'…');await new Promise(resolve=>setTimeout(resolve,0));}const ob=buildNode(n);if(ob)group.add(ob);}
  group.userData.continueBuild=()=>{if(group.userData.progressiveStarted||built>=g.nodes.length)return;group.userData.progressiveStarted=true;const progressiveBatch=legacySpec?1:(lowSpec?2:4),progressiveDelay=legacySpec?60:(lowSpec?12:0);const scheduleBuildStep=()=>{if(progressiveDelay)setTimeout(()=>requestAnimationFrame(step),progressiveDelay);else requestAnimationFrame(step);};const step=()=>{if(!group.parent){group.userData.progressiveStarted=false;return;}let made=0;while(built<g.nodes.length&&made<progressiveBatch){const n=g.nodes[built++],ob=buildNode(n);if(ob){group.add(ob);if(ob.userData.buildingId){buildings.set(ob.userData.buildingId,ob);const edit=edits.get(ob.userData.buildingId)||{};setAppearance(ob,edit);if(edit.state)destroy(ob,edit.state,false);}}made++;}window.JC_CITY_PROGRESSIVE_BUILDINGS=built;if(built<g.nodes.length)scheduleBuildStep();else{group.userData.progressiveComplete=true;window.dispatchEvent(new CustomEvent('jc-tile-progressive-complete',{detail:{tile:name,buildings:built}}));updateBuildingList();}};scheduleBuildStep();};
  const e=g.asset.extras;group.position.set(e.originEasting-origin[0],0,origin[1]-e.originNorthing);return group;}
-function setAppearance(ob,e){const casino=ob.userData.identity?.type==='casino';for(const m of ob.children){if(!m.isMesh)continue;const mat=m.material,isRoof=mat.name.endsWith('_roof');const color=isRoof?e.roofColor:e.wallColor;if(color)mat.color.set(color);else mat.color.copy(mat.userData.original.color);mat.map=e.surface==='plain'?null:(mat.userData.customTexture||mat.userData.original.map);mat.bumpMap=e.surface==='plain'?null:mat.userData.original.bumpMap||null;mat.roughness=e.roughness??mat.userData.original.roughness;mat.emissive.copy(mat.color);mat.emissiveIntensity=casino?(e.glow||0):0;mat.needsUpdate=true;}}
+function setAppearance(ob,e){if(!e.textureId)photoLibrary.clear(ob);const casino=ob.userData.identity?.type==='casino';for(const m of ob.children){if(!m.isMesh)continue;const mat=m.material,isRoof=mat.name.endsWith('_roof');const color=isRoof?e.roofColor:e.wallColor;if(color)mat.color.set(color);else mat.color.copy(mat.userData.original.color);mat.map=e.surface==='plain'?null:(mat.userData.customTexture||mat.userData.original.map);mat.bumpMap=e.surface==='plain'?null:mat.userData.original.bumpMap||null;mat.roughness=e.roughness??mat.userData.original.roughness;mat.emissive.copy(mat.color);mat.emissiveIntensity=casino?(e.glow||0):0;mat.needsUpdate=true;}if(e.textureId&&e.surface!=='plain')photoLibrary.apply(ob,e,edits,status);}
 function updateEdit(){if(!selected)return;const id=selected.userData.buildingId,e={...(edits.get(id)||{}),wallColor:$('wallColor').value,roofColor:$('roofColor').value,surface:$('materialMode').value,roughness:+$('roughness').value,glow:+$('glow').value};edits.set(id,e);setAppearance(selected,e);persist();}
-function select(ob){selected=ob;queueMicrotask(()=>window.dispatchEvent(new Event('jc-building-selected')));if(box){scene.remove(box);box.geometry.dispose();box.material.dispose();box=null;}if(!ob){$('selectedName').textContent='Click a building';$('coords').textContent='Each object has a permanent source ID.';$('buildingList').value='';status(`${PACKAGED_CITY_TILE_COUNT.toLocaleString()} detailed tiles packaged · ${loaded.size} active tiles · ${buildings.size.toLocaleString()} editable features`);return;}ob.updateWorldMatrix(true,true);if(!chunks.has(ob.userData.buildingId)){box=new THREE.BoxHelper(ob,0x9cffe1);scene.add(box);}const e=ob.userData;$('selectedName').textContent=e.identity?.name||e.buildingId;$('coords').textContent=`${e.longitude.toFixed(6)}, ${e.latitude.toFixed(6)} · ${e.heightMetres.toFixed(1)} m high${e.identity?' · '+e.identity.address+' · county record '+e.identity.sourceUpdated:''}`;$('buildingList').value=e.buildingId;const ed=edits.get(e.buildingId)||{},wall=ob.children.find(m=>m.material?.name.endsWith('_walls')),roof=ob.children.find(m=>m.material?.name.endsWith('_roof'));$('wallColor').value=ed.wallColor||'#'+(wall?.material.color.getHexString()||'dbcdb8');$('roofColor').value=ed.roofColor||'#'+(roof?.material.color.getHexString()||'ffffff');$('materialMode').value=ed.surface||'textured';$('roughness').value=ed.roughness??.88;$('glow').value=ed.glow||0;$('glow').disabled=e.identity?.type!=='casino';}
+function select(ob){selected=ob;queueMicrotask(()=>window.dispatchEvent(new Event('jc-building-selected')));if(box){scene.remove(box);box.geometry.dispose();box.material.dispose();box=null;}if(!ob){$('selectedName').textContent='Click a building';$('coords').textContent='Each object has a permanent source ID.';$('buildingList').value='';status(`${PACKAGED_CITY_TILE_COUNT.toLocaleString()} detailed tiles packaged · ${loaded.size} active tiles · ${buildings.size.toLocaleString()} editable features`);return;}ob.updateWorldMatrix(true,true);if(!chunks.has(ob.userData.buildingId)){box=new THREE.BoxHelper(ob,0x9cffe1);scene.add(box);}const e=ob.userData;$('selectedName').textContent=e.identity?.name||e.buildingId;$('coords').textContent=`${e.longitude.toFixed(6)}, ${e.latitude.toFixed(6)} · ${e.heightMetres.toFixed(1)} m high${e.identity?' · '+e.identity.address+' · county record '+e.identity.sourceUpdated:''}`;$('buildingList').value=e.buildingId;const ed=edits.get(e.buildingId)||{},wall=ob.children.find(m=>m.material?.name.endsWith('_walls')),roof=ob.children.find(m=>m.material?.name.endsWith('_roof'));$('wallColor').value=ed.wallColor||'#'+(wall?.material.color.getHexString()||'dbcdb8');$('roofColor').value=ed.roofColor||'#'+(roof?.material.color.getHexString()||'ffffff');$('materialMode').value=ed.surface||'textured';$('roughness').value=ed.roughness??.88;$('glow').value=ed.glow||0;$('glow').disabled=e.identity?.type!=='casino';$('buildingPhotoStatus').textContent=ed.textureId?'Custom photo attached to '+e.buildingId:'Select a JPG/PNG/WebP to replace this building facade.';}
 function disposeParticle(p){world.remove(p.mesh);p.mesh.geometry.dispose();p.mesh.material.dispose();const i=particles.indexOf(p);if(i>=0)particles.splice(i,1);}
 function clearChunks(id){const a=chunks.get(id);if(a){for(const x of [...a])disposeParticle(x);chunks.delete(id);}}
 function rebuild(ob,save=true){if(!ob)return;clearChunks(ob.userData.buildingId);ob.children.forEach(m=>m.visible=true);if(save){const e=edits.get(ob.userData.buildingId)||{};delete e.state;edits.set(ob.userData.buildingId,e);persist();}if(selected===ob)select(ob);status('Rebuilt '+ob.userData.buildingId);}
@@ -237,7 +239,7 @@ async function connectFolder(event){prefetchedBytes.clear();streamSample=null;fi
 function view(direction,radius=loaded.size>1?1:0){const s=byId.get(current),x=(s.bounds[0]+s.bounds[2])/2-origin[0],z=origin[1]-(s.bounds[1]+s.bounds[3])/2,y=80,dist=radius?3300:1450;controls.target.set(x,y,z);const delta={south:[.23,.8,1],north:[-.3,.75,-1],east:[1,.7,.08],top:[0,1.5,.001]}[direction]||[.3,.8,1];camera.position.set(x+delta[0]*dist,y+delta[1]*dist,z+delta[2]*dist);controls.update();}
 function focus(){if(!selected)return;const p=selected.getWorldPosition(new THREE.Vector3()),h=selected.userData.heightMetres,bb=selected.userData.collider,d=Math.max(h*2.8,(bb.max[0]-bb.min[0])*2,150);p.y+=h*.35;controls.target.copy(p);camera.position.copy(p).add(new THREE.Vector3(.65*d,.6*d,d));controls.update();}
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let down=null;renderer.domElement.addEventListener('pointerdown',e=>{down=[e.clientX,e.clientY];});renderer.domElement.addEventListener('pointerup',e=>{if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>4)return;const r=renderer.domElement.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mouse,camera);const meshes=[...buildings.values()].filter(o=>!chunks.has(o.userData.buildingId)).flatMap(o=>o.children);const hit=ray.intersectObjects(meshes,false)[0];if(hit)select(hit.object.userData.owner);});
-for(const e of document.querySelectorAll('[data-view]'))e.onclick=()=>view(e.dataset.view);$('focus').onclick=focus;for(const id of ['wallColor','roofColor','roughness','glow','materialMode'])$(id).addEventListener('input',updateEdit);$('crumble').onclick=()=>destroy(selected,'crumble');$('explode').onclick=()=>destroy(selected,'explode');$('rebuild').onclick=()=>rebuild(selected);$('resetLook').onclick=()=>{if(!selected)return;const id=selected.userData.buildingId,state=edits.get(id)?.state;edits.set(id,state?{state}:{});setAppearance(selected,edits.get(id));persist();select(selected);};$('buildingList').onchange=e=>select(buildings.get(e.target.value));
+for(const e of document.querySelectorAll('[data-view]'))e.onclick=()=>view(e.dataset.view);$('focus').onclick=focus;for(const id of ['wallColor','roofColor','roughness','glow','materialMode'])$(id).addEventListener('input',updateEdit);$('crumble').onclick=()=>destroy(selected,'crumble');$('explode').onclick=()=>destroy(selected,'explode');$('rebuild').onclick=()=>rebuild(selected);$('resetLook').onclick=async()=>{if(!selected)return;const id=selected.userData.buildingId,state=edits.get(id)?.state;edits.set(id,state?{state}:{});photoLibrary.clear(selected);await photoLibrary.remove(id).catch(()=>{});setAppearance(selected,edits.get(id));persist();select(selected);};$('buildingList').onchange=e=>select(buildings.get(e.target.value));
 for(const s of [...sections].sort((a,b)=>a.id.localeCompare(b.id)))$('tile').add(new Option(`${s.id} · ${s.buildings.toLocaleString()} objects${available(s.uri)?'':' · tile missing'}`,s.id));$('loadTile').onclick=()=>loadArea($('tile').value,streamRadius);$('neighbors').onclick=()=>loadArea($('tile').value,2);
 const places={strip:'C15_R14',downtown:'C15_R21',houses:'C21_R21'};for(const b of document.querySelectorAll('[data-place]'))b.onclick=()=>loadArea(places[b.dataset.place]);
 function nearestGeo(lon,lat){let best=null,d=Infinity;for(const s of sections){const corners=s.cornersLonLat,l=corners.reduce((a,p)=>a+p[0],0)/4,la=corners.reduce((a,p)=>a+p[1],0)/4,n=((l-lon)*Math.cos(lat*Math.PI/180))**2+(la-lat)**2;if(n<d){d=n;best=s;}}if(Math.sqrt(d)>.012)throw Error('Coordinates are outside the project.');return best.id;}
@@ -287,10 +289,11 @@ async function applyRealStripPreset(list=REAL_STRIP_LANDMARKS){
  status('Real Strip preset matched '+matched.length+' building footprints. Refresh once to rebuild photoreal landmark materials.');
  return matched;
 }
-function exportEdits(){return {format:'illco-vegas-building-edits',version:2,source:'NGA_Los_Vegas_Buildings_2014',crs:'EPSG:32611',edits:Object.fromEntries(edits)};}
+async function exportEdits(){const ids=[...edits.entries()].filter(([,e])=>e.textureId).map(([id])=>id);return {format:'illco-vegas-building-edits',version:3,source:'NGA_Los_Vegas_Buildings_2014',crs:'EPSG:32611',edits:Object.fromEntries(edits),photos:await photoLibrary.exportPhotos(ids)};}
 async function importEdits(obj){
  if(obj.format!=='illco-vegas-building-edits')throw Error('Not a valid city edit file.');
  if(obj.edits&&Array.isArray(obj.edits))throw Error('Not a valid city edit file.');
+ await photoLibrary.importPhotos(obj.photos);
  for(const [id,e]of Object.entries(obj.edits||{})){
   if(!/^NGA14-\d+$/.test(id))continue;const clean={};
   for(const k of ['wallColor','roofColor'])if(/^#[0-9a-f]{6}$/i.test(e[k]||''))clean[k]=e[k];
@@ -301,13 +304,45 @@ async function importEdits(obj){
   if(typeof e.identityName==='string'&&e.identityName.trim())clean.identityName=e.identityName.trim();
   if(['casino','landmark','stadium','arena'].includes(e.identityType))clean.identityType=e.identityType;
   if(typeof e.identityAddress==='string'&&e.identityAddress.trim())clean.identityAddress=e.identityAddress.trim();
+  if(e.textureId===id)clean.textureId=id;
   edits.set(id,clean);const ob=buildings.get(id);if(ob){setAppearance(ob,clean);if(clean.state)destroy(ob,clean.state,false);}
  }
  if(obj.preset==='real-strip-v1'||Array.isArray(obj.landmarks))await applyRealStripPreset(Array.isArray(obj.landmarks)&&obj.landmarks.length?obj.landmarks:REAL_STRIP_LANDMARKS);
  persist();if(selected)select(selected);
  if(obj.preset!=='real-strip-v1'&&!Array.isArray(obj.landmarks))status('Saved building edits applied.');
 }
-$('save').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(exportEdits(),null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='Vegas_Building_Edits.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);};$('loadEdits').onclick=()=>$('editsFile').click();$('editsFile').onchange=async e=>{try{await importEdits(JSON.parse(await e.target.files[0].text()));}catch(err){status(err.message);}};
+$('buildingPhoto').onchange=async event=>{
+ const file=event.target.files?.[0],ob=selected;event.target.value='';
+ if(!file)return;
+ if(!ob){status('Select the Cosmopolitan building first, then upload the photo.');return;}
+ const id=ob.userData.buildingId;
+ try{
+  status('Preparing photo facade for '+id+'…');
+  const size=await photoLibrary.save(id,file);
+  const e={...(edits.get(id)||{}),textureId:id,surface:'textured',roughness:.32};
+  edits.set(id,e);persist();setAppearance(ob,e);if(selected===ob)select(ob);
+  status('Photo applied to '+id+' ('+Math.round(size/1024)+' KB). Export Edits to share it with other devices.');
+ }catch(error){status('Photo upload failed: '+error.message);}
+};
+$('removeBuildingPhoto').onclick=async()=>{
+ if(!selected){status('Select a building first.');return;}
+ const id=selected.userData.buildingId,ob=selected,e={...(edits.get(id)||{})};
+ delete e.textureId;edits.set(id,e);photoLibrary.clear(ob);
+ try{await photoLibrary.remove(id);}catch(error){status(error.message);}
+ setAppearance(ob,e);persist();select(ob);status('Custom photo removed from '+id);
+};
+$('save').onclick=async()=>{
+ try{
+  const data=await exportEdits(),url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})),a=document.createElement('a');
+  a.href=url;a.download='Vegas_Building_Edits_With_Photos.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
+  status('Exported edits including attached facade photos.');
+ }catch(error){status('Export failed: '+error.message);}
+};
+$('loadEdits').onclick=()=>$('editsFile').click();
+$('editsFile').onchange=async e=>{
+ try{if(e.target.files?.[0])await importEdits(JSON.parse(await e.target.files[0].text()));}
+ catch(err){status(err.message);}finally{e.target.value='';}
+};
 function resize(){const r=$('viewport').getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}new ResizeObserver(resize).observe($('viewport'));resize();if(mobileMap) $('streamRange').value='0';
 function animate(t){requestAnimationFrame(animate);const frameMs=Math.max(0,t-last),dt=Math.min(frameMs/1000,.04);last=t;window.studio?.renderBudget?.update(t,frameMs);if(!window.studio?.paused){tick(dt*Math.max(0,Math.min(1,window.JC_WORLD_SCALE??1)));streamingTick(t,dt);}if(!window.JC_MAP_PLAYING)controls.update();window.studio?.distantCity?.update();window.studio?.environment?.update(t,dt);window.studio?.traffic?.update(dt);window.studio?.buildingViews?.update(t,dt,document.body.classList.contains('jc-playing'));window.studio?.photoCutouts?.update(t,dt,document.body.classList.contains('jc-playing'));if(!mobileMap||!startInPlay||window.JC_PLAYER_READY){if(window.studio?.renderFrame)window.studio.renderFrame();else renderer.render(scene,camera);}}requestAnimationFrame(animate);
 window.studio={sections,cityBounds:base,mobileMap,lowSpec,legacySpec,stable3D,deviceMemory,renderBudget,scene,camera,renderer,controls,buildings,chunks,edits,loaded,origin,centerSection,ensureContext,streamingTick,streamInfo:()=>({enabled:streamEnabled,radius:streamRadius,loading,current,lastWanted,context:!!contextGround,availableFiles:files.size,lowSpec,stable3D,deviceMemory}),tileRevision:()=>tileRevision,prefetchInfo:()=>prefetchedBytes.stats(),loadArea,select,focus,view,destroy,rebuild,updateEdit,exportEdits,importEdits,applyRealStripPreset,tick,stats:()=>({buildings:buildings.size,tiles:loaded.size,visibleTiles:[...loaded.values()].filter(g=>g.visible).length,chunks:particles.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),proof:()=>{document.body.classList.add('proof');resize();}};
