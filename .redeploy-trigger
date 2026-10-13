@@ -1,5 +1,3 @@
-JC THE HOLY OG redeploy trigger
-branch: main
-requested_on: 2026-10-10
-reason: explicit redeploy request; publish existing main through validation workflow without merging unverified feature branches
-baseline_main: ef04e0833c9e030325a2b0e3d3c2dc0b60bc546d
+JC THE HOLY OG GitHub Pages direct publish
+2026-10-13T09:01:00-07:00
+Current build: City Builder photo texture field + IndexedDB persistence.
