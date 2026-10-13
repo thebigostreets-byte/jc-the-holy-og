@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {createPhotorealDetailMaps,applyPhotorealMaterial} from '../photorealism-pbr.js';
+import {createPhotorealDetailMaps,applyPhotorealMaterial,applyCasinoMirrorMaterial,createCityMirrorMap} from '../photorealism-pbr.js';
 class DataTexture {
   constructor(data,width,height,format){Object.assign(this,{data,width,height,format});}
 }
@@ -21,4 +21,16 @@ applyPhotorealMaterial(THREE,casino,maps,{casino:true,buildingHeight:90});
 assert.equal(casino.roughness,.5);
 assert.equal(casino.metalness,.1);
 assert.equal(casino.bumpScale,.012);
-console.log('PASS: shared photoreal PBR maps and building-specific material tuning');
+const groundMirror={id:'strip-aerial-reflection'};
+const casinoTower={roughness:.8,metalness:0,userData:{},map:{id:'building-photo'}};
+applyCasinoMirrorMaterial(casinoTower,groundMirror,{casino:true,height:65});
+assert.equal(casinoTower.envMap,groundMirror);
+assert.equal(casinoTower.map.id,'building-photo','building texture must remain intact');
+assert.ok(casinoTower.metalness>=.43);
+assert.ok(casinoTower.roughness<=.25);
+assert.equal(casinoTower.userData.jcMirrorFacade,true);
+const ordinary={roughness:.85,metalness:0,userData:{}};
+applyCasinoMirrorMaterial(ordinary,groundMirror,{casino:false,height:70});
+assert.equal(ordinary.envMap,undefined,'non-casino buildings stay matte');
+assert.equal(createCityMirrorMap(THREE,{enabled:false}),null,'fallback should skip reflection');
+console.log('PASS: PBR maps, casino mirror treatment, matte buildings and fallback');

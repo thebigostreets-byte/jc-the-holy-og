@@ -27,6 +27,7 @@ jobs:
           node scripts/validate-site.mjs
           node scripts/validate-dialogue.mjs
           node scripts/validate-worker.mjs
+          node tests/photorealism-pbr.mjs
           node tests/gameplay-regressions.mjs
           node tests/performance-guardrails.mjs
           node tests/npc-motion.mjs

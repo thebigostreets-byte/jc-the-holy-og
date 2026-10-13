@@ -34,3 +34,32 @@ export function applyPhotorealMaterial(THREE,material,detailMaps,{casino=false,b
   material.needsUpdate=true;
   return material;
 }
+
+/** One shared static city/ground reflection, never one camera per building. */
+export function createCityMirrorMap(THREE,{enabled=true,lowSpec=false}={}){
+ if(!enabled||typeof document==='undefined')return null;
+ const canvas=document.createElement('canvas');
+ canvas.width=lowSpec?256:512;canvas.height=canvas.width/2;
+ const ctx=canvas.getContext('2d');if(!ctx)return null;
+ const w=canvas.width,h=canvas.height,sky=ctx.createLinearGradient(0,0,0,h);
+ sky.addColorStop(0,'#183451');sky.addColorStop(.53,'#a58d8b');
+ sky.addColorStop(.55,'#283747');sky.addColorStop(1,'#172a39');
+ ctx.fillStyle=sky;ctx.fillRect(0,0,w,h);
+ const map=new THREE.CanvasTexture(canvas);
+ map.mapping=THREE.EquirectangularReflectionMapping;
+ map.colorSpace=THREE.SRGBColorSpace;
+ const image=new Image();
+ image.onload=()=>{ctx.save();ctx.globalAlpha=.58;ctx.drawImage(image,0,h*.62,w,h*.38);ctx.restore();map.needsUpdate=true;};
+ image.onerror=()=>{};
+ image.src='./assets/imagery/C15_R14.jpg';
+ return map;
+}
+export function applyCasinoMirrorMaterial(material,map,{casino=false,height=0,lowSpec=false}={}){
+ if(!material||!map||!casino||height<24)return material;
+ material.envMap=map;material.envMapIntensity=lowSpec?.3:.6;
+ material.roughness=Math.min(material.roughness??.6,lowSpec?.36:.25);
+ material.metalness=Math.max(material.metalness??0,lowSpec?.25:.43);
+ material.userData.jcMirrorFacade=true;
+ material.needsUpdate=true;
+ return material;
+}
