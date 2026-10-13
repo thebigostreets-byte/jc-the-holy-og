@@ -2,7 +2,7 @@ import * as THREE from './three.module.js';
 
 // Decorative parking surfaces are placed only on plausible open, gently graded
 // parcels next to mapped streets. They are not surveyed parking boundaries.
-export function buildProceduralParking(game,tile,records,sample,isRoadway,{lowSpec=false,maxLots=6}={}){
+export function buildProceduralParking(game,tile,records,sample,isRoadway,{lowSpec=false,maxLots=6,surfaceMaterials=null}={}){
  if(!Array.isArray(records)||!records.length||game.loaded.get(tile)?.userData.generatedFallback)return null;
  const group=game.loaded.get(tile),section=game.sections?.find(s=>s.id===tile);
  if(!group||!section)return null;
@@ -96,7 +96,7 @@ export function buildProceduralParking(game,tile,records,sample,isRoadway,{lowSp
   geo.computeVertexNormals();geo.computeBoundingSphere();
   root.add(new THREE.Mesh(geo,material));
  }
- const surfaces=game.roads?.surfaceMaterials;
+ const surfaces=surfaceMaterials||game.roads?.surfaceMaterials;
  if(!surfaces)return null;
  mesh(positions,uvs,surfaces.parking);
  mesh(lines,lineUvs,surfaces.parkingLine);
