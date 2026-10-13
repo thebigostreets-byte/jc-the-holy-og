@@ -86,7 +86,7 @@ export function createRoadNetwork(game){
   // Fallback-only tiles must use the same asphalt as the real mapped road network.
   for(const group of game.loaded.values())if(group.userData.generatedFallback){
    for(const child of group.children)if(child.userData.jcFallbackRoad&&!child.userData.jcPbrRoad){
-    child.material?.dispose?.();child.material=surfaceMaterials.road;child.userData.jcPbrRoad=true;
+    child.material?.dispose?.();child.material=surfaceMaterials.road.clone();child.userData.jcPbrRoad=true;
    }
   }
   const token=++revision;
