@@ -1,0 +1,25 @@
+name: Miracle effect lifecycle regression
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'jc-miracle-effects.js'
+      - 'dist/client/jc-miracle-effects.js'
+      - 'tests/miracle-effects-guards.mjs'
+      - '.github/workflows/miracle-effects-guards.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  miracle-guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check miracle effect guards
+        run: |
+          node --check jc-miracle-effects.js
+          node --check tests/miracle-effects-guards.mjs
+          node tests/miracle-effects-guards.mjs
