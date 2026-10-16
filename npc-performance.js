@@ -19,10 +19,10 @@ export function createNpcPerformanceScheduler({
   return {
     getTier,
     shouldUpdate(id, distance, time = now()) {
-      if (id == null) return false;
+      if (id == null || !Number.isFinite(time)) return false;
       const tier = getTier(distance);
       const last = lastUpdates.get(id);
-      if (!last || time < last.time || time - last.time >= config.intervals[tier]) {
+      if (!last || time < last.time || tier < last.tier || time - last.time >= config.intervals[tier]) {
         lastUpdates.set(id, {time, tier});
         return true;
       }
@@ -41,34 +41,45 @@ export function createNpcDecisionQueue({
   concurrency = 2,
   timeoutMs = 9000,
   cooldownMs = 30000,
+  maxQueued = 256,
+  maxHistory = 2048,
   now = () => Date.now(),
 } = {}) {
   const pending = new Map();
   const lastSent = new Map();
   const queue = [];
   let active = 0;
-  const maxConcurrent = Math.max(1, Math.min(4, Math.floor(concurrency)));
+  const maxConcurrent = Number.isFinite(concurrency) ? Math.max(1, Math.min(4, Math.floor(concurrency))) : 2;
+  const requestTimeout = Number.isFinite(timeoutMs) ? Math.max(1, timeoutMs) : 9000;
+  const safeCooldown = Number.isFinite(cooldownMs) ? Math.max(0, cooldownMs) : 30000;
+  const queueLimit = Number.isFinite(maxQueued) ? Math.max(0, Math.floor(maxQueued)) : 256;
+  const historyLimit = Number.isFinite(maxHistory) ? Math.max(0, Math.floor(maxHistory)) : 2048;
   function pump() {
     while (active < maxConcurrent && queue.length) {
       const job = queue.shift();
       if (job.cancelled) { pending.delete(job.id); job.resolve(null); continue; }
       active++;
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-      fetcher(endpoint, {
+      let timer;
+      const deadline = new Promise(resolve => {
+        timer = setTimeout(() => { controller.abort(); resolve(null); }, requestTimeout);
+      });
+      const response = Promise.resolve().then(() => fetcher(endpoint, {
         method: 'POST',
         headers: {'content-type':'application/json'},
         credentials: 'same-origin',
         signal: controller.signal,
         body: JSON.stringify(job.payload),
-      }).then(async response => {
-        if (!response.ok) return null;
-        const result = await response.json();
-        return typeof result?.reply === 'string' ? result : null;
-      }).catch(() => null).then(result => job.resolve(result)).finally(() => {
+      })).then(async result => {
+        if (!result?.ok) return null;
+        const data = await result.json();
+        return typeof data?.reply === 'string' ? data : null;
+      }).catch(() => null);
+      Promise.race([response, deadline]).then(result => {
         clearTimeout(timer);
         active--;
-        pending.delete(job.id);
+        if (pending.get(job.id) === job) pending.delete(job.id);
+        job.resolve(result);
         pump();
       });
     }
@@ -78,8 +89,15 @@ export function createNpcDecisionQueue({
       if (id == null || !payload || typeof payload !== 'object') return Promise.resolve(null);
       if (pending.has(id)) return pending.get(id).promise;
       const time = now();
-      if (time - (lastSent.get(id) ?? -Infinity) < cooldownMs) return Promise.resolve(null);
-      lastSent.set(id, time);
+      if (!Number.isFinite(time)) return Promise.resolve(null);
+      const previous = lastSent.get(id);
+      if (previous !== undefined && time >= previous && time - previous < safeCooldown) return Promise.resolve(null);
+      if (active >= maxConcurrent && queue.length >= queueLimit) return Promise.resolve(null);
+      if (lastSent.has(id)) lastSent.delete(id);
+      if (historyLimit > 0) {
+        lastSent.set(id, time);
+        while (lastSent.size > historyLimit) lastSent.delete(lastSent.keys().next().value);
+      }
       let resolve;
       const promise = new Promise(r => { resolve = r; });
       const job = {id, payload, promise, resolve, cancelled:false};
