@@ -11,7 +11,7 @@ const lock=JSON.parse(await readFile(new URL('./game-assets-lock.json',import.me
 const sourceAssets=new Set(JSON.parse(await readFile(new URL('./public-assets.json',import.meta.url),'utf8')));
 const verifyOnly=process.argv.includes('--verify-only');
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
-let cursor=0,verified=0,downloaded=0,refreshedImagery=0,skippedOptionalAssets=0;
+let cursor=0,verified=0,downloaded=0,refreshedImagery=0,refreshedManifest=0,skippedOptionalAssets=0;
 const missingOptionalAssets=new Set();
 const optionalFacadeAtlases=new Set(['facades/photographic-atlas-v2.webp','facades/physical-materials-v1.webp']);
 async function work(){
@@ -46,8 +46,23 @@ async function work(){
     }
     const actualHash=hash(bytes);
     if(bytes.length!==asset.bytes||actualHash!==asset.sha256){
-      if(!asset.path.startsWith('assets/imagery/')||!/^C\d{2}_R\d{2}\.jpg$/.test(asset.path.slice(15)))throw Error(`Asset checksum mismatch: ${asset.path}. Expected ${asset.bytes} bytes / ${asset.sha256}; received ${bytes.length} bytes / ${actualHash}.`);
-      asset.bytes=bytes.length;asset.sha256=actualHash;refreshedImagery++;console.log(`Refreshed current city imagery: ${asset.path}`);
+      if(asset.path==='city-manifest.json'){
+        let manifest;
+        try{manifest=JSON.parse(bytes.toString('utf8'))?.manifest;}catch{}
+        const bounds=manifest?.boundsEPSG32611,sections=manifest?.sections;
+        const sectionIds=new Set(Array.isArray(sections)?sections.map(s=>s.id):[]);
+        const credible=Array.isArray(bounds)&&bounds.length===4&&bounds.every(Number.isFinite)
+          &&Math.abs(bounds[0]-648949.782)<2&&Math.abs(bounds[1]-3983561.814)<2
+          &&Math.abs(bounds[2]-683949.782)<2&&Math.abs(bounds[3]-4018561.814)<2
+          &&Array.isArray(sections)&&sections.length===1225&&sectionIds.size===1225
+          &&sectionIds.has('C15_R14')&&sectionIds.has('C00_R00')&&sectionIds.has('C34_R34');
+        if(!credible)throw Error('Updated city manifest has unexpected boundaries or incomplete tiles.');
+        asset.bytes=bytes.length;asset.sha256=actualHash;refreshedManifest++;
+        console.log('Verified and refreshed updated 35 km Las Vegas manifest.');
+      }else if(asset.path.startsWith('assets/imagery/')&&/^C\d{2}_R\d{2}\.jpg$/.test(asset.path.slice(15))){
+        asset.bytes=bytes.length;asset.sha256=actualHash;refreshedImagery++;
+        console.log(`Refreshed current city imagery: ${asset.path}`);
+      }else throw Error(`Asset checksum mismatch: ${asset.path}. Expected ${asset.bytes} bytes / ${asset.sha256}; received ${bytes.length} bytes / ${actualHash}.`);
     }
     await mkdir(path.dirname(target),{recursive:true});
     const temporary=`${target}.part-${process.pid}`;
@@ -56,11 +71,11 @@ async function work(){
   }
 }
 await Promise.all(Array.from({length:4},()=>work()));
-if(refreshedImagery||missingOptionalAssets.size){
+if(refreshedImagery||refreshedManifest||missingOptionalAssets.size){
   lock.assets=lock.assets.filter(asset=>!missingOptionalAssets.has(asset.path));
   const lockPath=new URL('./game-assets-lock.json',import.meta.url);await writeFile(lockPath,JSON.stringify(lock,null,2)+'\n');
   const publicAssetsPath=new URL('./public-assets.json',import.meta.url);
   const publicAssets=JSON.parse(await readFile(publicAssetsPath,'utf8')).filter(asset=>!missingOptionalAssets.has(asset));
   await writeFile(publicAssetsPath,JSON.stringify(publicAssets,null,2)+'\n');
 }
-console.log(`Verified ${verified}, restored ${downloaded} assets, refreshed ${refreshedImagery} city images, skipped ${skippedOptionalAssets} optional map assets. SHA-256 checks passed.`);
+console.log(`Verified ${verified}, restored ${downloaded} assets, refreshed ${refreshedImagery} city images and ${refreshedManifest} validated manifests, skipped ${skippedOptionalAssets} optional map assets. SHA-256 checks passed.`);
