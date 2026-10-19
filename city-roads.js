@@ -1,8 +1,8 @@
 import * as THREE from './three.module.js';
-import {createVegasStreetNetwork} from './vegas-streets.js';
+import {createVegasStreetNetwork,vegasToUTM11} from './vegas-streets.js';
 import {craterDepth} from './crater-system.js';
 import {createPhotorealPavementMaterials} from './road-surface-photoreal.js';
-import {buildProceduralParking} from './city-parking-lots.js';
+import {buildMappedParking} from './city-osm-parking.js';
 // The shipped terrain uses a regular grid, triangulated along b--c.
 // Sample its triangles rather than nearby building foundations.
 export function terrainSampler(group){
@@ -72,16 +72,42 @@ export async function buildRoadGeometry(records,sample,{origin=[0,0],yieldEvery=
  return {layers:layers.map((positions,i)=>({positions:new Float32Array(positions),uv:new Float32Array(uvs[i])})),quads};
 }
 export function createRoadNetwork(game){
- const active=new Map(),pending=new Set(),samplers=new WeakMap(),roadCells=new Map(),roadTileCells=new Map(),cellSize=48;let revision=0,disposed=false;
+ const active=new Map(),pending=new Set(),samplers=new WeakMap(),roadCells=new Map(),roadTileCells=new Map(),cellSize=48;
+ let revision=0,disposed=false,syncing=false;
+ let osmAvailable=false,osmRoadTiles=new Set(),osmParkingTiles=new Set();
+ const indexReady=fetch('./data/paving-index.json').then(async response=>{
+  if(!response.ok)return;
+  const index=await response.json();
+  if(index?.source?.includes('OpenStreetMap')&&Array.isArray(index.roads)){
+   osmRoadTiles=new Set(index.roads);osmParkingTiles=new Set(index.parking||[]);
+   osmAvailable=osmRoadTiles.size>100;
+   window.JC_PAVEMENT_SOURCE=osmAvailable?'OpenStreetMap permanent offline assets':'legacy road coverage';
+  }
+ }).catch(()=>{window.JC_PAVEMENT_SOURCE='legacy road coverage';});
  const pavement=createPhotorealPavementMaterials({lowSpec:!!game.lowSpec});
  const surfaceMaterials=pavement.materials;
  const mats=[surfaceMaterials.road,surfaceMaterials.sidewalk,surfaceMaterials.yellow,surfaceMaterials.white];
- function sample(x,z){for(const group of game.loaded.values()){let fn=samplers.get(group);if(!fn){fn=terrainSampler(group);if(fn)samplers.set(group,fn);}const value=fn?.(x,z);if(Number.isFinite(value))return value;}return NaN;}
+ function sample(x,z){
+  for(const group of game.loaded.values()){let fn=samplers.get(group);if(!fn){fn=terrainSampler(group);if(fn)samplers.set(group,fn);}const value=fn?.(x,z);if(Number.isFinite(value))return value;}
+  // Generated-fill tiles carry a flat 0m ground plane rather than inferred
+  // terrain geometry. Preserve paved coverage there without fake terrain samples.
+  const east=x+game.origin[0],north=game.origin[1]-z;
+  const col=Math.floor((east-648949.782)/1000),row=Math.floor((north-3983561.814)/1000);
+  if(col>=0&&row>=0&&col<35&&row<35){
+   const tile=`C${String(col).padStart(2,'0')}_R${String(row).padStart(2,'0')}`;
+   if(game.loaded.get(tile)?.userData.generatedFallback)return 0;
+  }
+  return NaN;
+ }
  function removeRoadTile(id){const cells=roadTileCells.get(id);if(!cells)return;for(const [key,segments] of cells){const all=roadCells.get(key);if(!all)continue;const keep=all.filter(segment=>!segments.includes(segment));if(keep.length)roadCells.set(key,keep);else roadCells.delete(key);}roadTileCells.delete(id);}
  function indexRoads(id,rows){removeRoadTile(id);const tileCells=new Map();for(const road of rows){const points=road.points;if(!Array.isArray(points)||points.length<2)continue;const width=roadWidth(road.kind);for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i];if(!Array.isArray(a)||!Array.isArray(b))continue;const s={x1:a[0]-game.origin[0],z1:game.origin[1]-a[1],x2:b[0]-game.origin[0],z2:game.origin[1]-b[1],width,name:String(road.name||'Unnamed street').trim()||'Unnamed street',kind:road.kind};if(![s.x1,s.z1,s.x2,s.z2].every(Number.isFinite))continue;const pad=width/2+2;for(let ix=Math.floor((Math.min(s.x1,s.x2)-pad)/cellSize);ix<=Math.floor((Math.max(s.x1,s.x2)+pad)/cellSize);ix++)for(let iz=Math.floor((Math.min(s.z1,s.z2)-pad)/cellSize);iz<=Math.floor((Math.max(s.z1,s.z2)+pad)/cellSize);iz++){const key=`${ix}:${iz}`;if(!roadCells.has(key))roadCells.set(key,[]);if(!tileCells.has(key))tileCells.set(key,[]);roadCells.get(key).push(s);tileCells.get(key).push(s);}}}roadTileCells.set(id,tileCells);}
  function isRoadway(x,z){const candidates=roadCells.get(`${Math.floor(x/cellSize)}:${Math.floor(z/cellSize)}`)||[];return candidates.some(segment=>isPointWithinRoadway(segment,x,z));}
  function nearestRoad(x,z,maxDistance=90){const ix=Math.floor(x/cellSize),iz=Math.floor(z/cellSize),candidates=[];for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)candidates.push(...(roadCells.get(`${ix+dx}:${iz+dz}`)||[]));let best=null,bestDistance=maxDistance;for(const segment of candidates){const dx=segment.x2-segment.x1,dz=segment.z2-segment.z1,len=dx*dx+dz*dz,t=len?THREE.MathUtils.clamp(((x-segment.x1)*dx+(z-segment.z1)*dz)/len,0,1):0,d=Math.hypot(x-(segment.x1+t*dx),z-(segment.z1+t*dz));if(d<bestDistance){bestDistance=d;best={name:segment.name,kind:segment.kind,distance:d};}}return best;}
  async function sync(){
+  if(disposed||syncing)return;
+  syncing=true;
+  try{
+  await indexReady;
   if(disposed)return;
   // Fallback-only tiles must use the same asphalt as the real mapped road network.
   for(const group of game.loaded.values())if(group.userData.generatedFallback){
@@ -92,9 +118,9 @@ export function createRoadNetwork(game){
   const token=++revision;
   // The packaged per-tile road JSON is optional. Keep the core Vegas road
   // network visible even when data/roads/*.json.gz was not published.
-  if(!active.has('__vegas_core__')){
+  if(!osmAvailable&&!active.has('__vegas_core__')){
    const net=createVegasStreetNetwork({anchorX:0,anchorZ:0});
-   const rows=net.routes.map(route=>({name:route.name,kind:route.kind==='freeway'?'FREEWAY':route.kind==='arterial'?'MAJOR STREET':'LOCAL',points:route.points.map(([x,z])=>[game.origin[0]+x,game.origin[1]-z])}));
+   const rows=net.routes.map(route=>({name:route.name,kind:route.kind==='freeway'?'FREEWAY':route.kind==='arterial'?'MAJOR STREET':'LOCAL',points:route.geoPoints.map(([lon,lat])=>vegasToUTM11(lon,lat))}));
    const geometry=await buildRoadGeometry(rows,(x,z)=>{const y=sample(x,z);return Number.isFinite(y)?y:0;},{origin:game.origin,segmentLength:game.lowSpec?20:12,yieldEvery:16});
    if(!disposed){
     indexRoads('__vegas_core__',rows);
@@ -106,7 +132,7 @@ export function createRoadNetwork(game){
   }
   for(const [id,root]of active){if(id==='__vegas_core__')continue;const source=game.loaded.get(id);if(source!==root.userData.sourceGroup){game.scene.remove(root);root.traverse(o=>o.geometry?.dispose?.());active.delete(id);removeRoadTile(id);}else root.visible=source.visible!==false;}
   for(const [id,group]of game.loaded){
-   if(active.has(id)||pending.has(id))continue;
+   if(active.has(id)||pending.has(id)||(osmAvailable&&!osmRoadTiles.has(id)))continue;
    pending.add(id);
    try{
     const response=await fetch(`./data/roads/${id}.json.gz`,{signal:AbortSignal.timeout(12000)});if(!response.ok)throw Error('Road tile '+response.status);
@@ -116,15 +142,25 @@ export function createRoadNetwork(game){
     indexRoads(id,rows);
     const root=new THREE.Group();root.name='Mapped roads '+id;
     geometry.layers.forEach((layer,i)=>{if(!layer.positions.length)return;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(layer.positions,3));g.setAttribute('uv',new THREE.BufferAttribute(layer.uv,2));g.computeVertexNormals();g.computeBoundingSphere();root.add(new THREE.Mesh(g,mats[i]));});
-    // Asphalt on every mapped street; add approximate parking only where the
-    // measured terrain and existing building footprints leave open parcels.
-    const parking=buildProceduralParking(game,id,rows,sample,isRoadway,{lowSpec:!!game.lowSpec,maxLots:game.lowSpec?2:6,surfaceMaterials});
-    if(parking){root.add(parking);root.userData.parkingLots=parking.userData.parkingLots;}
+    // Only real mapped OSM ground-level surface parking, never guessed lots.
+    if(osmParkingTiles.has(id)){
+     try{
+      const response=await fetch(`./data/parking/${id}.json.gz`,{signal:AbortSignal.timeout(8000)});
+      if(response.ok){
+       let bytes=new Uint8Array(await response.arrayBuffer());
+       if(bytes[0]===31&&bytes[1]===139)bytes=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
+       const features=JSON.parse(new TextDecoder().decode(bytes));
+       const parking=buildMappedParking(game,id,features,sample,surfaceMaterials,{lowSpec:!!game.lowSpec});
+       if(parking){root.add(parking);root.userData.parkingLots=parking.userData.parkingLots;}
+      }
+     }catch(error){console.warn('Parking tile unavailable '+id,error.message);}
+    }
     root.userData.sourceGroup=group;root.userData.roadRecords=rows.length;game.scene.add(root);active.set(id,root);window.dispatchEvent(new CustomEvent('jc-roads-loaded',{detail:{tile:id,records:rows,parkingLots:root.userData.parkingLots||0}}));
    }catch(error){console.warn('Mapped roads unavailable for '+id,error.message);}finally{pending.delete(id);}
    if(token!==revision)break;
   }
+  }finally{syncing=false;}
  }
  const timer=setInterval(sync,1500);window.addEventListener('jc-tiles-loaded',sync);sync();
- return {sample,sync,isRoadway,nearestRoad,surfaceMaterials,setVisible(value){for(const group of active.values())group.visible=!!value;},stats:()=>({tiles:active.size,roads:[...active.values()].reduce((n,g)=>n+g.userData.roadRecords,0),drawCalls:[...active.values()].reduce((n,g)=>n+g.children.reduce((sum,c)=>sum+(c.isMesh?1:c.children?.length||0),0),0),parkingLots:[...active.values()].reduce((n,g)=>n+(g.userData.parkingLots||0),0)}),dispose(){disposed=true;clearInterval(timer);window.removeEventListener('jc-tiles-loaded',sync);revision++;for(const root of active.values()){game.scene.remove(root);root.traverse(o=>o.geometry?.dispose?.());}active.clear();roadCells.clear();roadTileCells.clear();pavement.dispose();}};
+ return {sample,sync,isRoadway,nearestRoad,surfaceMaterials,setVisible(value){for(const group of active.values())group.visible=!!value;},stats:()=>({tiles:active.size,roads:[...active.values()].reduce((n,g)=>n+g.userData.roadRecords,0),drawCalls:[...active.values()].reduce((n,g)=>n+g.children.reduce((sum,c)=>sum+(c.isMesh?1:c.children?.length||0),0),0),parkingLots:[...active.values()].reduce((n,g)=>n+(g.userData.parkingLots||0),0),osmTiles:osmRoadTiles.size,osmAvailable}),dispose(){disposed=true;clearInterval(timer);window.removeEventListener('jc-tiles-loaded',sync);revision++;for(const root of active.values()){game.scene.remove(root);root.traverse(o=>o.geometry?.dispose?.());}active.clear();roadCells.clear();roadTileCells.clear();pavement.dispose();}};
 }
