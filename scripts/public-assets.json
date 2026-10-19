@@ -33,6 +33,7 @@
   "city-environment.js",
   "city-manifest.json",
   "city-missions.js",
+  "city-osm-parking.js",
   "city-parking-lots.js",
   "city-roads.js",
   "city-tile-decoder.js",
