@@ -1,5 +1,5 @@
 import * as THREE from './three.module.js';
-import {createVegasStreetNetwork} from './vegas-streets.js';
+import {createVegasStreetNetwork,vegasToUTM11} from './vegas-streets.js';
 import {craterDepth} from './crater-system.js';
 import {createPhotorealPavementMaterials} from './road-surface-photoreal.js';
 import {buildMappedParking} from './city-osm-parking.js';
@@ -120,7 +120,7 @@ export function createRoadNetwork(game){
   // network visible even when data/roads/*.json.gz was not published.
   if(!osmAvailable&&!active.has('__vegas_core__')){
    const net=createVegasStreetNetwork({anchorX:0,anchorZ:0});
-   const rows=net.routes.map(route=>({name:route.name,kind:route.kind==='freeway'?'FREEWAY':route.kind==='arterial'?'MAJOR STREET':'LOCAL',points:route.points.map(([x,z])=>[game.origin[0]+x,game.origin[1]-z])}));
+   const rows=net.routes.map(route=>({name:route.name,kind:route.kind==='freeway'?'FREEWAY':route.kind==='arterial'?'MAJOR STREET':'LOCAL',points:route.geoPoints.map(([lon,lat])=>vegasToUTM11(lon,lat))}));
    const geometry=await buildRoadGeometry(rows,(x,z)=>{const y=sample(x,z);return Number.isFinite(y)?y:0;},{origin:game.origin,segmentLength:game.lowSpec?20:12,yieldEvery:16});
    if(!disposed){
     indexRoads('__vegas_core__',rows);
