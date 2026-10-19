@@ -17,6 +17,35 @@ jobs:
         with:
           ref: main
           path: source
+      - name: Determine weekly offline OSM cache key
+        id: osmweek
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      - name: Cache Nevada OpenStreetMap extract
+        uses: actions/cache@v4
+        with:
+          path: source/.cache/nevada.osm.pbf
+          key: vegas-osm-${{ steps.osmweek.outputs.week }}
+      - name: Compile 35 km Las Vegas streets and surface parking
+        working-directory: source
+        continue-on-error: true
+        run: |
+          python -m pip install --disable-pip-version-check osmium pyproj shapely
+          mkdir -p .cache
+          if [ ! -s .cache/nevada.osm.pbf ]; then
+            curl --fail --location --retry 3 --connect-timeout 25 --max-time 400 \
+              https://download.geofabrik.de/north-america/us/nevada-latest.osm.pbf \
+              -o .cache/nevada.osm.pbf
+          fi
+          python scripts/build-osm-pavement.py --pbf .cache/nevada.osm.pbf --out data
+          node scripts/register-osm-pavement.mjs
+      - name: Display actual road coverage
+        working-directory: source
+        run: |
+          if [ -f data/paving-index.json ]; then
+            node --input-type=module -e "import fs from 'node:fs';const x=JSON.parse(fs.readFileSync('data/paving-index.json'));console.log('Offline OSM roads:',x.roads.length,'parking:',x.parking.length)"
+          else
+            echo "::warning::OSM road download/compilation unavailable; retaining existing road fallback. No citywide coverage claim."
+          fi
       - name: Validate source before deployment
         working-directory: source
         run: |
