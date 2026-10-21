@@ -292,6 +292,7 @@ async function loadAllTiles(){
      group.userData.textures?.forEach(t=>t.dispose());
      break;
     }
+    const area=sectionCenter(tile),distance=Math.hypot(area.x-controls.target.x,area.z-controls.target.z);group.visible=distance<1850;
     loaded.set(tile.id,group);world.add(group);group.updateWorldMatrix(true,true);tileRevision++;
     for(const ob of group.children)if(ob.userData.buildingId){
      buildings.set(ob.userData.buildingId,ob);

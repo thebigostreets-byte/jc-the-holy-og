@@ -130,9 +130,9 @@ export function createRoadNetwork(game){
     window.dispatchEvent(new CustomEvent('jc-roads-loaded',{detail:{tile:'__vegas_core__',records:rows}}));
    }
   }
-  for(const [id,root]of active){if(id==='__vegas_core__')continue;const source=game.loaded.get(id);if(source!==root.userData.sourceGroup){game.scene.remove(root);root.traverse(o=>o.geometry?.dispose?.());active.delete(id);removeRoadTile(id);}else root.visible=source.visible!==false;}
+  for(const [id,root]of active){if(id==='__vegas_core__')continue;const source=game.loaded.get(id);if(source!==root.userData.sourceGroup||(game.streamInfo?.().fullCity&&source?.visible===false)){game.scene.remove(root);root.traverse(o=>o.geometry?.dispose?.());active.delete(id);removeRoadTile(id);}else root.visible=source.visible!==false;}
   for(const [id,group]of game.loaded){
-   if(active.has(id)||pending.has(id)||(osmAvailable&&!osmRoadTiles.has(id)))continue;
+   if(active.has(id)||pending.has(id)||(osmAvailable&&!osmRoadTiles.has(id))||(game.streamInfo?.().fullCity&&group.visible===false))continue;
    pending.add(id);
    try{
     const response=await fetch(`./data/roads/${id}.json.gz`,{signal:AbortSignal.timeout(12000)});if(!response.ok)throw Error('Road tile '+response.status);
