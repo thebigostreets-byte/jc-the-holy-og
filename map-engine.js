@@ -26,6 +26,11 @@ async function fetchBytes(url){
  let failure;
  // The manifest and starting Strip tile must not spend minutes in retries.
  // Other city files retain the original generous network budget.
+ if(/^tiles\/C\d{2}_R\d{2}\.glb\.gz$/.test(url)&&'caches' in window){
+  try{const cache=await caches.open('jc-city-3d-tiles-v1'),response=await cache.match(new URL('./'+url,location.href).href);
+   if(response)return new Uint8Array(await response.arrayBuffer());
+  }catch(error){console.warn('Reading cached city tile failed',error);}
+ }
  const critical=/city-manifest\.json|tiles\/C15_R14\.glb(?:\.gz)?/.test(url);
  const attempts=critical?2:3;
  const timeoutMs=critical?18000:45000;
@@ -68,6 +73,7 @@ renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFi
 const camera=new THREE.PerspectiveCamera(42,1,.5,90000), controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.maxPolarAngle=Math.PI*.49;controls.minDistance=8;controls.maxDistance=65000;
 scene.add(new THREE.HemisphereLight(0x6078b0,0x15131d,.72));const sun=new THREE.DirectionalLight(0x9ab5ff,.48);sun.position.set(-1800,5000,1800);scene.add(sun);
 const world=new THREE.Group();scene.add(world);const buildings=new Map(),chunks=new Map(),edits=new Map(),files=new Map();const loaded=new Map();let selected=null,box=null,loading=false,tileRevision=0;
+let allTilesMode=false,allTilesRunning=false,allTileJob=0,allTileFailures=0,allTileLoadedCount=0,allTileCacheAbort=null,allTileCacheRunning=false;
 const base=payload.manifest.boundsEPSG32611, origin=[(base[0]+base[2])/2,(base[1]+base[3])/2], sections=payload.manifest.sections,byId=new Map(sections.map(s=>[s.id,s]));let current='C15_R14';
 let last=performance.now();const particles=[],particleCap=stable3D?48:(mobileMap?72:180);const status=t=>$('status').textContent=t;const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const photoLibrary=createBuildingPhotoLibrary(THREE,mobileMap);
@@ -169,7 +175,7 @@ async function parseGLB(raw,name){const dv=new DataView(raw.buffer,raw.byteOffse
   if(surface){ma.userData.surfaceScale=useArtSurface?surface.scale:null;ma.userData.identitySignature=surface.signature;}
   return ma;
  });
- const group=new THREE.Group();group.userData.origin=g.asset.extras;group.userData.textures=textures;group.userData.totalBuildings=g.nodes.length;group.userData.bootBuildingLimit=Math.min(g.nodes.length,bootBuildingLimit);
+ const group=new THREE.Group();group.userData.origin=g.asset.extras;group.userData.textures=textures;group.userData.totalBuildings=g.nodes.length;group.userData.bootBuildingLimit=Math.min(g.nodes.length,allTilesMode?Math.min(18,bootBuildingLimit):bootBuildingLimit);
  const buildNode=n=>{if(n.mesh===undefined)return null;const ob=new THREE.Group();ob.name=n.name;ob.userData={...n.extras};const identity=resolvedIdentities.get(n.name);if(identity)ob.userData.identity=identity;ob.position.fromArray(n.translation||[0,0,0]);for(const p of g.meshes[n.mesh].primitives){const geom=new THREE.BufferGeometry();for(const [key,i]of Object.entries(p.attributes)){const map={POSITION:'position',NORMAL:'normal',TEXCOORD_0:'uv'};if(map[key])geom.setAttribute(map[key],acc(i));}if(p.indices!==undefined)geom.setIndex(acc(p.indices));if(mats[p.material].userData.generatedRoof){const pos=geom.getAttribute('position'),uv=new Float32Array(pos.count*2);for(let i=0;i<pos.count;i++){uv[i*2]=pos.getX(i)/3;uv[i*2+1]=pos.getZ(i)/3;}geom.setAttribute('uv',new THREE.BufferAttribute(uv,2));}const scale=mats[p.material].userData.surfaceScale;if(scale&&mats[p.material].userData.forceWallUV&&geom.getAttribute('normal'))geom.setAttribute('uv',new THREE.BufferAttribute(wallUV(geom.getAttribute('position'),geom.getAttribute('normal'),...scale),2));if(!stable3D&&mats[p.material].bumpMap){const pos=geom.getAttribute('position'),detail=new Float32Array(pos.count*2);for(let i=0;i<pos.count;i++){detail[i*2]=pos.getX(i)/2;detail[i*2+1]=pos.getZ(i)/2;}geom.setAttribute('uv1',new THREE.BufferAttribute(detail,2));}geom.computeBoundingSphere();const mesh=new THREE.Mesh(geom,mats[p.material]);mesh.userData.owner=ob;ob.add(mesh);}return ob;};
  let built=0;for(const n of g.nodes){if(built>=bootBuildingLimit)break;built++;if(built%8===0||built===group.userData.bootBuildingLimit){statusText('Preparing playable city '+built+' / '+group.userData.bootBuildingLimit+'…');await new Promise(resolve=>setTimeout(resolve,0));}const ob=buildNode(n);if(ob)group.add(ob);}
  group.userData.continueBuild=()=>{if(group.userData.progressiveStarted||built>=g.nodes.length)return;group.userData.progressiveStarted=true;const progressiveBatch=legacySpec?1:(lowSpec?2:4),progressiveDelay=legacySpec?60:(lowSpec?12:0);const scheduleBuildStep=()=>{if(progressiveDelay)setTimeout(()=>requestAnimationFrame(step),progressiveDelay);else requestAnimationFrame(step);};const step=()=>{if(!group.parent){group.userData.progressiveStarted=false;return;}let made=0;while(built<g.nodes.length&&made<progressiveBatch){const n=g.nodes[built++],ob=buildNode(n);if(ob){group.add(ob);if(ob.userData.buildingId){buildings.set(ob.userData.buildingId,ob);const edit=edits.get(ob.userData.buildingId)||{};setAppearance(ob,edit);if(edit.state)destroy(ob,edit.state,false);}}made++;}window.JC_CITY_PROGRESSIVE_BUILDINGS=built;if(built<g.nodes.length)scheduleBuildStep();else{group.userData.progressiveComplete=true;window.dispatchEvent(new CustomEvent('jc-tile-progressive-complete',{detail:{tile:name,buildings:built}}));updateBuildingList();}};scheduleBuildStep();};
@@ -218,10 +224,26 @@ function updateBuildingList(force=false){
 }
 $('buildingList').addEventListener('focus',()=>{if(buildingListDirty)updateBuildingList(true);});
 async function ensureContext(){if(contextGround||!available('assets/connected_terrain.glb'))return;if(contextPromise)return contextPromise;contextPromise=(async()=>{try{const g=await parseGLB(await bytes('assets/connected_terrain.glb'),'assets/connected_terrain.glb');g.name='Connected 35 km terrain';world.add(g);contextGround=g;}catch(e){status('City terrain could not load: '+e.message);}finally{contextPromise=null;}})();return contextPromise;}
-function loadArea(tile,radius=streamRadius,resetCamera=true){const req=++desiredRequest;loadQueue=loadQueue.catch(()=>{}).then(async()=>{if(req!==desiredRequest)return;loading=true;try{const center=byId.get(tile);if(!center)throw Error('Outside the 35 km city boundary.');const wanted=sections.filter(s=>Math.abs(s.column-center.column)<=radius&&Math.abs(s.row-center.row)<=radius).sort((a,b)=>Math.abs(a.column-center.column)+Math.abs(a.row-center.row)-Math.abs(b.column-center.column)-Math.abs(b.row-center.row));if(!available(center.uri))status(`Tile ${tile} is generated fill until its 3D source is packaged.`);if(!stable3D&&window.JC_HYPERFLIGHT&&streamHeading){const length=Math.hypot(streamHeading.x,streamHeading.z);if(length>1)for(const d of [1000,2000,3000,4000,5000]){const next=byId.get(sectionAt(controls.target.x+streamHeading.x/length*d,controls.target.z+streamHeading.z/length*d));if(next&&!wanted.includes(next))wanted.push(next);}}const keep=new Set(wanted.map(s=>s.id));lastWanted=tile;current=tile;$('tile').value=tile;if(resetCamera)view('south',radius);status(`Connecting ${tile} · ${wanted.length} nearby tiles…`);if(!loaded.size){$('loading').style.display='flex';$('loading').textContent='Connecting city tiles…';}for(const s of wanted){if(req!==desiredRequest)break;if(loaded.has(s.id))continue;let g;if(available(s.uri)){g=await parseGLB(await bytes(s.uri),s.uri);}else{g=createMissingTileFallback(s);}if(req!==desiredRequest){g.traverse(x=>{if(x.isMesh){x.geometry.dispose();if(Array.isArray(x.material))x.material.forEach(m=>m.dispose());else x.material?.dispose?.();}});g.userData.textures?.forEach(t=>t.dispose());break;}loaded.set(s.id,g);tileRevision++;world.add(g);g.updateWorldMatrix(true,true);for(const ob of g.children)if(ob.userData.buildingId){buildings.set(ob.userData.buildingId,ob);const e=edits.get(ob.userData.buildingId)||{};setAppearance(ob,e);if(e.state)destroy(ob,e.state,false);}g.userData.continueBuild?.();for(const id of [...loaded.keys()])if(!keep.has(id)&&loaded.size>wanted.length)removeTile(id);await new Promise(resolve=>setTimeout(resolve,0));}if(req===desiredRequest){for(const id of [...loaded.keys()])if(!keep.has(id))removeTile(id);updateBuildingList();status(`${PACKAGED_CITY_TILE_COUNT.toLocaleString()} detailed tiles available · ${loaded.size} detailed tiles active · ${buildings.size.toLocaleString()} editable features`);retryAt=0;if(!contextGround&&!contextPromise)setTimeout(()=>ensureContext(),2500);}}catch(e){retryAt=performance.now()+5000;window.JC_TILE_LOAD_ERROR=e.message;status(e.message);}finally{loading=false;$('loading').style.display='none';window.ready=true;window.dispatchEvent(new Event('jc-tiles-loaded'));}});return loadQueue;}
+function loadArea(tile,radius=streamRadius,resetCamera=true){if(allTilesMode){allTilesMode=false;allTileJob++;allTilesRunning=false;$('streamRange').value=String(streamRadius);$('stopAllTiles').disabled=!allTileCacheRunning;}const req=++desiredRequest;loadQueue=loadQueue.catch(()=>{}).then(async()=>{if(req!==desiredRequest)return;loading=true;try{const center=byId.get(tile);if(!center)throw Error('Outside the 35 km city boundary.');const wanted=sections.filter(s=>Math.abs(s.column-center.column)<=radius&&Math.abs(s.row-center.row)<=radius).sort((a,b)=>Math.abs(a.column-center.column)+Math.abs(a.row-center.row)-Math.abs(b.column-center.column)-Math.abs(b.row-center.row));if(!available(center.uri))status(`Tile ${tile} is generated fill until its 3D source is packaged.`);if(!stable3D&&window.JC_HYPERFLIGHT&&streamHeading){const length=Math.hypot(streamHeading.x,streamHeading.z);if(length>1)for(const d of [1000,2000,3000,4000,5000]){const next=byId.get(sectionAt(controls.target.x+streamHeading.x/length*d,controls.target.z+streamHeading.z/length*d));if(next&&!wanted.includes(next))wanted.push(next);}}const keep=new Set(wanted.map(s=>s.id));lastWanted=tile;current=tile;$('tile').value=tile;if(resetCamera)view('south',radius);status(`Connecting ${tile} · ${wanted.length} nearby tiles…`);if(!loaded.size){$('loading').style.display='flex';$('loading').textContent='Connecting city tiles…';}for(const s of wanted){if(req!==desiredRequest)break;if(loaded.has(s.id))continue;let g;if(available(s.uri)){g=await parseGLB(await bytes(s.uri),s.uri);}else{g=createMissingTileFallback(s);}if(req!==desiredRequest){g.traverse(x=>{if(x.isMesh){x.geometry.dispose();if(Array.isArray(x.material))x.material.forEach(m=>m.dispose());else x.material?.dispose?.();}});g.userData.textures?.forEach(t=>t.dispose());break;}loaded.set(s.id,g);tileRevision++;world.add(g);g.updateWorldMatrix(true,true);for(const ob of g.children)if(ob.userData.buildingId){buildings.set(ob.userData.buildingId,ob);const e=edits.get(ob.userData.buildingId)||{};setAppearance(ob,e);if(e.state)destroy(ob,e.state,false);}g.userData.continueBuild?.();let discarded=0;for(const id of [...loaded.keys()])if(!keep.has(id)&&loaded.size>wanted.length){removeTile(id);if(++discarded%8===0)await new Promise(requestAnimationFrame);}await new Promise(resolve=>setTimeout(resolve,0));}if(req===desiredRequest){let discarded=0;for(const id of [...loaded.keys()])if(!keep.has(id)){removeTile(id);if(++discarded%8===0)await new Promise(requestAnimationFrame);}updateBuildingList();status(`${PACKAGED_CITY_TILE_COUNT.toLocaleString()} detailed tiles available · ${loaded.size} detailed tiles active · ${buildings.size.toLocaleString()} editable features`);retryAt=0;if(!contextGround&&!contextPromise)setTimeout(()=>ensureContext(),2500);}}catch(e){retryAt=performance.now()+5000;window.JC_TILE_LOAD_ERROR=e.message;status(e.message);}finally{loading=false;$('loading').style.display='none';window.ready=true;window.dispatchEvent(new Event('jc-tiles-loaded'));}});return loadQueue;}
 function movement(dt){if(window.JC_MAP_PLAYING||!keys.size)return;const forward=controls.target.clone().sub(camera.position);forward.y=0;forward.normalize();const right=new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0)),delta=new THREE.Vector3(),speed=Math.max(120,camera.position.distanceTo(controls.target)*.7)*(keys.has('Shift')?3:1);if(keys.has('w')||keys.has('ArrowUp'))delta.add(forward);if(keys.has('s')||keys.has('ArrowDown'))delta.sub(forward);if(keys.has('d')||keys.has('ArrowRight'))delta.add(right);if(keys.has('a')||keys.has('ArrowLeft'))delta.sub(right);if(delta.lengthSq()){delta.normalize().multiplyScalar(speed*dt);const next=controls.target.clone().add(delta);next.x=THREE.MathUtils.clamp(next.x,base[0]-origin[0]+1,base[2]-origin[0]-1);next.z=THREE.MathUtils.clamp(next.z,origin[1]-base[3]+1,origin[1]-base[1]-1);delta.copy(next).sub(controls.target);camera.position.add(delta);controls.target.copy(next);}}
 function streamingTick(t,dt){
- movement(dt);if(!window.JC_CITY_READY||!streamEnabled||t<retryAt||t-lastStreamCheck<400)return;lastStreamCheck=t;
+ movement(dt);
+ if(allTilesMode){
+  if(t-lastStreamCheck<400)return;lastStreamCheck=t;
+  const pos={x:controls.target.x,z:controls.target.z};
+  applyTileLod(pos);
+  const tile=centerSection();
+  if(tile!==lastWanted){
+   lastWanted=tile;current=tile;$('tile').value=tile;
+   const center=byId.get(tile);
+   for(const [id,group] of loaded){
+    const sec=byId.get(id);
+    if(sec&&center&&Math.abs(sec.column-center.column)<=1&&Math.abs(sec.row-center.row)<=1)group.userData.continueBuild?.();
+   }
+  }
+  return;
+ }
+ if(!window.JC_CITY_READY||!streamEnabled||t<retryAt||t-lastStreamCheck<400)return;lastStreamCheck=t;
  const position={x:controls.target.x,z:controls.target.z},ahead=predictTravel(position,streamSample,streamSample?t-streamSample.t:0,16);streamHeading={x:ahead.x-position.x,z:ahead.z-position.z};streamSample={...position,t};
  applyTileLod(position);
  const id=centerSection();if(id!==lastWanted&&!loading)loadArea(id,window.JC_HYPERFLIGHT?0:streamRadius,false);
@@ -231,7 +253,121 @@ function streamingTick(t,dt){
  for(const point of corridorPoints(position,ahead,950)){const predicted=sectionAt(point.x,point.z);if(predicted===id||seen.has(predicted))continue;seen.add(predicted);const section=byId.get(predicted);if(section&&!loaded.has(predicted)&&available(section.uri))void prefetchedBytes.prefetch(section.uri);}
 }
 window.addEventListener('keydown',e=>{if(e.target.closest('input,select,textarea,button'))return;const k=e.key.length===1?e.key.toLowerCase():e.key;if(['w','a','s','d','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Shift'].includes(k)){keys.add(k);e.preventDefault();}});window.addEventListener('keyup',e=>keys.delete(e.key.length===1?e.key.toLowerCase():e.key));window.addEventListener('blur',()=>keys.clear());
-$('autoStream').onchange=e=>{streamEnabled=e.target.checked;if(streamEnabled){lastWanted='';retryAt=0;}};$('streamRange').onchange=e=>{streamRadius=Number(e.target.value);lastWanted='';retryAt=0;loadArea(centerSection(),streamRadius,false);};
+$('autoStream').onchange=e=>{streamEnabled=e.target.checked;if(streamEnabled){lastWanted='';retryAt=0;}};
+$('streamRange').onchange=e=>{
+ if(e.target.value==='all'){void loadAllTiles();return;}
+ streamRadius=Number(e.target.value);lastWanted='';retryAt=0;loadArea(centerSection(),streamRadius,false);
+};
+const all3DTiles=sections.filter(s=>available(s.uri)).sort((a,b)=>{
+ const focus=byId.get('C15_R14'),da=Math.abs(a.column-focus.column)+Math.abs(a.row-focus.row),db=Math.abs(b.column-focus.column)+Math.abs(b.row-focus.row);
+ return da-db;
+});
+function updateAllTileStatus(message,done=0,total=all3DTiles.length){
+ $('allTileStatus').textContent=message;
+ $('allTileProgress').value=total?Math.floor(100*done/total):0;
+ window.JC_ALL_TILES_STATE={allTilesMode,allTilesRunning,cacheRunning:allTileCacheRunning,done,total,loaded:loaded.size,failures:allTileFailures};
+}
+function updateAllTileStop(){ $('stopAllTiles').disabled=!(allTilesMode||allTileCacheRunning); }
+async function loadAllTiles(){
+ if(allTilesRunning)return;
+ if(lowSpec||mobileMap){
+  $('streamRange').value=String(streamRadius);
+  updateAllTileStatus('Full-city resident geometry needs desktop/high-RAM hardware. Use Pre-download all 3D tiles on this device.');
+  return;
+ }
+ const job=++allTileJob,req=++desiredRequest;
+ allTilesMode=true;allTilesRunning=true;allTileFailures=0;allTileLoadedCount=0;lastWanted='';
+ updateAllTileStop();
+ // Wait for any previous area switch before allocating more scene geometry.
+ loadQueue=loadQueue.catch(()=>{}).then(async()=>{
+  let done=0;
+  updateAllTileStatus('Loading '+all3DTiles.length+' packaged 3D tiles. Missing source tiles remain terrain/overview only.',0);
+  for(const tile of all3DTiles){
+   if(!allTilesMode||job!==allTileJob||req!==desiredRequest)break;
+   if(loaded.has(tile.id)){done++;updateAllTileStatus('3D tiles loaded '+done+' / '+all3DTiles.length,done);continue;}
+   try{
+    const group=await parseGLB(await bytes(tile.uri),tile.uri);
+    if(!allTilesMode||job!==allTileJob||req!==desiredRequest){
+     group.traverse(m=>{if(m.isMesh){m.geometry?.dispose();m.material?.dispose();}});
+     group.userData.textures?.forEach(t=>t.dispose());
+     break;
+    }
+    loaded.set(tile.id,group);world.add(group);group.updateWorldMatrix(true,true);tileRevision++;
+    for(const ob of group.children)if(ob.userData.buildingId){
+     buildings.set(ob.userData.buildingId,ob);
+     const edit=edits.get(ob.userData.buildingId)||{};
+     setAppearance(ob,edit);
+     if(edit.state)destroy(ob,edit.state,false);
+    }
+    const focus=byId.get(centerSection());
+    if(focus&&Math.abs(tile.column-focus.column)<=1&&Math.abs(tile.row-focus.row)<=1)group.userData.continueBuild?.();
+    allTileLoadedCount++;
+   }catch(error){
+    allTileFailures++;
+    console.warn('Full-city tile failed '+tile.id,error);
+   }
+   done++;if(done%4===0||done===all3DTiles.length){
+    updateAllTileStatus('3D tiles loaded '+done+' / '+all3DTiles.length+' · '+allTileFailures+' unavailable',done);
+    applyTileLod({x:controls.target.x,z:controls.target.z});
+    await new Promise(requestAnimationFrame);
+   }
+  }
+  if(job===allTileJob&&allTilesMode){
+   updateAllTileStatus('Full city loaded: '+allTileLoadedCount+' new tiles, '+allTileFailures+' failed · '+loaded.size+' resident. Distant detail stays hidden.',all3DTiles.length);
+   updateBuildingList();
+   window.dispatchEvent(new Event('jc-tiles-loaded'));
+  }
+ }).catch(error=>{updateAllTileStatus('All-tile load stopped: '+error.message);console.error(error);}).finally(()=>{
+  if(job===allTileJob){allTilesRunning=false;updateAllTileStop();}
+ });
+ return loadQueue;
+}
+async function cacheAll3DTiles(){
+ if(allTileCacheRunning)return;
+ if(!('caches' in window)){updateAllTileStatus('This browser does not support the Cache Storage API.');return;}
+ allTileCacheRunning=true;
+ const controller=new AbortController();allTileCacheAbort=controller;updateAllTileStop();
+ let done=0,cached=0,fail=0;
+ try{
+  const cache=await caches.open('jc-city-3d-tiles-v1');
+  for(const tile of all3DTiles){
+   if(controller.signal.aborted)break;
+   const url=new URL('./'+tile.uri+'.gz',location.href).href;
+   try{
+    if(!(await cache.match(url))){
+     const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
+     if(!response.ok)throw Error('HTTP '+response.status);
+     await cache.put(url,response);
+    }
+    cached++;
+   }catch(error){
+    if(controller.signal.aborted)break;
+    fail++;if(fail>12)throw Error('Many tiles could not be cached (storage or network limit).');
+   }
+   done++;
+   if(done%4===0||done===all3DTiles.length){
+    updateAllTileStatus('3D files cached '+cached+' / '+all3DTiles.length+' · '+fail+' unavailable',done);
+    await new Promise(requestAnimationFrame);
+   }
+  }
+  if(!controller.signal.aborted)updateAllTileStatus('Cached '+cached+' / '+all3DTiles.length+' packaged 3D tiles ('+fail+' unavailable). Normal play keeps streaming nearby meshes.',done);
+  else updateAllTileStatus('Tile caching paused: '+cached+' / '+all3DTiles.length+' stored. Restart to resume.',done);
+ }catch(error){updateAllTileStatus('Tile cache stopped: '+error.message+' · '+cached+' stored',done);}
+ finally{allTileCacheRunning=false;allTileCacheAbort=null;updateAllTileStop();}
+}
+$('downloadAllTiles').onclick=()=>{void cacheAll3DTiles();};
+$('stopAllTiles').onclick=()=>{
+ if(allTileCacheAbort)allTileCacheAbort.abort();
+ if(allTilesMode){
+  allTilesMode=false;allTilesRunning=false;allTileJob++;
+  desiredRequest++;lastWanted='';retryAt=0;
+  $('streamRange').value=String(streamRadius);
+  updateAllTileStatus('Returning to nearby tile streaming; releasing distant geometry.');
+  void loadArea(centerSection(),streamRadius,false);
+ }
+ updateAllTileStop();
+};
+updateAllTileStatus(all3DTiles.length+' packaged detailed tiles / '+sections.length+' total city sections. Select All or pre-download.'); 
 $('cityView').onclick=()=>{controls.target.set(0,200,0);camera.position.set(4000,38000,42000);controls.update();status('Whole-city terrain overview. Buildings load around your view center; zoom in to edit.');};
 $('fullRender').onclick=()=>{$('renderOverlay').style.display='flex';};$('closeRender').onclick=()=>{$('renderOverlay').style.display='none';};
 async function connectFolder(event){prefetchedBytes.clear();streamSample=null;files.clear();const all=[...event.target.files],manifestFile=all.find(f=>f.webkitRelativePath.endsWith('/manifest.json'));if(!manifestFile){status('Choose the extracted city folder containing manifest.json.');return;}const prefix=manifestFile.webkitRelativePath.slice(0,-'manifest.json'.length);for(const f of all)if(f.webkitRelativePath.startsWith(prefix))files.set(f.webkitRelativePath.slice(prefix.length),f);const found=sections.filter(s=>files.has(s.uri)).length;let center=centerSection();const centerTile=byId.get(center);if(!found){status('No city tile files found in that folder. Keep the manifest.json and tiles folder together.');return;}if(!files.has(centerTile?.uri)){const nearest=sections.filter(s=>files.has(s.uri)).sort((a,b)=>Math.abs(a.column-centerTile.column)+Math.abs(a.row-centerTile.row)-Math.abs(b.column-centerTile.column)-Math.abs(b.row-centerTile.row))[0];if(!nearest){status(`${found.toLocaleString()}/1,225 city tiles found. Choose a map position covered by those tiles.`);return;}center=nearest.id;}retryAt=0;lastWanted='';await ensureContext();await loadArea(center,streamRadius,false);status(`${found.toLocaleString()} supplied tiles connected · ${sections.length.toLocaleString()} mapped city sections`);}
@@ -345,7 +481,7 @@ $('editsFile').onchange=async e=>{
 };
 function resize(){const r=$('viewport').getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}new ResizeObserver(resize).observe($('viewport'));resize();if(mobileMap) $('streamRange').value='0';
 function animate(t){requestAnimationFrame(animate);const frameMs=Math.max(0,t-last),dt=Math.min(frameMs/1000,.04);last=t;window.studio?.renderBudget?.update(t,frameMs);if(!window.studio?.paused){tick(dt*Math.max(0,Math.min(1,window.JC_WORLD_SCALE??1)));streamingTick(t,dt);}if(!window.JC_MAP_PLAYING)controls.update();window.studio?.distantCity?.update();window.studio?.environment?.update(t,dt);window.studio?.traffic?.update(dt);window.studio?.buildingViews?.update(t,dt,document.body.classList.contains('jc-playing'));window.studio?.photoCutouts?.update(t,dt,document.body.classList.contains('jc-playing'));if(!mobileMap||!startInPlay||window.JC_PLAYER_READY){if(window.studio?.renderFrame)window.studio.renderFrame();else renderer.render(scene,camera);}}requestAnimationFrame(animate);
-window.studio={sections,cityBounds:base,mobileMap,lowSpec,legacySpec,stable3D,deviceMemory,renderBudget,scene,camera,renderer,controls,buildings,chunks,edits,loaded,origin,centerSection,ensureContext,streamingTick,streamInfo:()=>({enabled:streamEnabled,radius:streamRadius,loading,current,lastWanted,context:!!contextGround,availableFiles:files.size,lowSpec,stable3D,deviceMemory}),tileRevision:()=>tileRevision,prefetchInfo:()=>prefetchedBytes.stats(),loadArea,select,focus,view,destroy,rebuild,updateEdit,exportEdits,importEdits,applyRealStripPreset,tick,stats:()=>({buildings:buildings.size,tiles:loaded.size,visibleTiles:[...loaded.values()].filter(g=>g.visible).length,chunks:particles.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),proof:()=>{document.body.classList.add('proof');resize();}};
+window.studio={sections,cityBounds:base,mobileMap,lowSpec,legacySpec,stable3D,deviceMemory,renderBudget,scene,camera,renderer,controls,buildings,chunks,edits,loaded,origin,centerSection,ensureContext,streamingTick,streamInfo:()=>({enabled:streamEnabled,radius:allTilesMode?'all':streamRadius,fullCity:allTilesMode,loading,current,lastWanted,context:!!contextGround,availableFiles:files.size,lowSpec,stable3D,deviceMemory}),tileRevision:()=>tileRevision,loadAllTiles,cacheAll3DTiles,prefetchInfo:()=>prefetchedBytes.stats(),loadArea,select,focus,view,destroy,rebuild,updateEdit,exportEdits,importEdits,applyRealStripPreset,tick,stats:()=>({buildings:buildings.size,tiles:loaded.size,visibleTiles:[...loaded.values()].filter(g=>g.visible).length,chunks:particles.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),proof:()=>{document.body.classList.add('proof');resize();}};
 window.studio.roads=createRoadNetwork(window.studio);
 window.studio.traffic=createCityTraffic(window.studio);
 window.studio.distantCity=createDistantCity(window.studio);
