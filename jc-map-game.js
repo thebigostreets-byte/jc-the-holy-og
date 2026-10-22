@@ -9,6 +9,7 @@ import {cloneBuildingMaterial} from './map-materials.js';
 import {stickAxis, standardPadActions, standardPadHolds, response, advancePedal, advanceChain, advanceGait, advanceLook, setFlightForward} from './jc-control-math.js';
 import {transitionFlight,shouldTouchDown} from './jc-flight-state.js';
 import {createMiracleEffects} from './jc-miracle-effects.js';
+import {decorateAbilityBadge,JC_RUNTIME_SPRITE_ATLAS} from './jc-runtime-sprites.js';
 import {cachedGroundSample} from './ground-sampling.js';
 import {addBackgroundMusic} from './background-music.js';
 import {createCityMissions} from './city-missions.js';
@@ -36,6 +37,7 @@ try{
  else {const legacy=JSON.parse(localStorage.getItem('jc-master-upgrade')||'null');if(legacy?.dayNight==='night')worldTimeMode='night';}
 }catch{}
 window.JC_WORLD_TIME_MODE=worldTimeMode;
+window.JC_RUNTIME_SPRITE_ART={source:JC_RUNTIME_SPRITE_ATLAS,icons:11,explosionFrames:6,teleportFrames:6,enabled:true};
 const style = document.createElement('style');
 style.textContent = `
 body.jc-playing header,body.jc-playing aside,body.jc-playing .views,body.jc-playing .compass{display:none}
@@ -105,6 +107,11 @@ body:not(.jc-playing) #jcPlayReturn{display:block}
 @media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{display:block;bottom:calc(env(safe-area-inset-bottom) + 10px);height:clamp(88px,25vw,112px);left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));touch-action:none;overscroll-behavior:none}#jcStick{display:none!important}#jcHud #jcGas{display:flex;position:absolute!important;left:0;bottom:0;align-items:center;justify-content:center;flex-direction:column}#jcLookStick{position:absolute!important;right:0;bottom:0}#jcHud .jc-hint{display:none}#jcHud .jc-score{font-size:12px}#jcHud .jc-score strong{font-size:15px}#jcHud .jc-ability{top:76px;right:8px;font-size:12px}#jcHud .jc-ability button{min-height:44px}#jcHud .jc-actions{position:absolute!important;right:0;bottom:calc(clamp(76px,24vw,104px) + 10px);width:min(37vw,146px);max-height:42vh;gap:5px}#jcHud .jc-actions button{padding:7px 5px;font-size:12px;min-height:46px}}
 `;
 style.textContent += '@media(max-width:800px){#jcMissionPanel{left:12px!important;top:306px!important;max-width:calc(100vw - 24px)}}#jcHud,#jcHud *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#jcTalk input,#jcTalk textarea{-webkit-user-select:text;user-select:text}#jcHud button,#jcStick,#jcLookStick,#jcGas{touch-action:none}@media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{z-index:12;pointer-events:none}#jcStick,#jcLookStick,#jcGas,#jcHud .jc-actions{position:relative;z-index:13;pointer-events:auto}#jcNpcReadout{pointer-events:none!important;bottom:calc(env(safe-area-inset-bottom) + 230px)!important;max-width:46vw!important}#jcPeople{z-index:8}#jcWorldPrompt{z-index:9}}';
+style.textContent+=`
+#jcHud .jc-wheel-slot .jc-sprite-sigil{position:absolute;right:3px;top:3px;width:23px;height:23px;display:block;pointer-events:none;background-repeat:no-repeat;image-rendering:auto;border:1px solid #dbc28b8c;border-radius:50%;background-color:#080e17c8;box-shadow:0 2px 6px #0008}
+#jcHud .jc-wheel-slot:focus-visible .jc-sprite-sigil,#jcHud .jc-wheel-slot.selected .jc-sprite-sigil{border-color:#ffe49a;box-shadow:0 0 9px #ffd06faa}
+@media(max-width:760px){#jcHud .jc-wheel-slot .jc-sprite-sigil{width:18px;height:18px;right:1px;top:1px}}
+`;
 document.head.append(style);
 
 const hud = document.createElement('div');
@@ -957,8 +964,8 @@ function cast(id = selectedAbility) {
   switch(id) {
     case 'flight':if(flying)beamDown();else setFlight('takeoff');break;
     case 'hypersonic':setFlight('boost');break;
-    case 'teleport':teleport();break;
-    case 'portal':{ringAt(player.position,0x6b28a8,17);teleport();ringAt(player.position,0x8f43d2,17);feedback('ABYSSAL PORTAL · REALITY TORN');break;}
+    case 'teleport':effects().burst(player.position,'teleport',12);teleport();break;
+    case 'portal':{effects().burst(player.position,'teleport',16);ringAt(player.position,0x6b28a8,17);teleport();ringAt(player.position,0x8f43d2,17);feedback('ABYSSAL PORTAL · REALITY TORN');break;}
     case 'beam-down':beamDown();break;
     case 'dash':dash(false);break;
     case 'hover':setFlight('hover');break;
@@ -1032,7 +1039,8 @@ function renderWheel(){
     const image=document.createElement('img');image.src=`./miracles/${abilityArt(ability.id)}.webp`;image.alt='';image.loading='lazy';
     const name=document.createElement('span');name.textContent=ability.name;
     const cost=document.createElement('small');cost.textContent=`${ability.cost} GRACE`;
-    button.append(image,name,cost);button.addEventListener('mouseenter',()=>focusWheelAbility(ability));button.addEventListener('focus',()=>focusWheelAbility(ability));
+    const sigil=document.createElement('span');decorateAbilityBadge(sigil,ability.id);
+    button.append(image,sigil,name,cost);button.addEventListener('mouseenter',()=>focusWheelAbility(ability));button.addEventListener('focus',()=>focusWheelAbility(ability));
     button.onclick=()=>{if(assigningPreset>=0){miraclePresets[assigningPreset]=ability.id;localStorage.setItem('jc-miracle-presets',JSON.stringify(miraclePresets));assigningPreset=-1;feedback(`${ability.name.toUpperCase()} SAVED TO PRESET`);}else setActiveMiracle(ability.id);wheelFocusId=ability.id;wheel.classList.remove('open');renderWheel();refreshPresetLabels();};return button;
   }));
   const focus=catalog.find(ability=>ability.id===wheelFocusId)||catalog.find(ability=>ability.id===selectedAbility);
