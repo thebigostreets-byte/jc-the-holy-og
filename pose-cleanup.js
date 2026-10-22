@@ -4,7 +4,7 @@ export const POSE_FRAME_HEIGHT=384;
 export const POSE_FRAME_BOTTOM_PADDING=10;
 const ALPHA_THRESHOLD=8;
 
-export function isolatePose(data,width,height,{componentGap}={}) {
+export function isolatePose(data,width,height,{componentGap,mainOnly=false}={}) {
   const count=width*height,labels=new Int32Array(count),queue=new Int32Array(count),components=[];
   let label=0;
   for(let start=0;start<count;start++) {
@@ -32,6 +32,10 @@ export function isolatePose(data,width,height,{componentGap}={}) {
   const gap=componentGap??Math.max(6,Math.round(Math.min(width,height)*.07));
   const retained=new Set(components.filter(c=>{
     if(c.label===main.label)return true;
+    // Original JC pose WebPs contain stray hands/shoes from adjacent poses.
+    // The main connected silhouette already includes the actual limbs.
+    // Do not retain *any* disconnected photographic fragments in JC cutouts.
+    if(mainOnly)return false;
     const dx=Math.max(0,c.minX-main.maxX,main.minX-c.maxX);
     const dy=Math.max(0,c.minY-main.maxY,main.minY-c.maxY);
     return Math.hypot(dx,dy)<=gap;
@@ -52,7 +56,7 @@ export function cleanPoseImage(image) {
   const context=source.getContext('2d',{willReadFrequently:true});
   context.drawImage(image,0,0);
   const pixels=context.getImageData(0,0,sourceWidth,sourceHeight);
-  isolatePose(pixels.data,sourceWidth,sourceHeight);
+  isolatePose(pixels.data,sourceWidth,sourceHeight,{mainOnly:true});
   context.putImageData(pixels,0,0);
 
   let x0=sourceWidth,y0=sourceHeight,x1=-1,y1=-1;
@@ -79,5 +83,11 @@ export function cleanPoseImage(image) {
   const drawX=(POSE_FRAME_WIDTH-drawWidth)/2;
   const drawY=POSE_FRAME_HEIGHT-bottomPadding-drawHeight;
   frame.getContext('2d').drawImage(source,x0,y0,cropWidth,cropHeight,drawX,drawY,drawWidth,drawHeight);
+  // Normalize visual BODY length (long axis), not merely the portrait canvas
+  // height: horizontal flying cutouts must be as large as standing JC.
+  // Render-quad size may vary; alpha bounds still share a planted baseline.
+  const longest=Math.max(drawWidth,drawHeight,1);
+  frame.poseDisplayHeight=Math.min(5.55,Math.max(3.3,POSE_FRAME_HEIGHT*3.35/longest));
+  frame.poseVisibleLength=longest;
   return frame;
 }

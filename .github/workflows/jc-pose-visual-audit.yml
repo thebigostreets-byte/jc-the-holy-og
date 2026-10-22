@@ -1,0 +1,49 @@
+name: JC All 139 Pose Visual Audit
+on:
+  push:
+    branches: [feat/jc-100-articulated-poses-oct10]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'jc-character-pose.js'
+      - 'jc-pose-kinematics.js'
+      - 'pose-cleanup.js'
+      - 'jc-pose-bank.js'
+      - 'jc-character3d.js'
+      - 'jc-map-game.js'
+      - 'tests/pose-visual-audit.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  all-pose-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore authored image assets and build browser client
+        run: |
+          npm ci
+          npm run hydrate
+          npm run verify:assets
+          npm run build
+      - name: Install browser rendering harness
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Render all 39 image poses and 139 articulated states
+        run: node tests/pose-visual-audit.mjs
+      - name: Preserve source sprites for visual defects review
+        run: |
+          mkdir -p artifacts/source-poses
+          cp -a dist/client/poses/*.webp artifacts/source-poses/
+      - name: Preserve contact sheets and metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jc-all-pose-contact-sheets
+          path: artifacts/
+          if-no-files-found: ignore
