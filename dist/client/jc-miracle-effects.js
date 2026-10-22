@@ -55,5 +55,5 @@ export function createMiracleEffects(scene, mobile=false, clock=()=>performance.
   }
   function clear(){for(const slot of [...rings,...beams]){slot.active=false;slot.mesh.visible=false;}while(sprites.length)removeSprite(sprites.pop());if(rain){rain.until=0;rain.mesh.visible=false;}}
   function dispose(){atlasBursts.dispose();clear();for(const slot of [...rings,...beams]){scene.remove(slot.mesh);slot.mesh.material.dispose();}ringGeometry.dispose();beamGeometry.dispose();if(rain){scene.remove(rain.mesh);rain.mesh.geometry.dispose();rain.mesh.material.dispose();rain.mesh.dispose();}}
-  return {ring,beam,sprite,rainAt,burst:atlasBursts.spawn,update,clear,dispose,stats:()=>({rings:rings.length,beams:beams.length,sprites:sprites.length,rainDrawCalls:rain?1:0,atlasSprites:atlasBursts.stats()})};
+  return {ring,beam,sprite,rainAt,burst:atlasBursts.spawn,update,clear,dispose,atlasStats:atlasBursts.stats,stats:()=>({rings:rings.length,beams:beams.length,sprites:sprites.length,rainDrawCalls:rain?1:0})};
 }
