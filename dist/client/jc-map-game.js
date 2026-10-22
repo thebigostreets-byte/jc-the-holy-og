@@ -964,8 +964,8 @@ function cast(id = selectedAbility) {
   switch(id) {
     case 'flight':if(flying)beamDown();else setFlight('takeoff');break;
     case 'hypersonic':setFlight('boost');break;
-    case 'teleport':effects().burst(player.position,'teleport',12);teleport();break;
-    case 'portal':{effects().burst(player.position,'teleport',16);ringAt(player.position,0x6b28a8,17);teleport();ringAt(player.position,0x8f43d2,17);feedback('ABYSSAL PORTAL · REALITY TORN');break;}
+    case 'teleport':if(typeof effects==='function')effects().burst(player.position,'teleport',12);teleport();break;
+    case 'portal':{if(typeof effects==='function')effects().burst(player.position,'teleport',16);ringAt(player.position,0x6b28a8,17);teleport();ringAt(player.position,0x8f43d2,17);feedback('ABYSSAL PORTAL · REALITY TORN');break;}
     case 'beam-down':beamDown();break;
     case 'dash':dash(false);break;
     case 'hover':setFlight('hover');break;
