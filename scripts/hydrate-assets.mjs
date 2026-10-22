@@ -44,7 +44,25 @@ async function work(){
       if(geometry.asset?.extras?.tile!==asset.path.slice(6,13))throw Error(`City tile identity mismatch: ${asset.path}`);
       bytes=gzipSync(raw);
     }
-    const actualHash=hash(bytes);
+    let actualHash=hash(bytes);
+    // This site's moving source can change independently of the pinned game.
+    // Recover the exact SHA-256-pinned bytes from the prior Pages deployment,
+    // never silently accept an unverified Three.js/gameplay engine replacement.
+    if(asset.path!=='city-manifest.json'&&asset.path!=='character-art/manifest.json'
+       &&!(asset.path.startsWith('assets/imagery/')&&/^C\d{2}_R\d{2}\.jpg$/.test(asset.path.slice(15)))
+       &&(bytes.length!==asset.bytes||actualHash!==asset.sha256)){
+      try{
+        const stableUrl='https://raw.githubusercontent.com/thebigostreets-byte/jc-the-holy-og/gh-pages/'+asset.path;
+        const pinnedResponse=await fetch(stableUrl,{signal:AbortSignal.timeout(40000)});
+        if(pinnedResponse.ok){
+          const pinnedBytes=Buffer.from(await pinnedResponse.arrayBuffer());
+          if(pinnedBytes.length===asset.bytes&&hash(pinnedBytes)===asset.sha256){
+            bytes=pinnedBytes;actualHash=asset.sha256;
+            console.log('Restored SHA-256-pinned published asset: '+asset.path);
+          }
+        }
+      }catch(error){console.warn('Pinned asset lookup unavailable for '+asset.path,error.message);}
+    }
     if(bytes.length!==asset.bytes||actualHash!==asset.sha256){
       if(asset.path==='city-manifest.json'){
         let manifest;
