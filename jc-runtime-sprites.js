@@ -33,8 +33,9 @@ export function decorateAbilityBadge(element,id){
 export function createAtlasBursts(scene,clock=()=>performance.now(),mobile=false){
  const slots=[],limit=mobile?3:7;
  let disposed=false,loaded=null;
- const ready=new THREE.TextureLoader().loadAsync(JC_RUNTIME_SPRITE_ATLAS)
-  .then(t=>{t.colorSpace=THREE.SRGBColorSpace;t.flipY=true;t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;t.magFilter=THREE.LinearFilter;loaded=t;return t;})
+ const browser=typeof window!=='undefined'&&typeof document!=='undefined';
+ const ready=(!browser?Promise.resolve(null):new THREE.TextureLoader().loadAsync(JC_RUNTIME_SPRITE_ATLAS))
+  .then(t=>{if(!t)return null;t.colorSpace=THREE.SRGBColorSpace;t.flipY=true;t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;t.magFilter=THREE.LinearFilter;loaded=t;return t;})
   .catch(error=>{console.warn('JC sprite atlas disabled; original VFX remain available',error);return null;});
  function stop(slot){
   scene.remove(slot.sprite);
@@ -76,9 +77,9 @@ export function createAtlasBursts(scene,clock=()=>performance.now(),mobile=false
   const point=event.detail?.position;if(!point)return;
   spawn(point,event.detail?.mode==='explode'?'explosion':'teleport',event.detail?.mode==='explode'?15:9);
  }
- window.addEventListener('jc:building-destroyed',onDestroyed);
+ if(browser)window.addEventListener('jc:building-destroyed',onDestroyed);
  function dispose(){
-  disposed=true;window.removeEventListener('jc:building-destroyed',onDestroyed);
+  disposed=true;if(browser)window.removeEventListener('jc:building-destroyed',onDestroyed);
   while(slots.length)stop(slots.pop());
   loaded?.dispose();loaded=null;
  }
