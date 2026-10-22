@@ -1,4 +1,5 @@
 import * as THREE from './three.module.js';
+import {createAtlasBursts} from './jc-runtime-sprites.js';
 
 // All transient miracles share the game's clock and a fixed draw-call budget.
 export function createMiracleEffects(scene, mobile=false, clock=()=>performance.now()) {
@@ -8,6 +9,7 @@ export function createMiracleEffects(scene, mobile=false, clock=()=>performance.
   const maxRings=mobile?18:32,maxBeams=mobile?8:12,maxSprites=mobile?6:10;
   const up=new THREE.Vector3(0,1,0),direction=new THREE.Vector3();
   let rain=null,lastRain=0;
+  const atlasBursts=createAtlasBursts(scene,clock,mobile);
   function pool(list,limit,geometry) {
     let slot=list.find(s=>!s.active);
     if(!slot&&list.length<limit){
@@ -45,12 +47,13 @@ export function createMiracleEffects(scene, mobile=false, clock=()=>performance.
     rain.center.copy(position);rain.until=clock()+3000;lastRain=clock();rain.mesh.visible=true;
   }
   function update(now) {
+    atlasBursts.update(now);
     for(const slot of rings){if(!slot.active)continue;const t=Math.max(0,(now-slot.start)/slot.duration);if(t>=1){slot.active=false;slot.mesh.visible=false;continue;}slot.mesh.scale.setScalar(1+(slot.radius-1)*(1-(1-t)**2));slot.mesh.material.opacity=.9*(1-t);}
     for(const slot of beams){if(!slot.active)continue;const t=Math.max(0,(now-slot.start)/slot.duration);if(t>=1){slot.active=false;slot.mesh.visible=false;}else slot.mesh.material.opacity=.9*(1-t);}
     for(let i=sprites.length-1;i>=0;i--){const s=sprites[i],t=Math.max(0,(now-s.start)/1150);if(t>=1){removeSprite(s);sprites.splice(i,1);continue;}s.mesh.position.y=s.y+Math.sin(t*9)*.16;s.mesh.scale.setScalar(3.4+t*2.5);s.mesh.material.opacity=1-t;s.mesh.material.rotation=t;}
     if(rain){rain.mesh.visible=now<rain.until;if(rain.mesh.visible){const dt=Math.min(.05,Math.max(0,(now-lastRain)/1000));for(let i=0;i<rain.mesh.count;i++){const n=i*3;rain.offsets[n+1]=(rain.offsets[n+1]-38*dt+30)%30;rain.matrix.makeTranslation(rain.center.x+rain.offsets[n],rain.center.y+rain.offsets[n+1],rain.center.z+rain.offsets[n+2]);rain.mesh.setMatrixAt(i,rain.matrix);}rain.mesh.instanceMatrix.needsUpdate=true;}lastRain=now;}
   }
   function clear(){for(const slot of [...rings,...beams]){slot.active=false;slot.mesh.visible=false;}while(sprites.length)removeSprite(sprites.pop());if(rain){rain.until=0;rain.mesh.visible=false;}}
-  function dispose(){clear();for(const slot of [...rings,...beams]){scene.remove(slot.mesh);slot.mesh.material.dispose();}ringGeometry.dispose();beamGeometry.dispose();if(rain){scene.remove(rain.mesh);rain.mesh.geometry.dispose();rain.mesh.material.dispose();rain.mesh.dispose();}}
-  return {ring,beam,sprite,rainAt,update,clear,dispose,stats:()=>({rings:rings.length,beams:beams.length,sprites:sprites.length,rainDrawCalls:rain?1:0})};
+  function dispose(){atlasBursts.dispose();clear();for(const slot of [...rings,...beams]){scene.remove(slot.mesh);slot.mesh.material.dispose();}ringGeometry.dispose();beamGeometry.dispose();if(rain){scene.remove(rain.mesh);rain.mesh.geometry.dispose();rain.mesh.material.dispose();rain.mesh.dispose();}}
+  return {ring,beam,sprite,rainAt,burst:atlasBursts.spawn,update,clear,dispose,stats:()=>({rings:rings.length,beams:beams.length,sprites:sprites.length,rainDrawCalls:rain?1:0,atlasSprites:atlasBursts.stats()})};
 }
