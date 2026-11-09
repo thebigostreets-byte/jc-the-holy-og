@@ -38,6 +38,7 @@ jobs:
       - name: Run regression suite
         run: |
           for file in \
+            tests/jc-pilot-plan.mjs \
             tests/ability-intensity.mjs \
             tests/audio-controls.mjs \
             tests/flight-state.mjs \
