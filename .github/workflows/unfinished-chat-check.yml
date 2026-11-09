@@ -23,6 +23,10 @@ jobs:
           done
       - name: Check source-to-deploy synchronization
         run: node tests/deployable-client-sync.mjs
+      - name: Validate pilot plan without remote asset dependency
+        run: |
+          node tests/jc-pilot-plan.mjs
+          node tests/predictive-streaming.mjs
       - name: Build and validate the real release candidate
         run: |
           npm ci
