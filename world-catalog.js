@@ -10,7 +10,7 @@ export function hashId(value){let n=2166136261;for(const c of String(value)){n^=
 export function buildingVenue(identity={}){
  const name=identity.name||'',category=identity.category||'';
  if(/church|chapel|cathedral|sanctuary/i.test(name+' '+category))return 'church';
- if(/casino|gambling/i.test(category+' '+name)||/Bellagio|Caesars|Paris Las Vegas|Flamingo|Harrahs|Wynn|Encore|Cosmopolitan|Cromwell|Linq|Resorts World|Sahara|Park MGM|Fontainebleau/i.test(name))return 'casino';
+ if(/casino|gambling/i.test(category+' '+name)||/Bellagio|Caesars|Paris Las Vegas|Flamingo|Harrahs|Wynn|Encore|Cosmopolitan|Cromwell|Linq|Resorts World|Sahara|Park MGM|Fontainebleau|END OF HIM|666|Blood Bay|Luxor/i.test(name))return 'casino';
  return null;
 }
 export function createWorldCatalog(storage=globalThis.localStorage){

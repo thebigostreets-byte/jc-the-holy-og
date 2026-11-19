@@ -28,6 +28,8 @@
   "building-mirror-facades.js",
   "building-photo-library.js",
   "building-textures.js",
+  "landmark-variants.js",
+  "assets/building-cutouts/end-of-him-distant.webp",
   "cache-reset.html",
   "character-contact.js",
   "cinematic-look.js",

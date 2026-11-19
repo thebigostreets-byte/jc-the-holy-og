@@ -6,6 +6,7 @@ import {loadPhotoFacades} from './photo-facades.js';
 import {createRoadNetwork} from './city-roads.js?v=osm-citywide-20261019a';
 import {createCityTraffic} from './city-traffic.js';
 import {createCityEnvironment} from './city-environment.js';
+import {createLandmarkVariants} from './landmark-variants.js';
 import {loadBuildingIdentities,resolveBuildingIdentity} from './building-identities.js';
 import {loadPhysicalMaterials,buildingSurface,wallUV} from './physical-building-materials.js?v=strip-casino-photo-20261008a';
 import * as THREE from './three.module.js';
@@ -165,6 +166,8 @@ async function parseGLB(raw,name){const dv=new DataView(raw.buffer,raw.byteOffse
    side:m.doubleSided?THREE.DoubleSide:THREE.FrontSide
   });
   if(isWall&&surface)applyPhotorealMaterial(THREE,ma,photorealDetailMaps,{casino:identity?.type==='casino',buildingHeight:heights.get(id)||12});
+  if(/^(?:Luxor|Obsidian Pyramid)$/i.test(identity?.name||'')){ma.map=null;ma.color.set('#f8f7f0');ma.roughness=.37;ma.metalness=.09;}
+  if(/^(?:Angelic Stadium|Allegiant Stadium)$/i.test(identity?.name||'')){ma.map=null;ma.color.set(isWall?'#fff8e7':'#e8c978');ma.roughness=.42;ma.metalness=.16;}
   const generatedRoof=m.name.endsWith('_roof')&&generatedBuildingKind(identity,heights.get(id)||0)==='residential'&&generated.roof;
   if(generatedRoof){ma.map=generated.roof;ma.color.set('#ffffff');ma.roughness=.95;ma.userData.generatedRoof=true;}
   if(useArtSurface&&surface?.kind==='generated casino')addCasinoEntrance(ma,generated.entrance);
@@ -386,7 +389,7 @@ $('map').src=payload.resources['assets/overview.jpg'];$('map').onclick=e=>{const
 $('openFolder').onclick=()=>$('folder').click();$('folder').onchange=connectFolder;
 const REAL_STRIP_LANDMARKS=[
  {name:'Blood Bay',type:'casino',longitude:-115.1753,latitude:36.0919,radius:260,maxBuildings:5,roughness:.36,glow:.18},
- {name:'Obsidian Pyramid',type:'casino',longitude:-115.1761,latitude:36.0955,radius:230,maxBuildings:5,roughness:.34,glow:.22},
+ {name:'Luxor',type:'casino',longitude:-115.1761,latitude:36.0955,radius:230,maxBuildings:5,roughness:.34,glow:.22},
  {name:'Excalibur',type:'casino',longitude:-115.1756,latitude:36.0987,radius:220,maxBuildings:5,roughness:.82,glow:.16},
  {name:'New York-New York',type:'casino',longitude:-115.1745,latitude:36.1022,radius:200,maxBuildings:7,roughness:.74,glow:.2},
  {name:'666',type:'casino',longitude:-115.1697,latitude:36.1025,radius:240,maxBuildings:7,roughness:.38,glow:.22},
@@ -407,7 +410,7 @@ const REAL_STRIP_LANDMARKS=[
  {name:'Circus Circus',type:'casino',longitude:-115.1665,latitude:36.1379,radius:230,maxBuildings:7,roughness:.74,glow:.2},
  {name:'The STRAT',type:'casino',longitude:-115.1554,latitude:36.1475,radius:200,maxBuildings:5,roughness:.38,glow:.24},
  {name:'Psalms',type:'casino',longitude:-115.1982,latitude:36.1155,radius:240,maxBuildings:6,roughness:.4,glow:.2},
- {name:'Allegiant Stadium',type:'stadium',longitude:-115.183952,latitude:36.090794,radius:320,maxBuildings:4,roughness:.38,glow:0}
+ {name:'Angelic Stadium',type:'stadium',longitude:-115.183952,latitude:36.090794,radius:320,maxBuildings:4,roughness:.38,glow:0}
 ];
 function geoDistanceMetres(lon,lat,target){const y=(lat-target.latitude)*111320,x=(lon-target.longitude)*111320*Math.cos(lat*Math.PI/180);return Math.hypot(x,y);}
 async function applyRealStripPreset(list=REAL_STRIP_LANDMARKS){
@@ -482,12 +485,13 @@ $('editsFile').onchange=async e=>{
  catch(err){status(err.message);}finally{e.target.value='';}
 };
 function resize(){const r=$('viewport').getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}new ResizeObserver(resize).observe($('viewport'));resize();$('streamRange').value=String(streamRadius);
-function animate(t){requestAnimationFrame(animate);const frameMs=Math.max(0,t-last),dt=Math.min(frameMs/1000,.04);last=t;window.studio?.renderBudget?.update(t,frameMs);if(!window.studio?.paused){tick(dt*Math.max(0,Math.min(1,window.JC_WORLD_SCALE??1)));streamingTick(t,dt);}if(!window.JC_MAP_PLAYING)controls.update();window.studio?.distantCity?.update();window.studio?.environment?.update(t,dt);window.studio?.traffic?.update(dt);window.studio?.buildingViews?.update(t,dt,document.body.classList.contains('jc-playing'));window.studio?.photoCutouts?.update(t,dt,document.body.classList.contains('jc-playing'));if(!mobileMap||!startInPlay||window.JC_PLAYER_READY){if(window.studio?.renderFrame)window.studio.renderFrame();else renderer.render(scene,camera);}}requestAnimationFrame(animate);
+function animate(t){requestAnimationFrame(animate);const frameMs=Math.max(0,t-last),dt=Math.min(frameMs/1000,.04);last=t;window.studio?.renderBudget?.update(t,frameMs);if(!window.studio?.paused){tick(dt*Math.max(0,Math.min(1,window.JC_WORLD_SCALE??1)));streamingTick(t,dt);}if(!window.JC_MAP_PLAYING)controls.update();window.studio?.distantCity?.update();window.studio?.environment?.update(t,dt);window.studio?.landmarkVariants?.update(t,dt);window.studio?.traffic?.update(dt);window.studio?.buildingViews?.update(t,dt,document.body.classList.contains('jc-playing'));window.studio?.photoCutouts?.update(t,dt,document.body.classList.contains('jc-playing'));if(!mobileMap||!startInPlay||window.JC_PLAYER_READY){if(window.studio?.renderFrame)window.studio.renderFrame();else renderer.render(scene,camera);}}requestAnimationFrame(animate);
 window.studio={sections,cityBounds:base,mobileMap,lowSpec,legacySpec,stable3D,deviceMemory,renderBudget,scene,camera,renderer,controls,buildings,chunks,edits,loaded,origin,centerSection,ensureContext,streamingTick,streamInfo:()=>({enabled:streamEnabled,radius:allTilesMode?'all':streamRadius,windowSections:streamRadius===10?100:(2*streamRadius+1)**2,fullCity:allTilesMode,loading,current,lastWanted,context:!!contextGround,availableFiles:files.size,lowSpec,stable3D,deviceMemory}),tileRevision:()=>tileRevision,loadAllTiles,cacheAll3DTiles,prefetchInfo:()=>prefetchedBytes.stats(),loadArea,select,focus,view,destroy,rebuild,updateEdit,exportEdits,importEdits,applyRealStripPreset,tick,stats:()=>({buildings:buildings.size,tiles:loaded.size,visibleTiles:[...loaded.values()].filter(g=>g.visible).length,chunks:particles.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),proof:()=>{document.body.classList.add('proof');resize();}};
 window.studio.roads=createRoadNetwork(window.studio);
 window.studio.traffic=createCityTraffic(window.studio);
 window.studio.distantCity=createDistantCity(window.studio);
 window.studio.environment=createCityEnvironment(window.studio,{mobile:mobileMap});
+try{window.studio.landmarkVariants=createLandmarkVariants(window.studio,{mobile:mobileMap});}catch(error){console.warn('Optional landmark art unavailable',error);}
 window.studio.buildingViews=createBuildingImpostors(window.studio,{mobile:mobileMap,enabled:params.get('buildingViews')==='on'&&!stable3D});
 window.studio.photoCutouts=createPhotoCutoutLod(window.studio,{mobile:mobileMap,enabled:params.get('photoCutouts')!=='off'});
 $('fullCityProof').src=payload.fullCityProof;

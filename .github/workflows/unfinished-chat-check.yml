@@ -42,6 +42,7 @@ jobs:
             tests/audio-controls.mjs \
             tests/flight-state.mjs \
             tests/full-strip-identities.mjs \
+            tests/landmark-variants.mjs \
             tests/photo-cutout-lod.mjs \
             tests/npc-contacts.mjs \
             tests/npc-memory.mjs \
