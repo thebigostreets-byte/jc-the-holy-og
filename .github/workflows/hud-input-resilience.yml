@@ -1,0 +1,26 @@
+name: HUD input resilience
+on:
+  pull_request:
+    paths:
+      - 'jc-hud-model.js'
+      - 'dist/client/jc-hud-model.js'
+      - 'tests/hud-input-resilience.mjs'
+      - '.github/workflows/hud-input-resilience.yml'
+  workflow_dispatch:
+jobs:
+  hud-resilience:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check syntax
+        run: |
+          node --check jc-hud-model.js
+          node --check dist/client/jc-hud-model.js
+          node --check tests/hud-input-resilience.mjs
+      - name: Validate authored and deployable parity
+        run: cmp jc-hud-model.js dist/client/jc-hud-model.js
+      - name: Run HUD regression suite
+        run: node tests/hud-input-resilience.mjs
