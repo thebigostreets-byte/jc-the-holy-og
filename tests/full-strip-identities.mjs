@@ -9,9 +9,13 @@ assert.equal(identityPalette('Generic apartment'),null,'generic buildings use se
 const fallback=resolveBuildingIdentity('unknown',{longitude:-115.1767,latitude:36.1126},{});
 assert.equal(fallback?.name,'Bellagio','missing identity data falls back to the nearest known landmark');
 assert.equal(fallback?.type,'casino');
-assert.equal(fictionalLandmarkName('Luxor'),'Obsidian Pyramid');
+assert.equal(fictionalLandmarkName('Luxor'),'Luxor');
+assert.equal(fictionalLandmarkName('Obsidian Pyramid'),'Luxor');
+assert.equal(fictionalLandmarkName('Allegiant Stadium'),'Angelic Stadium');
 assert.equal(fictionalLandmarkName('Mandalay Bay'),'Blood Bay');
 assert.equal(fictionalLandmarkName('MGM Grand'),'666');
+assert.equal(identityPalette('Luxor').color,'#f8f7f0');
+assert.equal(identityPalette('Angelic Stadium').color,'#fff8e7');
 assert.equal(fictionalLandmarkName('Palms'),'Psalms');
 const bloodBay=resolveBuildingIdentity('bloodBay',{longitude:-115.1753,latitude:36.0919},{});
 assert.equal(bloodBay?.name,'Blood Bay','real-world footprint retains a fictional display name');

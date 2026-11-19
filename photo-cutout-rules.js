@@ -14,7 +14,7 @@ const VIEW_TOLERANCE = Math.PI / 5;
 export function photoCutoutAsset(identityOrName = '', night = false) {
   const name = (typeof identityOrName === 'string' ? identityOrName : identityOrName?.name || '').trim().toLowerCase();
   const asset = name === 'blood bay' || name === 'mandalay bay' ? CUTOUTS['blood-bay']
-    : name === 'obsidian pyramid' || name === 'luxor' ? CUTOUTS['obsidian-pyramid']
+    : name === 'obsidian pyramid' || name === 'luxor' ? null
     : null;
   return asset?.[night ? 'night' : 'day'] || null;
 }

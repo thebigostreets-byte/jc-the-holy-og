@@ -24,8 +24,9 @@ export function loadPhysicalMaterials(){
 export function buildingHash(id){let hash=2166136261;for(const c of id){hash^=c.charCodeAt(0);hash=Math.imul(hash,16777619);}return hash>>>0;}
 const LANDMARK_FACADES=[
  [/Blood Bay|Mandalay Bay/i,0x482024,0xe73548,3],
- [/Obsidian Pyramid|Luxor/i,0x191a20,0xe41f3b,3],
- [/666|MGM Grand/i,0x401318,0xff2c43,0],
+ [/Obsidian Pyramid|Luxor/i,0xf8f7f0,0xf2d995,3],
+ [/666|MGM Grand|END OF HIM/i,0x401318,0xff2c43,0],
+ [/Angelic Stadium|Allegiant Stadium/i,0xfff8e7,0xeec66e,1],
  [/Psalms|Palms/i,0xa5b7c2,0x79b8dc,2],
  [/Bellagio/i,0xe3d5b5,0xd8bc75,0],
  [/Caesars/i,0xe5dfcd,0x73b5d2,2],
@@ -69,6 +70,7 @@ export function buildingSurface(id,height,photos,physical,identity=null,generate
  }
  const traits=facadeTraits(id,identity),signature=traits.signature,palette=identityPalette(identity?.name);
  if(palette&&photos.length){map=photos[palette.photo%photos.length];color=palette.color;roughness=palette.roughness;kind='landmark facade';scale=[9,10];}
+ if(/^(Luxor|Obsidian Pyramid)$/i.test(identity?.name||'')){map=null;scale=null;color='#f8f7f0';roughness=.37;metalness=.09;kind='white luxor';}
  const generatedKind=generatedBuildingKind(identity,height);
  if(generatedKind==='casino'){
   if(identity?.type==='casino'&&photos.length){
@@ -81,6 +83,7 @@ export function buildingSurface(id,height,photos,physical,identity=null,generate
    color=palette?.color||'#ffffff';kind='generated casino';
   }
  }
+ if(/^(Luxor|Obsidian Pyramid)$/i.test(identity?.name||'')){map=null;scale=null;color='#f8f7f0';roughness=.37;metalness=.09;kind='white luxor';}
  // Generated residential is intentionally reserved for low homes. Named
  // properties and normal commercial buildings keep their own deterministic
  // facade signature instead of collapsing onto one shared generated skin.
