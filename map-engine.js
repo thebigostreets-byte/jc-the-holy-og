@@ -18,6 +18,7 @@ import {predictTravel,createPrefetchCache,corridorPoints} from './predictive-str
 import {createPhotorealDetailMaps,applyPhotorealMaterial} from './photorealism-pbr.js';
 const photorealDetailMaps=createPhotorealDetailMaps(THREE);
 import {PACKAGED_CITY_TILE_IDS,PACKAGED_CITY_TILE_COUNT} from './city-tile-index.js';
+import {cachePackagedCityTiles} from './city-tile-download.js';
 const $=id=>document.getElementById(id);
 const statusText=message=>{$('loading').textContent=message;};
 window.JC_BOOT_STAGE='manifest';
@@ -195,7 +196,7 @@ function destroy(ob,mode,save=true){if(!ob)return;rebuild(ob,false);const id=ob.
 function tick(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];if(p.sleep){const owned=chunks.get(p.buildingId),index=owned?.indexOf(p)??-1;if(index>=0)owned.splice(index,1);disposeParticle(p);continue;}p.age+=dt;p.vel.y-=9.81*dt;p.mesh.position.addScaledVector(p.vel,dt);p.mesh.rotation.x+=p.spin.x*dt;p.mesh.rotation.y+=p.spin.y*dt;p.mesh.rotation.z+=p.spin.z*dt;if(p.mesh.position.y<p.floor){p.mesh.position.y=p.floor;p.vel.y=-p.vel.y*.2;p.vel.x*=.75;p.vel.z*=.75;p.spin.multiplyScalar(.65);if(p.vel.length()<.5||p.age>12)p.sleep=true;}if(p.age>25)p.sleep=true;}}
 function disposeLoaded(){select(null);for(const id of chunks.keys())clearChunks(id);for(const group of loaded.values()){world.remove(group);group.traverse(x=>{if(x.isMesh){x.geometry.dispose();x.material.dispose();}});group.userData.textures?.forEach(t=>t.dispose());}loaded.clear();buildings.clear();}
 let streamEnabled=true,streamRadius=mobileMap?0:1,loadQueue=Promise.resolve(),desiredRequest=0,lastWanted='',retryAt=0,contextGround=null,contextPromise=null,lastStreamCheck=0,streamHeading=null;
-const keys=new Set();
+const keys=new Set(),tileRetryAt=new Map();
 function sectionAt(x,z){const e=origin[0]+x,n=origin[1]-z,c=Math.max(0,Math.min(34,Math.floor((e-base[0])/1000))),r=Math.max(0,Math.min(34,Math.floor((n-base[1])/1000)));return `C${String(c).padStart(2,'0')}_R${String(r).padStart(2,'0')}`;}
 function centerSection(){return sectionAt(controls.target.x,controls.target.z);}
 let streamSample=null;
@@ -224,7 +225,7 @@ function updateBuildingList(force=false){
 }
 $('buildingList').addEventListener('focus',()=>{if(buildingListDirty)updateBuildingList(true);});
 async function ensureContext(){if(contextGround||!available('assets/connected_terrain.glb'))return;if(contextPromise)return contextPromise;contextPromise=(async()=>{try{const g=await parseGLB(await bytes('assets/connected_terrain.glb'),'assets/connected_terrain.glb');g.name='Connected 35 km terrain';world.add(g);contextGround=g;}catch(e){status('City terrain could not load: '+e.message);}finally{contextPromise=null;}})();return contextPromise;}
-function loadArea(tile,radius=streamRadius,resetCamera=true){if(allTilesMode){allTilesMode=false;allTileJob++;allTilesRunning=false;$('streamRange').value=String(streamRadius);$('stopAllTiles').disabled=!allTileCacheRunning;}const req=++desiredRequest;loadQueue=loadQueue.catch(()=>{}).then(async()=>{if(req!==desiredRequest)return;loading=true;try{const center=byId.get(tile);if(!center)throw Error('Outside the 35 km city boundary.');const wanted=sections.filter(s=>Math.abs(s.column-center.column)<=radius&&Math.abs(s.row-center.row)<=radius).sort((a,b)=>Math.abs(a.column-center.column)+Math.abs(a.row-center.row)-Math.abs(b.column-center.column)-Math.abs(b.row-center.row));if(!available(center.uri))status(`Tile ${tile} is generated fill until its 3D source is packaged.`);if(!stable3D&&window.JC_HYPERFLIGHT&&streamHeading){const length=Math.hypot(streamHeading.x,streamHeading.z);if(length>1)for(const d of [1000,2000,3000,4000,5000]){const next=byId.get(sectionAt(controls.target.x+streamHeading.x/length*d,controls.target.z+streamHeading.z/length*d));if(next&&!wanted.includes(next))wanted.push(next);}}const keep=new Set(wanted.map(s=>s.id));lastWanted=tile;current=tile;$('tile').value=tile;if(resetCamera)view('south',radius);status(`Connecting ${tile} · ${wanted.length} nearby tiles…`);if(!loaded.size){$('loading').style.display='flex';$('loading').textContent='Connecting city tiles…';}for(const s of wanted){if(req!==desiredRequest)break;if(loaded.has(s.id))continue;let g;if(available(s.uri)){g=await parseGLB(await bytes(s.uri),s.uri);}else{g=createMissingTileFallback(s);}if(req!==desiredRequest){g.traverse(x=>{if(x.isMesh){x.geometry.dispose();if(Array.isArray(x.material))x.material.forEach(m=>m.dispose());else x.material?.dispose?.();}});g.userData.textures?.forEach(t=>t.dispose());break;}loaded.set(s.id,g);tileRevision++;world.add(g);g.updateWorldMatrix(true,true);for(const ob of g.children)if(ob.userData.buildingId){buildings.set(ob.userData.buildingId,ob);const e=edits.get(ob.userData.buildingId)||{};setAppearance(ob,e);if(e.state)destroy(ob,e.state,false);}g.userData.continueBuild?.();let discarded=0;for(const id of [...loaded.keys()])if(!keep.has(id)&&loaded.size>wanted.length){removeTile(id);if(++discarded%8===0)await new Promise(requestAnimationFrame);}await new Promise(resolve=>setTimeout(resolve,0));}if(req===desiredRequest){let discarded=0;for(const id of [...loaded.keys()])if(!keep.has(id)){removeTile(id);if(++discarded%8===0)await new Promise(requestAnimationFrame);}updateBuildingList();status(`${PACKAGED_CITY_TILE_COUNT.toLocaleString()} detailed tiles available · ${loaded.size} detailed tiles active · ${buildings.size.toLocaleString()} editable features`);retryAt=0;if(!contextGround&&!contextPromise)setTimeout(()=>ensureContext(),2500);}}catch(e){retryAt=performance.now()+5000;window.JC_TILE_LOAD_ERROR=e.message;status(e.message);}finally{loading=false;$('loading').style.display='none';window.ready=true;window.dispatchEvent(new Event('jc-tiles-loaded'));}});return loadQueue;}
+function loadArea(tile,radius=streamRadius,resetCamera=true){if(allTilesMode){allTilesMode=false;allTileJob++;allTilesRunning=false;$('streamRange').value=String(streamRadius);$('stopAllTiles').disabled=!allTileCacheRunning;}const req=++desiredRequest;loadQueue=loadQueue.catch(()=>{}).then(async()=>{if(req!==desiredRequest)return;loading=true;try{const center=byId.get(tile);if(!center)throw Error('Outside the 35 km city boundary.');const wanted=sections.filter(s=>Math.abs(s.column-center.column)<=radius&&Math.abs(s.row-center.row)<=radius).sort((a,b)=>Math.abs(a.column-center.column)+Math.abs(a.row-center.row)-Math.abs(b.column-center.column)-Math.abs(b.row-center.row));if(!available(center.uri))status(`Tile ${tile} is generated fill until its 3D source is packaged.`);if(!stable3D&&window.JC_HYPERFLIGHT&&streamHeading){const length=Math.hypot(streamHeading.x,streamHeading.z);if(length>1)for(const d of [1000,2000,3000,4000,5000]){const next=byId.get(sectionAt(controls.target.x+streamHeading.x/length*d,controls.target.z+streamHeading.z/length*d));if(next&&!wanted.includes(next))wanted.push(next);}}const keep=new Set(wanted.map(s=>s.id));lastWanted=tile;current=tile;$('tile').value=tile;if(resetCamera)view('south',radius);status(`Connecting ${tile} · ${wanted.length} nearby tiles…`);if(!loaded.size){$('loading').style.display='flex';$('loading').textContent='Connecting city tiles…';}for(const s of wanted){if(req!==desiredRequest)break;const old=loaded.get(s.id);if(old&&!(old.userData.generatedFallback&&available(s.uri)&&performance.now()>=(tileRetryAt.get(s.id)||0)))continue;let g;try{if(available(s.uri)){g=await parseGLB(await bytes(s.uri),s.uri);tileRetryAt.delete(s.id);}else{g=createMissingTileFallback(s);}}catch(error){tileRetryAt.set(s.id,performance.now()+15000);console.warn('Tile '+s.id+' unavailable; keeping the rest of the city loading',error);if(old)continue;g=createMissingTileFallback(s);}if(req!==desiredRequest){g.traverse(x=>{if(x.isMesh){x.geometry.dispose();if(Array.isArray(x.material))x.material.forEach(m=>m.dispose());else x.material?.dispose?.();}});g.userData.textures?.forEach(t=>t.dispose());break;}if(old)removeTile(s.id);loaded.set(s.id,g);tileRevision++;world.add(g);g.updateWorldMatrix(true,true);for(const ob of g.children)if(ob.userData.buildingId){buildings.set(ob.userData.buildingId,ob);const e=edits.get(ob.userData.buildingId)||{};setAppearance(ob,e);if(e.state)destroy(ob,e.state,false);}g.userData.continueBuild?.();let discarded=0;for(const id of [...loaded.keys()])if(!keep.has(id)&&loaded.size>wanted.length){removeTile(id);if(++discarded%8===0)await new Promise(requestAnimationFrame);}await new Promise(resolve=>setTimeout(resolve,0));}if(req===desiredRequest){let discarded=0;for(const id of [...loaded.keys()])if(!keep.has(id)){removeTile(id);if(++discarded%8===0)await new Promise(requestAnimationFrame);}updateBuildingList();status(`${PACKAGED_CITY_TILE_COUNT.toLocaleString()} detailed tiles available · ${loaded.size} detailed tiles active · ${buildings.size.toLocaleString()} editable features`);retryAt=0;if(!contextGround&&!contextPromise)setTimeout(()=>ensureContext(),2500);}}catch(e){retryAt=performance.now()+5000;window.JC_TILE_LOAD_ERROR=e.message;status(e.message);}finally{loading=false;$('loading').style.display='none';window.ready=true;window.dispatchEvent(new Event('jc-tiles-loaded'));}});return loadQueue;}
 function movement(dt){if(window.JC_MAP_PLAYING||!keys.size)return;const forward=controls.target.clone().sub(camera.position);forward.y=0;forward.normalize();const right=new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0)),delta=new THREE.Vector3(),speed=Math.max(120,camera.position.distanceTo(controls.target)*.7)*(keys.has('Shift')?3:1);if(keys.has('w')||keys.has('ArrowUp'))delta.add(forward);if(keys.has('s')||keys.has('ArrowDown'))delta.sub(forward);if(keys.has('d')||keys.has('ArrowRight'))delta.add(right);if(keys.has('a')||keys.has('ArrowLeft'))delta.sub(right);if(delta.lengthSq()){delta.normalize().multiplyScalar(speed*dt);const next=controls.target.clone().add(delta);next.x=THREE.MathUtils.clamp(next.x,base[0]-origin[0]+1,base[2]-origin[0]-1);next.z=THREE.MathUtils.clamp(next.z,origin[1]-base[3]+1,origin[1]-base[1]-1);delta.copy(next).sub(controls.target);camera.position.add(delta);controls.target.copy(next);}}
 function streamingTick(t,dt){
  movement(dt);
@@ -246,7 +247,7 @@ function streamingTick(t,dt){
  if(!window.JC_CITY_READY||!streamEnabled||t<retryAt||t-lastStreamCheck<400)return;lastStreamCheck=t;
  const position={x:controls.target.x,z:controls.target.z},ahead=predictTravel(position,streamSample,streamSample?t-streamSample.t:0,16);streamHeading={x:ahead.x-position.x,z:ahead.z-position.z};streamSample={...position,t};
  applyTileLod(position);
- const id=centerSection();if(id!==lastWanted&&!loading)loadArea(id,window.JC_HYPERFLIGHT?0:streamRadius,false);
+ const id=centerSection();const recoverable=[...loaded].some(([tileId,group])=>group.userData.generatedFallback&&available(byId.get(tileId)?.uri||'')&&t>=(tileRetryAt.get(tileId)||0));if((id!==lastWanted||recoverable)&&!loading)loadArea(id,window.JC_HYPERFLIGHT?0:streamRadius,false);
  const connection=navigator.connection;
  if(connection?.saveData||['slow-2g','2g'].includes(connection?.effectiveType))return;
  const seen=new Set();
@@ -328,32 +329,20 @@ async function cacheAll3DTiles(){
  if(!('caches' in window)){updateAllTileStatus('This browser does not support the Cache Storage API.');return;}
  allTileCacheRunning=true;
  const controller=new AbortController();allTileCacheAbort=controller;updateAllTileStop();
- let done=0,cached=0,fail=0;
  try{
   const cache=await caches.open('jc-city-3d-tiles-v1');
-  for(const tile of all3DTiles){
-   if(controller.signal.aborted)break;
-   const url=new URL('./'+tile.uri+'.gz',location.href).href;
-   try{
-    if(!(await cache.match(url))){
-     const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
-     if(!response.ok)throw Error('HTTP '+response.status);
-     await cache.put(url,response);
-    }
-    cached++;
-   }catch(error){
-    if(controller.signal.aborted)break;
-    fail++;if(fail>12)throw Error('Many tiles could not be cached (storage or network limit).');
+  const outcome=await cachePackagedCityTiles(all3DTiles,{
+   cache,baseUrl:location.href,signal:controller.signal,timeoutMs:30000,maxConsecutiveFailures:8,
+   yieldControl:()=>new Promise(requestAnimationFrame),
+   onProgress:state=>{
+    updateAllTileStatus('3D files cached '+state.cached+' / '+state.total+' · '+state.failed+' unavailable',state.done);
    }
-   done++;
-   if(done%4===0||done===all3DTiles.length){
-    updateAllTileStatus('3D files cached '+cached+' / '+all3DTiles.length+' · '+fail+' unavailable',done);
-    await new Promise(requestAnimationFrame);
-   }
-  }
-  if(!controller.signal.aborted)updateAllTileStatus('Cached '+cached+' / '+all3DTiles.length+' packaged 3D tiles ('+fail+' unavailable). Normal play keeps streaming nearby meshes.',done);
-  else updateAllTileStatus('Tile caching paused: '+cached+' / '+all3DTiles.length+' stored. Restart to resume.',done);
- }catch(error){updateAllTileStatus('Tile cache stopped: '+error.message+' · '+cached+' stored',done);}
+  });
+  if(outcome.stopped==='cancelled')updateAllTileStatus('Tile caching paused: '+outcome.cached+' / '+outcome.total+' stored. Restart to resume.',outcome.done);
+  else if(outcome.stopped==='storage')updateAllTileStatus('Storage full: '+outcome.cached+' tiles saved. Free device space and restart to resume.',outcome.done);
+  else if(outcome.stopped==='network')updateAllTileStatus('Repeated network failures: '+outcome.cached+' tiles saved. Check connection and restart to resume.',outcome.done);
+  else updateAllTileStatus('Cached '+outcome.cached+' / '+outcome.total+' packaged 3D tiles ('+outcome.failed+' unavailable). Normal play keeps streaming nearby meshes.',outcome.done);
+ }catch(error){updateAllTileStatus('Tile cache stopped: '+error.message+' · downloaded tiles remain stored.');}
  finally{allTileCacheRunning=false;allTileCacheAbort=null;updateAllTileStop();}
 }
 $('downloadAllTiles').onclick=()=>{void cacheAll3DTiles();};
