@@ -182,7 +182,7 @@ async function parseGLB(raw,name){const dv=new DataView(raw.buffer,raw.byteOffse
  group.userData.continueBuild=()=>{if(group.userData.progressiveStarted||built>=g.nodes.length)return;group.userData.progressiveStarted=true;const progressiveBatch=legacySpec?1:(lowSpec?2:4),progressiveDelay=legacySpec?60:(lowSpec?12:0);const scheduleBuildStep=()=>{if(progressiveDelay)setTimeout(()=>requestAnimationFrame(step),progressiveDelay);else requestAnimationFrame(step);};const step=()=>{if(!group.parent){group.userData.progressiveStarted=false;return;}let made=0;while(built<g.nodes.length&&made<progressiveBatch){const n=g.nodes[built++],ob=buildNode(n);if(ob){group.add(ob);if(ob.userData.buildingId){buildings.set(ob.userData.buildingId,ob);const edit=edits.get(ob.userData.buildingId)||{};setAppearance(ob,edit);if(edit.state)destroy(ob,edit.state,false);}}made++;}window.JC_CITY_PROGRESSIVE_BUILDINGS=built;if(built<g.nodes.length)scheduleBuildStep();else{group.userData.progressiveComplete=true;window.dispatchEvent(new CustomEvent('jc-tile-progressive-complete',{detail:{tile:name,buildings:built}}));updateBuildingList();}};scheduleBuildStep();};
  const e=g.asset?.extras;
  // Reject malformed or geographically misplaced GLBs instead of drawing a random city block.
- const tileMatch=/^tiles\\/C(\\d{2})_R(\\d{2})\\.glb$/.exec(name);
+ const tileMatch=/^tiles\/C(\d{2})_R(\d{2})\.glb$/.exec(name);
  if(!e||!Number.isFinite(e.originEasting)||!Number.isFinite(e.originNorthing))throw Error('Invalid city tile origin: '+name);
  if(tileMatch){
   const col=Number(tileMatch[1]),row=Number(tileMatch[2]);
