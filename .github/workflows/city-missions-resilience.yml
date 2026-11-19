@@ -1,0 +1,22 @@
+name: City rescue mission resilience
+on:
+  pull_request:
+    paths:
+      - 'city-missions.js'
+      - 'dist/client/city-missions.js'
+      - 'tests/city-missions-resilience.mjs'
+      - '.github/workflows/city-missions-resilience.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check city-missions.js
+      - run: node --check dist/client/city-missions.js
+      - run: cmp city-missions.js dist/client/city-missions.js
+      - run: node tests/city-missions-resilience.mjs
+      - run: node tests/missions.mjs
