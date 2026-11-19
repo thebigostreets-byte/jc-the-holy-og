@@ -51,6 +51,7 @@ jobs:
             tests/photorealism-pbr.mjs \
             tests/rooftop-details.mjs \
             tests/predictive-streaming.mjs \
+            tests/city-tile-window.mjs \
             tests/sin-city-state.mjs \
             tests/vegas-streets.mjs \
             tests/world-time.mjs \
