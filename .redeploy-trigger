@@ -1,4 +1,5 @@
 JC THE HOLY OG redeploy trigger
 branch: main
-requested_at: 2026-11-18T20:22:00-08:00
-reason: user requested GitHub Pages hosting of current repository main branch
+requested_at: 2026-11-18T22:32:00-08:00
+reason: explicit request to redeploy GitHub Pages production game without merging draft PR #39
+source_head_before_trigger: fba7033160341ca4b5c427ede95c82376307e178
