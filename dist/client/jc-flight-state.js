@@ -2,8 +2,11 @@
 export function transitionFlight(state, action) {
   const current = {
     flying: false, hypersonic: false, glide: false, diving: false,
-    height: 0, descending: 0, ...state
+    height: 0, descending: 0, ...(state && typeof state === 'object' ? state : {})
   };
+  // Corrupt saves and nonfinite physics samples must not poison future flight modes.
+  current.height = Number.isFinite(current.height) ? Math.max(0, current.height) : 0;
+  current.descending = Number.isFinite(current.descending) ? current.descending : 0;
   switch (action) {
     case 'takeoff':
       return {...current, flying:true, hypersonic:false, glide:false, diving:false, height:Math.max(6,current.height), descending:0};
@@ -39,4 +42,4 @@ export function transitionFlight(state, action) {
   }
 }
 
-export function shouldTouchDown(flying,previousHeight,height,verticalVelocity){return flying&&previousHeight>0&&height===0&&verticalVelocity<=0;}
+export function shouldTouchDown(flying,previousHeight,height,verticalVelocity){return Boolean(flying)&&Number.isFinite(previousHeight)&&Number.isFinite(height)&&Number.isFinite(verticalVelocity)&&previousHeight>0&&height===0&&verticalVelocity<=0;}
