@@ -1,6 +1,7 @@
 let pending;
 const FICTIONAL_LANDMARKS = Object.freeze([
  ['mandalay bay','Blood Bay'],
+ ['allegiant stadium','Angelic Stadium'],
  ['luxor','Obsidian Pyramid'],
  ['mgm grand','666'],
  ['palms','Psalms']
@@ -32,7 +33,7 @@ const FALLBACK_LANDMARKS=[
  {name:'The STRAT',type:'casino',longitude:-115.1554,latitude:36.1475,radius:190,address:'Las Vegas Boulevard'},
  {name:'Psalms',type:'casino',longitude:-115.1982,latitude:36.1155,radius:230,address:'Flamingo Road'},
  {name:'Sphere',type:'landmark',longitude:-115.1602,latitude:36.1208,radius:160,address:'Sands Avenue'},
- {name:'Allegiant Stadium',type:'stadium',longitude:-115.183952,latitude:36.090794,radius:300,address:'Russell Road'},
+ {name:'Angelic Stadium',type:'stadium',longitude:-115.183952,latitude:36.090794,radius:300,address:'Russell Road'},
  {name:'T-Mobile Arena',type:'arena',longitude:-115.1783,latitude:36.1029,radius:190,address:'Las Vegas Boulevard'}
 ];
 function distanceMetres(lon,lat,target){const y=(lat-target.latitude)*111320,x=(lon-target.longitude)*111320*Math.cos(lat*Math.PI/180);return Math.hypot(x,y);}
@@ -62,7 +63,7 @@ export function identityPalette(name=''){
  if(/Treasure Island|STRAT/i.test(name))return {photo:0,color:'#9caab4',roughness:.38};
  if(/Psalms|Palms/i.test(name))return {photo:2,color:'#a5b7c2',roughness:.4};
  if(/Sphere/i.test(name))return {photo:2,color:'#5f6570',roughness:.28};
- if(/Allegiant/i.test(name))return {photo:2,color:'#1b2026',roughness:.38};
+ if(/Angelic Stadium|Allegiant Stadium/i.test(name))return {photo:1,color:'#f3eee0',roughness:.54};
  if(/T-Mobile/i.test(name))return {photo:2,color:'#9ba6b1',roughness:.4};
  return null;
 }
