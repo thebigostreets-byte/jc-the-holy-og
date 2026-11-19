@@ -5,6 +5,8 @@ const FICTIONAL_LANDMARKS = Object.freeze([
  ['obsidian pyramid','Luxor'],
  ['mgm grand','666'],
  ['allegiant stadium','Angelic Stadium'],
+ ['las vegas motor speedway','Sin City Motor Speedway'],
+ ['las vegas speedway','Sin City Motor Speedway'],
  ['palms','Psalms']
 ]);
 export function fictionalLandmarkName(name=''){
@@ -35,6 +37,7 @@ const FALLBACK_LANDMARKS=[
  {name:'Psalms',type:'casino',longitude:-115.1982,latitude:36.1155,radius:230,address:'Flamingo Road'},
  {name:'Sphere',type:'landmark',longitude:-115.1602,latitude:36.1208,radius:160,address:'Sands Avenue'},
  {name:'Angelic Stadium',type:'stadium',longitude:-115.183952,latitude:36.090794,radius:300,address:'Russell Road'},
+ {name:'Sin City Motor Speedway',type:'racetrack',longitude:-115.0105,latitude:36.2723,radius:850,address:'Las Vegas Boulevard North'},
  {name:'T-Mobile Arena',type:'arena',longitude:-115.1783,latitude:36.1029,radius:190,address:'Las Vegas Boulevard'}
 ];
 function distanceMetres(lon,lat,target){const y=(lat-target.latitude)*111320,x=(lon-target.longitude)*111320*Math.cos(lat*Math.PI/180);return Math.hypot(x,y);}
@@ -52,6 +55,7 @@ export function loadBuildingIdentities(){
 // Only the name/address relationship is sourced from the county footprint match.
 export function identityPalette(name=''){
  if(/Obsidian Pyramid|Luxor/i.test(name))return {photo:3,color:'#f8f7f0',roughness:.37};
+ if(/Sin City Motor Speedway|Las Vegas Motor Speedway/i.test(name))return {photo:2,color:'#363c47',roughness:.82};
  if(/Angelic Stadium|Allegiant Stadium/i.test(name))return {photo:1,color:'#fff8e7',roughness:.42};
  if(/END OF HIM/i.test(name))return {photo:0,color:'#531522',roughness:.4};
  if(/666|MGM Grand/i.test(name))return {photo:0,color:'#9c202e',roughness:.38};
