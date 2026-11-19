@@ -62,3 +62,18 @@ jobs:
             node "$file"
             echo "::endgroup::"
           done
+
+      - name: Run focused cross-shift PR regression tests when present
+        run: |
+          set -eu
+          for file in \\
+            tests/jc-rig-animation-safety.mjs \\
+            tests/angelic-stadium-identity.mjs \\
+            tests/npc-dialogue-history-guard.mjs \\
+            tests/npc-dialogue-cancellation.mjs; do
+            if [ -f "$file" ]; then
+              echo "::group::$file"
+              node "$file"
+              echo "::endgroup::"
+            fi
+          done
