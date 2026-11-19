@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {fictionalLandmarkName,resolveBuildingIdentity} from '../building-identities.js';
+const read=p=>readFileSync(new URL(p,import.meta.url),'utf8');
+assert.equal(read('../building-identities.js'),read('../dist/client/building-identities.js'));
+assert.equal(read('../landmark-variants.js'),read('../dist/client/landmark-variants.js'));
+assert.equal(fictionalLandmarkName('Las Vegas Motor Speedway'),'Sin City Motor Speedway');
+assert.equal(fictionalLandmarkName('Las Vegas Motor Speedway grandstand'),'Sin City Motor Speedway');
+assert.equal(resolveBuildingIdentity('speedway-test',{longitude:-115.0105,latitude:36.2723})?.name,'Sin City Motor Speedway');
+const art=read('../landmark-variants.js');
+assert.match(art,/name:'Sin City Motor Speedway'/);
+assert.match(art,/SIN CITY MOTOR SPEEDWAY/);
+assert.match(art,/const speedway=anchor\(LANDMARK_SPECS.speedway\)/);
+assert.match(art,/new THREE.TorusGeometry/);
+console.log('PASS: Sin City Motor Speedway identity, anchored geometry, signage, deploy sync');
