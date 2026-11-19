@@ -6,6 +6,7 @@ import {projectToUTM11} from './city-environment.js';
 export const LANDMARK_SPECS = Object.freeze({
  luxor: Object.freeze({name:'Luxor',longitude:-115.1761,latitude:36.0955,baseMetres:183,heightMetres:107,beamMetres:3800}),
  angelic: Object.freeze({name:'Angelic Stadium',longitude:-115.183952,latitude:36.090794,footprintMetres:[300,245]}),
+ speedway: Object.freeze({name:'Sin City Motor Speedway',longitude:-115.0105,latitude:36.2723,footprintMetres:[1150,780]}),
  endOfHim: Object.freeze({name:'END OF HIM',longitude:-115.1697,latitude:36.1025,hellOnly:true})
 });
 
@@ -57,6 +58,21 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
  const goldRim=owned(new THREE.TorusGeometry(1,.02,4,mobile?32:64),new THREE.MeshBasicMaterial({color:0xf2d28d}));goldRim.rotation.x=Math.PI/2;goldRim.scale.set(151,125,1);goldRim.position.y=25;stadium.add(goldRim);
  for(const side of [-1,1])addSign(stadium,'ANGELIC STADIUM',108,19,0,22,side*126,side<0?Math.PI:0,'#fbd47f','#16202c');
  
+ // Speedway is a distinct oval landmark, not a generic stadium or Hell resort.
+ // Low-poly infield, paved racing loop and two grandstands share the geographic anchor.
+ const speedway=anchor(LANDMARK_SPECS.speedway);
+ const infield=owned(new THREE.CylinderGeometry(1,1,.35,mobile?48:96),material(0x596347,{roughness:1}));
+ infield.scale.set(520,1,350);infield.position.y=.25;speedway.add(infield);
+ const track=owned(new THREE.TorusGeometry(1,.13,mobile?6:8,mobile?64:128),material(0x292d34,{roughness:.94}));
+ track.rotation.x=Math.PI/2;track.scale.set(540,365,1);track.position.y=1.2;speedway.add(track);
+ const stripe=owned(new THREE.TorusGeometry(1,.006,3,mobile?64:128),new THREE.MeshBasicMaterial({color:0xf5e8cf}));
+ stripe.rotation.x=Math.PI/2;stripe.scale.set(540,365,1);stripe.position.y=1.8;speedway.add(stripe);
+ for(const side of [-1,1]){
+  const stand=owned(new THREE.BoxGeometry(370,17,38),material(0xc5bfae,{roughness:.82}));
+  stand.position.set(side*300,11,side*295);stand.rotation.y=side*.12;speedway.add(stand);
+ }
+ addSign(speedway,'SIN CITY MOTOR SPEEDWAY',240,28,0,27,-390,0,'#f7d978','#202631');
+
  // Original generated Hell casino façade: a distance-only transparent impostor,
  // never substituted for close-range building collision or source roof geometry.
  const hell=anchor(LANDMARK_SPECS.endOfHim);
@@ -82,7 +98,7 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
   if(game.camera){const cam=game.camera.position,dist=Math.hypot(cam.x-pyramid.position.x,cam.z-pyramid.position.z);pyramid.visible=dist<20000;}
  }
  update();
- return {root,update,stats:()=>({landmarks:3,luxorBeamMetres:3800,endOfHimActive:hell.visible}),dispose(){
+ return {root,update,stats:()=>({landmarks:4,luxorBeamMetres:3800,endOfHimActive:hell.visible}),dispose(){
   if(disposed)return;disposed=true;game.scene.remove(root);
   for(const g of geometries)g.dispose();for(const m of materials)m.dispose();for(const t of textures)t.dispose();
  }};
