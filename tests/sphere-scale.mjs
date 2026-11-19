@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(new URL(p,import.meta.url),'utf8');
+const src=read('../city-environment.js');
+assert.equal(src,read('../dist/client/city-environment.js'));
+assert.match(src,/globe\.position\.set\(x,y\+95,z\);globe\.scale\.setScalar\(79\)/);
+assert.match(src,/CylinderGeometry\(72,77,24/);
+assert.match(src,/CylinderGeometry\(74,74,2\.2/);
+assert.match(src,/\(79\+radius\)/);
+assert.match(src,/\(s\.y\+95\)/);
+assert.match(src,/<79\+radius/);
+console.log('PASS: Sphere 158m diameter, matching foundation/collision and source/deploy sync');
