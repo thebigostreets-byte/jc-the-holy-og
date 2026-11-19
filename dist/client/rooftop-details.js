@@ -27,10 +27,14 @@ const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 export function buildRooftopPlan(buildings) {
   const housings=[],grilles=[],vents=[],antennas=[];
   for(const building of buildings||[]) {
+    if(!building||typeof building!=='object')continue;
     const {id,min,max}=building;
     if(!id||!min||!max)continue;
+    // Malformed streamed geometry must not create NaN/Infinity instance matrices.
+    if(![min.x,min.y,min.z,max.x,max.y,max.z].every(Number.isFinite))continue;
     const width=max.x-min.x,depth=max.z-min.z,height=max.y-min.y;
-    if(width<7||depth<7||height<10||width>500||depth>500||height>500)continue;
+    if(!Number.isFinite(width)||!Number.isFinite(depth)||!Number.isFinite(height)||
+       width<7||depth<7||height<10||width>500||depth>500||height>500)continue;
     const hash=hashId(id),count=1+(hash%3);
     const unitWidth=clamp(width*.09,1.4,3.2),unitDepth=clamp(depth*.09,1.2,2.8),unitHeight=clamp(height*.014,1.1,2.1);
     for(let i=0;i<count;i++) {
