@@ -13,5 +13,6 @@ export function selectFlightPose({ diving = false, braking = false, rising = fal
 export function selectGroundPose(horizontalSpeed, stepPhase, sprinting = false) {
   if (!Number.isFinite(horizontalSpeed) || horizontalSpeed <= 1.1) return 0;
   const frames = sprinting ? [31,32,33,34,35,36,37,38] : [23,24,25,26,27,28,29,30];
-  const phase = Number.isFinite(stepPhase) ? Math.floor(stepPhase) : 0;\n  return frames[((phase % frames.length) + frames.length) % frames.length];
+  const phase = Number.isFinite(stepPhase) ? Math.floor(stepPhase) : 0;
+  return frames[((phase % frames.length) + frames.length) % frames.length];
 }
