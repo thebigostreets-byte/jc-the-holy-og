@@ -87,3 +87,11 @@ export function resolveStreetLocation(x,z,network) {
   const district=districtAt(x,z,network),road=nearestStreet(x,z,network,58);
   return {street:road?.name||'OFF-ROAD',district,distance:road?Math.round(road.distance):null,label:road?road.name.toUpperCase()+' · '+district:'OFF-ROAD · '+district};
 }
+
+// Exact project CRS used by the tile source. Keep fallback streets aligned.
+const A=6378137,F=1/298.257223563,E2=F*(2-F),EP2=E2/(1-E2),K=.9996;
+export function vegasToUTM11(lon,lat){
+ const p=lat*Math.PI/180,l=lon*Math.PI/180,l0=-117*Math.PI/180,s=Math.sin(p),c=Math.cos(p),t=Math.tan(p),n=A/Math.sqrt(1-E2*s*s),T=t*t,C=EP2*c*c,d=c*(l-l0);
+ const m=A*((1-E2/4-3*E2**2/64-5*E2**3/256)*p-(3*E2/8+3*E2**2/32+45*E2**3/1024)*Math.sin(2*p)+(15*E2**2/256+45*E2**3/1024)*Math.sin(4*p)-(35*E2**3/3072)*Math.sin(6*p));
+ return [500000+K*n*(d+(1-T+C)*d**3/6+(5-18*T+T*T+72*C-58*EP2)*d**5/120),K*(m+n*t*(d*d/2+(5-T+9*C+4*C*C)*d**4/24+(61-58*T+T*T+600*C-330*EP2)*d**6/720))];
+}
