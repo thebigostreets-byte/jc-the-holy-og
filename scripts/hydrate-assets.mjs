@@ -26,6 +26,7 @@ async function work(){
     const extension=path.extname(asset.path).toLowerCase();
     const accept=extension==='.jpg'||extension==='.jpeg'?'image/jpeg':extension==='.webp'?'image/webp':extension==='.png'?'image/png':'*/*';
     const response=await fetch(new URL(asset.sourcePath||asset.path,lock.origin),{signal:AbortSignal.timeout(120000),headers:{accept}});
+    let bytes;
     if(!response.ok){
       const optionalTile=/^tiles\/C\d{2}_R\d{2}\.glb\.gz$/.test(asset.path);
       const optionalAtlas=optionalFacadeAtlases.has(asset.path);
@@ -33,9 +34,22 @@ async function work(){
         missingOptionalAssets.add(asset.path);skippedOptionalAssets++;
         console.log(`Skipped optional ${optionalTile?'city tile':'facade atlas'}: ${asset.path}`);continue;
       }
-      throw Error(`Asset ${asset.path}: HTTP ${response.status}`);
-    }
-    let bytes=Buffer.from(await response.arrayBuffer());
+      // Recover moved files only from the exact SHA-256-pinned prior publication.
+      if(response.status===404&&!asset.sourcePath){
+        try{
+          const stableUrl='https://raw.githubusercontent.com/thebigostreets-byte/jc-the-holy-og/gh-pages/'+asset.path;
+          const pinnedResponse=await fetch(stableUrl,{signal:AbortSignal.timeout(40000)});
+          if(pinnedResponse.ok){
+            const candidate=Buffer.from(await pinnedResponse.arrayBuffer());
+            if(candidate.length===asset.bytes&&hash(candidate)===asset.sha256){
+              bytes=candidate;
+              console.log('Restored SHA-256-pinned published asset after host 404: '+asset.path);
+            }
+          }
+        }catch(error){console.warn('Pinned 404 recovery unavailable for '+asset.path,error.message);}
+      }
+      if(!bytes)throw Error(`Asset ${asset.path}: HTTP ${response.status}; no verified pinned fallback`);
+    }else bytes=Buffer.from(await response.arrayBuffer());
     if(asset.sourcePath){
       if(bytes.length!==asset.sourceBytes||hash(bytes)!==asset.sourceSha256)throw Error(`Compressed source checksum mismatch: ${asset.sourcePath}`);
       const raw=brotliDecompressSync(bytes);
