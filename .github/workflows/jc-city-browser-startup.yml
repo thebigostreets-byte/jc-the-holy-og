@@ -9,6 +9,9 @@ on:
       - 'map-startup.js'
       - 'map.html'
       - 'tests/browser-startup-smoke.mjs'
+      - 'jc-character3d.js'
+      - 'jc-character-pose.js'
+      - 'tests/jc-pose-integrity.mjs'
       - '.github/workflows/jc-city-browser-startup.yml'
   workflow_dispatch:
 permissions:
