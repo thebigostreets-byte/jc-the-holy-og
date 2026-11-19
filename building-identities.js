@@ -1,8 +1,10 @@
 let pending;
 const FICTIONAL_LANDMARKS = Object.freeze([
  ['mandalay bay','Blood Bay'],
- ['luxor','Obsidian Pyramid'],
+ ['luxor','Luxor'],
+ ['obsidian pyramid','Luxor'],
  ['mgm grand','666'],
+ ['allegiant stadium','Angelic Stadium'],
  ['palms','Psalms']
 ]);
 export function fictionalLandmarkName(name=''){
@@ -17,7 +19,7 @@ const FALLBACK_LANDMARKS=[
  {name:'666',type:'casino',longitude:-115.1697,latitude:36.1025,radius:230,address:'Las Vegas Strip'},
  {name:'New York-New York',type:'casino',longitude:-115.1745,latitude:36.1022,radius:190,address:'Las Vegas Strip'},
  {name:'Excalibur',type:'casino',longitude:-115.1756,latitude:36.0987,radius:210,address:'Las Vegas Strip'},
- {name:'Obsidian Pyramid',type:'casino',longitude:-115.1761,latitude:36.0955,radius:220,address:'Las Vegas Strip'},
+ {name:'Luxor',type:'casino',longitude:-115.1761,latitude:36.0955,radius:220,address:'Las Vegas Strip'},
  {name:'Blood Bay',type:'casino',longitude:-115.1753,latitude:36.0919,radius:250,address:'Las Vegas Strip'},
  {name:'The Venetian',type:'casino',longitude:-115.1697,latitude:36.1212,radius:210,address:'Las Vegas Strip'},
  {name:'The Palazzo',type:'casino',longitude:-115.1686,latitude:36.1240,radius:190,address:'Las Vegas Strip'},
@@ -32,7 +34,7 @@ const FALLBACK_LANDMARKS=[
  {name:'The STRAT',type:'casino',longitude:-115.1554,latitude:36.1475,radius:190,address:'Las Vegas Boulevard'},
  {name:'Psalms',type:'casino',longitude:-115.1982,latitude:36.1155,radius:230,address:'Flamingo Road'},
  {name:'Sphere',type:'landmark',longitude:-115.1602,latitude:36.1208,radius:160,address:'Sands Avenue'},
- {name:'Allegiant Stadium',type:'stadium',longitude:-115.183952,latitude:36.090794,radius:300,address:'Russell Road'},
+ {name:'Angelic Stadium',type:'stadium',longitude:-115.183952,latitude:36.090794,radius:300,address:'Russell Road'},
  {name:'T-Mobile Arena',type:'arena',longitude:-115.1783,latitude:36.1029,radius:190,address:'Las Vegas Boulevard'}
 ];
 function distanceMetres(lon,lat,target){const y=(lat-target.latitude)*111320,x=(lon-target.longitude)*111320*Math.cos(lat*Math.PI/180);return Math.hypot(x,y);}
@@ -49,7 +51,9 @@ export function loadBuildingIdentities(){
 // Color directions are game art choices inspired by the named properties.
 // Only the name/address relationship is sourced from the county footprint match.
 export function identityPalette(name=''){
- if(/Obsidian Pyramid|Luxor/i.test(name))return {photo:3,color:'#29282d',roughness:.34};
+ if(/Obsidian Pyramid|Luxor/i.test(name))return {photo:3,color:'#f8f7f0',roughness:.37};
+ if(/Angelic Stadium|Allegiant Stadium/i.test(name))return {photo:1,color:'#fff8e7',roughness:.42};
+ if(/END OF HIM/i.test(name))return {photo:0,color:'#531522',roughness:.4};
  if(/666|MGM Grand/i.test(name))return {photo:0,color:'#9c202e',roughness:.38};
  if(/Blood Bay|Mandalay/i.test(name))return {photo:0,color:'#a52835',roughness:.36};
  if(/Wynn|Encore|Trump/i.test(name))return {photo:0,color:'#c8aa77',roughness:.36};
