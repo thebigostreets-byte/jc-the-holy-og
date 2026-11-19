@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const source=readFileSync(new URL('../jc-character3d.js',import.meta.url),'utf8');
+const deployed=readFileSync(new URL('../dist/client/jc-character3d.js',import.meta.url),'utf8');
+assert.equal(source,deployed,'runtime character rig must match deploy copy');
+assert.match(source,/Number\.isInteger\(index\)/,'pose indices must be validated');
+assert.match(source,/Number\.isFinite\(gait\)\?gait:0/,'nonfinite gait must not propagate to rotations');
+assert.match(source,/Math\.sin\(phase/,'all animated joint rotations must use safe phase');
+const body=source.slice(source.indexOf('const api={setPose('),source.indexOf('group.userData.character=api'));
+assert.doesNotMatch(body,/Math\.sin\(gait/,'raw gait must not be used');
+assert.match(body,/lastPose=poseIndex/);
+console.log('PASS: JC rig guards nonfinite animation inputs and deploy copy matches');
