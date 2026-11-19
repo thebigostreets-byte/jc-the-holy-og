@@ -17,6 +17,6 @@ assert.match(gameplay,/id="jcTimeToggle"/,'game settings expose the day/night co
 assert.match(gameplay,/let worldTimeMode='day'/,'fresh sessions can boot directly into daylight');
 const startup=fs.readFileSync(new URL('../map-startup.js',import.meta.url),'utf8');
 assert.doesNotMatch(startup,/setTimeout\(\(\)=>window\.jcOpenLiteFallback\('startup-timeout'\)/,'slow full-3D startup no longer auto-redirects to lite mode');
-assert.match(startup,/\},45000\);/,'full-3D startup watchdog allows a longer recovery window');
+assert.match(startup,/\},90000\);/,'full-3D startup watchdog allows a 90-second recovery window');
 assert.match(gameplay,/window\.JC_BOOT_STAGE='player-ready'/,'boot exposes the player-ready milestone');
 console.log('PASS: world slowdown, stasis, pause/resume, bounded physics timing, and persistent daylight mode.');
