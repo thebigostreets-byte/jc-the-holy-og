@@ -39,6 +39,7 @@
   "city-roads.js",
   "city-tile-decoder.js",
   "city-tile-index.js",
+  "city-tile-window.js",
   "city-traffic.js",
   "crater-system.js",
   "data/nellis-flood-conveyances.geojson",
