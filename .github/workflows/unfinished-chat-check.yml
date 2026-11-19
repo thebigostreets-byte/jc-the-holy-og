@@ -71,6 +71,7 @@ jobs:
             tests/jc-rig-animation-safety.mjs \
             tests/angelic-stadium-identity.mjs \
             tests/sin-city-motor-speedway.mjs \
+            tests/sphere-scale.mjs \
             tests/npc-dialogue-history-guard.mjs \
             tests/npc-dialogue-cancellation.mjs; do
             if [ -f "$file" ]; then
