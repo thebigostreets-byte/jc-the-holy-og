@@ -27,6 +27,7 @@ jobs:
         run: |
           node tests/jc-pilot-plan.mjs
           node tests/predictive-streaming.mjs
+          node tests/city-tile-download.mjs
       - name: Build and validate the real release candidate
         run: |
           npm ci

@@ -18,6 +18,7 @@ import {predictTravel,createPrefetchCache,corridorPoints} from './predictive-str
 import {createPhotorealDetailMaps,applyPhotorealMaterial} from './photorealism-pbr.js';
 const photorealDetailMaps=createPhotorealDetailMaps(THREE);
 import {PACKAGED_CITY_TILE_IDS,PACKAGED_CITY_TILE_COUNT} from './city-tile-index.js';
+import {cachePackagedCityTiles} from './city-tile-download.js';
 const $=id=>document.getElementById(id);
 const statusText=message=>{$('loading').textContent=message;};
 window.JC_BOOT_STAGE='manifest';
@@ -328,32 +329,20 @@ async function cacheAll3DTiles(){
  if(!('caches' in window)){updateAllTileStatus('This browser does not support the Cache Storage API.');return;}
  allTileCacheRunning=true;
  const controller=new AbortController();allTileCacheAbort=controller;updateAllTileStop();
- let done=0,cached=0,fail=0;
  try{
   const cache=await caches.open('jc-city-3d-tiles-v1');
-  for(const tile of all3DTiles){
-   if(controller.signal.aborted)break;
-   const url=new URL('./'+tile.uri+'.gz',location.href).href;
-   try{
-    if(!(await cache.match(url))){
-     const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
-     if(!response.ok)throw Error('HTTP '+response.status);
-     await cache.put(url,response);
-    }
-    cached++;
-   }catch(error){
-    if(controller.signal.aborted)break;
-    fail++;if(fail>12)throw Error('Many tiles could not be cached (storage or network limit).');
+  const outcome=await cachePackagedCityTiles(all3DTiles,{
+   cache,baseUrl:location.href,signal:controller.signal,timeoutMs:30000,maxConsecutiveFailures:8,
+   yieldControl:()=>new Promise(requestAnimationFrame),
+   onProgress:state=>{
+    updateAllTileStatus('3D files cached '+state.cached+' / '+state.total+' · '+state.failed+' unavailable',state.done);
    }
-   done++;
-   if(done%4===0||done===all3DTiles.length){
-    updateAllTileStatus('3D files cached '+cached+' / '+all3DTiles.length+' · '+fail+' unavailable',done);
-    await new Promise(requestAnimationFrame);
-   }
-  }
-  if(!controller.signal.aborted)updateAllTileStatus('Cached '+cached+' / '+all3DTiles.length+' packaged 3D tiles ('+fail+' unavailable). Normal play keeps streaming nearby meshes.',done);
-  else updateAllTileStatus('Tile caching paused: '+cached+' / '+all3DTiles.length+' stored. Restart to resume.',done);
- }catch(error){updateAllTileStatus('Tile cache stopped: '+error.message+' · '+cached+' stored',done);}
+  });
+  if(outcome.stopped==='cancelled')updateAllTileStatus('Tile caching paused: '+outcome.cached+' / '+outcome.total+' stored. Restart to resume.',outcome.done);
+  else if(outcome.stopped==='storage')updateAllTileStatus('Storage full: '+outcome.cached+' tiles saved. Free device space and restart to resume.',outcome.done);
+  else if(outcome.stopped==='network')updateAllTileStatus('Repeated network failures: '+outcome.cached+' tiles saved. Check connection and restart to resume.',outcome.done);
+  else updateAllTileStatus('Cached '+outcome.cached+' / '+outcome.total+' packaged 3D tiles ('+outcome.failed+' unavailable). Normal play keeps streaming nearby meshes.',outcome.done);
+ }catch(error){updateAllTileStatus('Tile cache stopped: '+error.message+' · downloaded tiles remain stored.');}
  finally{allTileCacheRunning=false;allTileCacheAbort=null;updateAllTileStop();}
 }
 $('downloadAllTiles').onclick=()=>{void cacheAll3DTiles();};
