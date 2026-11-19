@@ -7,6 +7,14 @@ const buildings=[
   {id:'small-shed',min:{x:200,y:0,z:200},max:{x:205,y:4,z:205}},
   {id:'narrow',min:{x:300,y:0,z:300},max:{x:304,y:30,z:330}}
 ];
+const malformed=[null,{},
+  {id:'nan-roof',min:{x:NaN,y:0,z:0},max:{x:80,y:120,z:60}},
+  {id:'infinite-roof',min:{x:0,y:0,z:0},max:{x:Infinity,y:120,z:60}},
+  {id:'reversed-roof',min:{x:80,y:0,z:0},max:{x:0,y:120,z:60}},
+  {id:'overflow-roof',min:{x:-1e308,y:0,z:0},max:{x:1e308,y:120,z:60}}
+];
+assert.deepEqual(buildRooftopPlan([...buildings,...malformed]),buildRooftopPlan(buildings),
+  'invalid streamed building bounds must never create rooftop instances');
 const first=buildRooftopPlan(buildings);
 const second=buildRooftopPlan(buildings);
 assert.deepEqual(first,second,'roof equipment placement must be deterministic');
