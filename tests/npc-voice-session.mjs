@@ -51,3 +51,8 @@ test('one microphone permission request per active voice session',()=>{
   assert.match(source,/finally\{if\(permissionSession===session\)permissionSession=0;/);
   assert.match(source,/function stopMic\(\) \{voiceSession\+\+;/);
 });
+
+
+test('active recorder error releases its own microphone and clears recording state',()=>{
+  assert.ok(source.includes("current.onerror=()=>{if(session!==voiceSession||recorder!==current)return;acquiredStream.getTracks().forEach(t=>t.stop());stream=null;recorder=null;discardRecording=true;resetMic()"));
+});
