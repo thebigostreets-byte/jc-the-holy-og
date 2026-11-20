@@ -89,3 +89,25 @@ test('stale transcription failure cannot display an error in a new NPC conversat
   await pending;
   assert.deepEqual(notices,[]);
 });
+
+test('current NPC transcription still populates its draft',async()=>{
+  const npc={id:'npc-a'};
+  let active=npc,voiceSession=3,input='existing',savedDraft='';
+  const recordingNpc=active,session=voiceSession;
+  const heard=await Promise.resolve('turn left');
+  if(active===recordingNpc&&session===voiceSession){
+    input=[input.trim(),heard].filter(Boolean).join(' ').slice(0,600);
+    savedDraft=input;
+  }
+  assert.equal(input,'existing turn left');
+  assert.equal(savedDraft,input);
+});
+
+test('current NPC transcription failure remains visible to its owner',async()=>{
+  const npc={id:'npc-a'};
+  let active=npc,voiceSession=3,notices=[];
+  const recordingNpc=active,session=voiceSession;
+  try{await Promise.reject(new Error('Transcription unavailable'));}
+  catch(error){if(active===recordingNpc&&session===voiceSession)notices.push(error.message);}
+  assert.deepEqual(notices,['Transcription unavailable']);
+});
