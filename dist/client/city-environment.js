@@ -33,7 +33,12 @@ function addSphere(game,root,feature){
  const setSkin=()=>{if(root.userData.disposed)return;if(skins.every(t=>t.image)){let next=current;while(next===current)next=Math.floor(Math.random()*skins.length);current=next;skin.map=skins[current];skin.emissiveMap=skins[current];skin.needsUpdate=true;globe.userData.theme=['EYE','DEMON','EARTH'][current];}skinTimer=setTimeout(setSkin,14000+Math.random()*42000);};
  const applySkin=()=>{if(!skin.map&&skins[current].image){skin.map=skins[current];skin.emissiveMap=skins[current];skin.needsUpdate=true;globe.userData.theme=['EYE','DEMON','EARTH'][current];}};applySkin();skinTimer=setTimeout(setSkin,18000+Math.random()*30000);
  const faceAxis=new THREE.Vector3(1,0,0),desiredRotation=new THREE.Quaternion(),targetPosition=new THREE.Vector3(),roll=new THREE.Quaternion();
+ let lastFarFrame=0;
  globe.userData.animate=(time)=>{
+  const player=game.player?.position;
+  const farFromSphere=player&&globe.position.distanceToSquared(player)>600*600;
+  if(farFromSphere&&time-lastFarFrame<100)return;
+  if(farFromSphere)lastFarFrame=time;
   applySkin();
   if(time>=nextGaze||!gazeTarget){const player=game.player?.position,playerD=player?globe.position.distanceToSquared(player):Infinity;const distant=playerD>600*600;nextGaze=time+(distant?7000:1800)+Math.random()*(distant?3000:2200);const npcs=distant?[]:(game.npcs?.npcs||[]);let best=player?.clone?.()||null,bestD=playerD;
    for(let i=0;i<Math.min(npcs.length,500);i++){const npc=npcs[i];if(!npc.position||npc.state==='falling'||npc.state==='dead')continue;const d=globe.position.distanceToSquared(npc.position);if(d<bestD){bestD=d;best=npc.position.clone();}}
