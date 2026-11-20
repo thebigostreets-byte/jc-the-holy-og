@@ -55,4 +55,6 @@ for(const dependency of [...html.matchAll(/(?:src|href)=["']\.\/([^"'?#]+\.(?:js
   assert(publicAssets.has(dependency),`map.html references ${dependency}, but it is missing from scripts/public-assets.json`);
 }
 
+await import('./release-html-assets.mjs');
+
 console.log(`Deployable-client sync passed: ${deployableFiles.length} source files match dist/client and new gameplay imports are included.`);
