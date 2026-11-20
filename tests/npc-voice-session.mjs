@@ -111,3 +111,9 @@ test('current NPC transcription failure remains visible to its owner',async()=>{
   catch(error){if(active===recordingNpc&&session===voiceSession)notices.push(error.message);}
   assert.deepEqual(notices,['Transcription unavailable']);
 });
+
+test('stop recording preserves final audio until MediaRecorder onstop cleanup',()=>{
+  assert.ok(source.includes("recorder.stop();mic.textContent='…';setStatus('TRANSCRIBING WITH WHISPER…')"));
+  assert.ok(!source.includes("recorder.stop();stream?.getTracks().forEach(t=>t.stop());stream=null;"));
+  assert.ok(source.includes("current.onstop=async()=>{acquiredStream.getTracks().forEach(t=>t.stop());"));
+});
