@@ -56,7 +56,15 @@ function addWater(game,root,feature,rx,rz,kind){
  if(kind.includes('Bellagio')){
   const jetGeo=new THREE.ConeGeometry(.36,18,7),jetMat=new THREE.MeshBasicMaterial({color:0xbaf7ff,transparent:true,opacity:.49,depthWrite:false});
   const jets=[];for(let i=0;i<29;i++){const a=i*Math.PI*2/29,r=i===0?0:.28+(i%4)*.13,jet=new THREE.Mesh(jetGeo,jetMat);jet.position.set(Math.cos(a)*rx*r,4,Math.sin(a)*rz*r);jet.scale.y=.12;jet.rotation.z=Math.cos(a)*.18;jet.rotation.x=-Math.sin(a)*.18;group.add(jet);jets.push({jet,phase:i*.41,height:8+(i%7)*2.1});}
-  group.userData.animate=(time)=>{for(const {jet,phase,height}of jets){const wave=(Math.sin(time*.00165+phase)+1)*.5;jet.scale.y=.18+wave*.9;jet.position.y=4+wave*height;}};
+  let lastFarJetUpdate=-Infinity;
+  group.userData.animate=(time)=>{
+   const player=game.player?.position;
+   const dx=player?player.x-x:Infinity,dz=player?player.z-z:Infinity;
+   const distant=dx*dx+dz*dz>350*350;
+   if(distant&&time-lastFarJetUpdate<250)return;
+   if(distant)lastFarJetUpdate=time;
+   for(const {jet,phase,height}of jets){const wave=(Math.sin(time*.00165+phase)+1)*.5;jet.scale.y=.18+wave*.9;jet.position.y=4+wave*height;}
+  };
   const center=new THREE.Mesh(new THREE.CylinderGeometry(4.8,5.5,1.4,20),new THREE.MeshStandardMaterial({color:0x98866e,roughness:.5}));center.position.y=.35;group.add(center);
  }
 }
