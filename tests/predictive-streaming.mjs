@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {predictTravel,createPrefetchCache} from '../predictive-streaming.js';
+import {predictTravel,createPrefetchCache,corridorPoints} from '../predictive-streaming.js';
 assert.deepEqual(predictTravel({x:100,z:50},{x:80,z:50},400),{x:142.5,z:50});
 assert.deepEqual(predictTravel({x:50,z:100},{x:50,z:120},400),{x:50,z:57.5});
 const jump=predictTravel({x:10000,z:0},{x:0,z:0},1);assert.ok(jump.x<=10102,'teleport samples cannot produce unlimited prefetch distance');
@@ -29,3 +29,11 @@ assert.equal(await switching.prefetch('third'),false,'old completion must not re
 releaseNew(new Uint8Array(4));await newWarm;
 assert.equal(switching.stats().entries,1,'only current-generation bytes are retained');
 console.log('PASS: travel prediction, memory ceilings, eviction, deduplication, request limits, stale-result rejection and retry.');
+
+assert.deepEqual(corridorPoints({x:0,z:0},{x:0,z:0}),[],'stationary flight should not warm duplicate tiles');
+assert.deepEqual(corridorPoints({x:0,z:0},{x:1900,z:0}),[{x:950,z:0},{x:1900,z:0}]);
+assert.deepEqual(corridorPoints({x:0,z:0},{x:100,z:0},0),[{x:100,z:0}]);
+assert.deepEqual(corridorPoints({x:0,z:0},{x:100,z:0},Infinity),[{x:100,z:0}]);
+assert.deepEqual(corridorPoints({x:Infinity,z:0},{x:100,z:0}),[]);
+assert.deepEqual(corridorPoints(null,{x:100,z:0}),[]);
+assert.equal(corridorPoints({x:0,z:0},{x:100000,z:0}).length,8,'prefetch corridor remains bounded');
