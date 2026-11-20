@@ -17,4 +17,15 @@ assert.equal(await shared.prefetch('other'),false,'only one speculative download
 finish(new Uint8Array(5));await warm;await demand;assert.equal(fetches,1,'prefetch and demand share a pending request');assert.equal(shared.stats().bytes,0,'demand releases the warm byte buffer');
 const late=shared.prefetch('stale');await Promise.resolve();shared.clear();finish(new Uint8Array(5));await late;assert.equal(shared.stats().bytes,0,'folder changes cannot retain stale prefetch results');
 let attempts=0;const retry=createPrefetchCache(()=>{if(++attempts===1)throw Error('offline');return new Uint8Array(3);});assert.equal(await retry.prefetch('x'),false);assert.equal((await retry.get('x')).length,3,'failed speculative loads never block demand retries');
+
+let releaseOld,releaseNew,staleCalls=0;
+const switching=createPrefetchCache(key=>{staleCalls++;return new Promise(resolve=>{if(key==='old')releaseOld=resolve;else if(key==='new')releaseNew=resolve;});});
+const oldWarm=switching.prefetch('old');await Promise.resolve();
+switching.clear();
+const newWarm=switching.prefetch('new');await Promise.resolve();
+assert.equal(staleCalls,2,'new folder can prefetch while stale request is pending');
+releaseOld(new Uint8Array(4));await oldWarm;
+assert.equal(await switching.prefetch('third'),false,'old completion must not release the current prefetch slot');
+releaseNew(new Uint8Array(4));await newWarm;
+assert.equal(switching.stats().entries,1,'only current-generation bytes are retained');
 console.log('PASS: travel prediction, memory ceilings, eviction, deduplication, request limits, stale-result rejection and retry.');
