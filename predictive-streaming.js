@@ -39,10 +39,14 @@ export function createPrefetchCache(load,{maxBytes=8*1024*1024,maxEntries=2}={})
 
 // Sample the flight corridor at a bounded spacing so the next city tiles can be warmed.
 export function corridorPoints(start,end,spacing=950){
-  const distance=Math.hypot(end.x-start.x,end.z-start.z);
-  const count=Math.min(8,Math.max(1,Math.ceil(distance/Math.max(1,spacing))));
+  if(!start||!end||![start.x,start.z,end.x,end.z].every(Number.isFinite))return [];
+  const dx=end.x-start.x,dz=end.z-start.z;
+  const distance=Math.hypot(dx,dz);
+  if(!Number.isFinite(distance)||distance===0)return [];
+  const safeSpacing=Number.isFinite(spacing)&&spacing>0?spacing:950;
+  const count=Math.min(8,Math.max(1,Math.ceil(distance/Math.max(1,safeSpacing))));
   return Array.from({length:count},(_,index)=>{
     const t=(index+1)/count;
-    return {x:start.x+(end.x-start.x)*t,z:start.z+(end.z-start.z)*t};
+    return {x:start.x+dx*t,z:start.z+dz*t};
   });
 }
