@@ -56,3 +56,36 @@ test('one microphone permission request per active voice session',()=>{
 test('active recorder error releases its own microphone and clears recording state',()=>{
   assert.ok(source.includes("current.onerror=()=>{if(session!==voiceSession||recorder!==current)return;acquiredStream.getTracks().forEach(t=>t.stop());stream=null;recorder=null;discardRecording=true;resetMic()"));
 });
+
+test('stale transcription completion cannot overwrite a newer NPC draft',async()=>{
+  let active={id:'npc-a'},voiceSession=1,input='A draft';
+  const recordingNpc=active,session=voiceSession;
+  let finish;
+  const transcription=new Promise(resolve=>{finish=resolve;});
+  const apply=async()=>{
+    const heard=await transcription;
+    if(active!==recordingNpc||session!==voiceSession)return;
+    input=[input.trim(),heard].filter(Boolean).join(' ').slice(0,600);
+  };
+  const pending=apply();
+  active={id:'npc-b'};voiceSession++;input='B draft';
+  finish('A private transcript');
+  await pending;
+  assert.equal(input,'B draft');
+});
+
+test('stale transcription failure cannot display an error in a new NPC conversation',async()=>{
+  let active={id:'npc-a'},voiceSession=1,notices=[];
+  const recordingNpc=active,session=voiceSession;
+  let fail;
+  const transcription=new Promise((_,reject)=>{fail=reject;});
+  const apply=async()=>{
+    try{await transcription;}
+    catch(error){if(active===recordingNpc&&session===voiceSession)notices.push(error.message);}
+  };
+  const pending=apply();
+  active={id:'npc-b'};voiceSession++;
+  fail(new Error('A transcription failed'));
+  await pending;
+  assert.deepEqual(notices,[]);
+});
