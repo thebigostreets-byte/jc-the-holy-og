@@ -44,3 +44,10 @@ test('recorder callback has session guard before shared-state cleanup',()=>{
   assert.ok(source.includes('current.onstop=async()=>{acquiredStream.getTracks().forEach(t=>t.stop());if(session!==voiceSession||recorder!==current)return;stream=null;recorder=null;resetMic()'));
   assert.ok(source.includes('current.onerror=()=>{if(session!==voiceSession||recorder!==current)return;'));
 });
+
+test('one microphone permission request per active voice session',()=>{
+  assert.match(source,/permissionSession && permissionSession===voiceSession/);
+  assert.match(source,/permissionSession=session;discardRecording=false;try\{const acquiredStream=await navigator\.mediaDevices\.getUserMedia/);
+  assert.match(source,/finally\{if\(permissionSession===session\)permissionSession=0;/);
+  assert.match(source,/function stopMic\(\) \{voiceSession\+\+;/);
+});
