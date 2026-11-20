@@ -16,7 +16,7 @@ test('microphone permission completion cannot start recording for a different NP
 
 test('delayed Whisper result or failure cannot modify a different NPC conversation',()=>{
   assert.match(source,/await requestNpcTranscription\([\s\S]*?if\(active!==recordingNpc\|\|session!==voiceSession\)return;input\.value=/);
-  assert.match(source,/if\(active===recordingNpc\)notice\(error\.message/);
+  assert.match(source,/if\(active===recordingNpc&&session===voiceSession\)notice\(error\.message/);
 });
 
 // Exercise the same session-ownership rule used by the recorder callbacks.
@@ -41,6 +41,6 @@ test('late permission response is rejected by session even for same NPC',()=>{
 });
 
 test('recorder callback has session guard before shared-state cleanup',()=>{
-  assert.match(source,/current\\.onstop=async\\(\\)=>\\{acquiredStream\\.getTracks\\(\\)\\.forEach\\(t=>t\\.stop\\(\\)\\);if\\(session!==voiceSession\\|\\|recorder!==current\\)return;stream=null;recorder=null;resetMic\\(\\)/);
-  assert.match(source,/current\\.onerror=\\(\\)=>\\{if\\(session!==voiceSession\\|\\|recorder!==current\\)return;/);
+  assert.match(source,/current\.onstop=async\(\)=>\{acquiredStream\\.getTracks\(\)\\.forEach\(t=>t\.stop\(\)\);if\(session!==voiceSession\|\|recorder!==current\)return;stream=null;recorder=null;resetMic\(\)/);
+  assert.match(source,/current\.onerror=\(\)=>\{if\(session!==voiceSession\|\|recorder!==current\)return;/);
 });
