@@ -10,8 +10,8 @@ test('NPC voice session guard is deployed without source drift',()=>{
 });
 
 test('microphone permission completion cannot start recording for a different NPC',()=>{
-  assert.match(source,/const recordingNpc=active;discardRecording=false;try\{stream=await navigator\.mediaDevices\.getUserMedia\(\{audio:true\}\);if\(active!==recordingNpc\)/);
-  assert.match(source,/stream\.getTracks\(\)\.forEach\(t=>t\.stop\(\)\);stream=null;return;/);
+  assert.match(source,/const recordingNpc=active;discardRecording=false;try\{const acquiredStream=await navigator\.mediaDevices\.getUserMedia\(\{audio:true\}\);if\(active!==recordingNpc\)/);
+  assert.match(source,/acquiredStream\.getTracks\(\)\.forEach\(t=>t\.stop\(\)\);return;/);
 });
 
 test('delayed Whisper result or failure cannot modify a different NPC conversation',()=>{
