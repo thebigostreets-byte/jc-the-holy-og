@@ -37,3 +37,16 @@ assert.deepEqual(corridorPoints({x:0,z:0},{x:100,z:0},Infinity),[{x:100,z:0}]);
 assert.deepEqual(corridorPoints({x:Infinity,z:0},{x:100,z:0}),[]);
 assert.deepEqual(corridorPoints(null,{x:100,z:0}),[]);
 assert.equal(corridorPoints({x:0,z:0},{x:100000,z:0}).length,8,'prefetch corridor remains bounded');
+
+// A failed or partial speculative tile must not crash the loading path.
+const invalid=createPrefetchCache(async key=>key==='missing'?null:key==='bad'?{byteLength:Infinity}:new Uint8Array(3));
+assert.equal(await invalid.prefetch('missing'),true);
+assert.equal(await invalid.prefetch('bad'),true);
+assert.equal(invalid.stats().entries,0,'invalid payloads cannot be retained');
+assert.equal((await invalid.get('ok')).length,3,'demand still works after invalid speculative responses');
+const disabled=createPrefetchCache(async()=>new Uint8Array(2),{maxBytes:0,maxEntries:2});
+assert.equal(await disabled.prefetch('no-space'),true);
+assert.equal(disabled.stats().entries,0,'zero cache budget must not loop forever');
+const malformed=createPrefetchCache(async()=>({byteLength:-1}));
+assert.equal(await malformed.prefetch('negative'),true);
+assert.equal(malformed.stats().entries,0,'negative byte counts must not enter cache');

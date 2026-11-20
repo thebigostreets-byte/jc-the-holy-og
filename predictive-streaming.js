@@ -12,9 +12,12 @@ export function createPrefetchCache(load,{maxBytes=8*1024*1024,maxEntries=2}={})
   const cache=new Map(),pending=new Map();let used=0,generation=0,activePrefetch=null,hits=0;
   function forget(key){const value=cache.get(key);if(value){used-=value.byteLength;cache.delete(key);}}
   function retain(key,value){
-    if(value.byteLength>maxBytes||maxEntries<1)return;
+    // Offline or partial tile loads may return null or malformed data.
+    // Never let a speculative response poison the shared demand path.
+    const bytes=value?.byteLength;
+    if(!Number.isSafeInteger(bytes)||bytes<0||!Number.isFinite(maxBytes)||maxBytes<=0||!Number.isSafeInteger(maxEntries)||maxEntries<1||bytes>maxBytes)return;
     forget(key);
-    while(cache.size>=maxEntries||used+value.byteLength>maxBytes)forget(cache.keys().next().value);
+    while(cache.size&&(cache.size>=maxEntries||used+bytes>maxBytes))forget(cache.keys().next().value);
     cache.set(key,value);used+=value.byteLength;
   }
   function request(key,warm){
