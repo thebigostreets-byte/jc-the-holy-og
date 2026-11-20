@@ -41,6 +41,6 @@ test('late permission response is rejected by session even for same NPC',()=>{
 });
 
 test('recorder callback has session guard before shared-state cleanup',()=>{
-  assert.match(source,/current\.onstop=async\(\)=>\{acquiredStream\\.getTracks\(\)\\.forEach\(t=>t\.stop\(\)\);if\(session!==voiceSession\|\|recorder!==current\)return;stream=null;recorder=null;resetMic\(\)/);
-  assert.match(source,/current\.onerror=\(\)=>\{if\(session!==voiceSession\|\|recorder!==current\)return;/);
+  assert.ok(source.includes('current.onstop=async()=>{acquiredStream.getTracks().forEach(t=>t.stop());if(session!==voiceSession||recorder!==current)return;stream=null;recorder=null;resetMic()'));
+  assert.ok(source.includes('current.onerror=()=>{if(session!==voiceSession||recorder!==current)return;'));
 });
