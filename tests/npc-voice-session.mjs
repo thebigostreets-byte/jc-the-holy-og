@@ -10,7 +10,7 @@ test('NPC voice session guard is deployed without source drift',()=>{
 });
 
 test('microphone permission completion cannot start recording for a different NPC',()=>{
-  assert.match(source,/const recordingNpc=active,session=++voiceSession;discardRecording=false;try\{const acquiredStream=await navigator\.mediaDevices\.getUserMedia\(\{audio:true\}\);if\(active!==recordingNpc\|\|session!==voiceSession\)/);
+  assert.match(source,/const recordingNpc=active,session=\+\+voiceSession;discardRecording=false;try\{const acquiredStream=await navigator\.mediaDevices\.getUserMedia\(\{audio:true\}\);if\(active!==recordingNpc\|\|session!==voiceSession\)/);
   assert.match(source,/acquiredStream\.getTracks\(\)\.forEach\(t=>t\.stop\(\)\);return;/);
 });
 
