@@ -35,7 +35,7 @@ function addSphere(game,root,feature){
  const faceAxis=new THREE.Vector3(1,0,0),desiredRotation=new THREE.Quaternion(),targetPosition=new THREE.Vector3(),roll=new THREE.Quaternion();
  globe.userData.animate=(time)=>{
   applySkin();
-  if(time>=nextGaze||!gazeTarget){nextGaze=time+1800+Math.random()*2200;const player=game.player?.position,npcs=game.npcs?.npcs||[];let best=player?.clone?.()||null,bestD=best?globe.position.distanceToSquared(best):Infinity;
+  if(time>=nextGaze||!gazeTarget){const player=game.player?.position,playerD=player?globe.position.distanceToSquared(player):Infinity;const distant=playerD>600*600;nextGaze=time+(distant?7000:1800)+Math.random()*(distant?3000:2200);const npcs=distant?[]:(game.npcs?.npcs||[]);let best=player?.clone?.()||null,bestD=playerD;
    for(let i=0;i<Math.min(npcs.length,500);i++){const npc=npcs[i];if(!npc.position||npc.state==='falling'||npc.state==='dead')continue;const d=globe.position.distanceToSquared(npc.position);if(d<bestD){bestD=d;best=npc.position.clone();}}
    if(best)gazeTarget=best.add(new THREE.Vector3(0,1.5,0));
   }
