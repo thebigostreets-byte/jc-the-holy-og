@@ -23,9 +23,11 @@ try{
   return {stats:variants.stats(),luxor:!!luxor,whitePyramid:!!luxor?.getObjectByName('White Luxor pyramid · 183 m base'),
    beamCount:luxor?.children.filter(x=>x.name==='Luxor heavenly sky beam').length||0,
    stadium:!!stadium,stadiumSigns:stadium?.children.filter(x=>x.name==='ANGELIC STADIUM sign').length||0,
+   speedway:!!root.getObjectByName('Sin City Motor Speedway'),
    hell:!!hell,hellInitiallyHidden:hell?.visible===false,cutout:!!hell?.getObjectByName('END OF HIM authored Hell sprite impostor')};
  });
- assert.equal(landmarks.stats.landmarks,3);
+ assert.equal(landmarks.stats.landmarks,4,'all four authored landmarks present');
+ assert.equal(landmarks.speedway,true,'Sin City Motor Speedway mesh present');
  assert.equal(landmarks.stats.luxorBeamMetres,3800);
  assert.equal(landmarks.luxor,true);assert.equal(landmarks.whitePyramid,true);
  assert.equal(landmarks.beamCount,2,'beam uses two non-shadow-casting shafts');
