@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const source=read('landmark-variants.js');
+assert.equal(source,read('dist/client/landmark-variants.js'),'authored and Pages runtime must match');
+assert.match(source,/const signMaterialCache=new Map\(\)/);
+assert.match(source,/JSON\.stringify\(\[text,color,bg,mobile\]\)/);
+assert.match(source,/if\(signMaterialCache\.has\(key\)\)return signMaterialCache\.get\(key\)/);
+assert.match(source,/signMaterialCache\.set\(key,signMaterial\)/);
+assert.match(source,/for\(const m of materials\)m\.dispose\(\)/);
+assert.match(source,/for\(const t of textures\)t\.dispose\(\)/);
+assert.match(source,/ANGELIC STADIUM/);
+assert.match(source,/END OF HIM/);
+assert.match(source,/beamMetres:3800/);
+console.log('Landmark sign material reuse and source/deploy parity checks passed');
