@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {standardPadActions,standardPadHolds} from '../jc-control-math.js';
 
 assert.deepEqual(standardPadActions,[[0,'jump'],[1,'cast'],[2,'hypersonic'],[3,'car'],[4,'flight'],[5,'shield'],[8,'wheel'],[9,'pause']]);
-assert.deepEqual(standardPadHolds,[[0,'Space'],[6,'Control'],[7,'Space']]);
+assert.deepEqual(standardPadHolds,[[0,'Space'],[6,'b'],[12,'Space'],[13,'Control']]);
 
 const source=readFileSync(new URL('../jc-map-game.js',import.meta.url),'utf8');
 const deployed=readFileSync(new URL('../dist/client/jc-map-game.js',import.meta.url),'utf8');

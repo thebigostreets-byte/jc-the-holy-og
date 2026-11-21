@@ -343,8 +343,8 @@ function createDevilWings(parent){
 let worldClock=performance.now();
 let frameWindow = 0, slowFrames = 0, steadyFrames = 0;
 const coarseDevice = matchMedia('(pointer:coarse), (max-width:800px)').matches || navigator.maxTouchPoints>1 || new URLSearchParams(location.search).get('quality')==='mobile';
-const maximumDpr = coarseDevice ? .9 : Math.min(1.25, devicePixelRatio || 1);
-let adaptiveDpr = Math.min(maximumDpr, coarseDevice ? .75 : 1);
+const maximumDpr = coarseDevice ? .75 : Math.min(1.1, devicePixelRatio || 1);
+let adaptiveDpr = Math.min(maximumDpr, coarseDevice ? .65 : .9);
 let dashCooldown = 0, pulseCooldown = 0, lastTiles = -1, dragging = false;
 let pointerX = 0, pointerY = 0, lookPointer = null, stickPointer = null, lookStickPointer = null, stickTouchIdentifier = null, lookStickTouchIdentifier = null, gasHeld = false, gasPointerId = null, brakeHeld = false, brakePointerId = null, throttle = 0, throttleTarget = 0;
 const analog = {x:0,y:0}, touchStick = {x:0,y:0}, touchLookStick = {x:0,y:0};
@@ -1124,6 +1124,7 @@ function frameStep(now) {
   if (!playing) {window.JC_WORLD_SCALE=1;return;}
   const paused=wheel.classList.contains('open')||controllerPaused;
   const pad=Array.from(navigator.getGamepads?.()||[]).find(Boolean);
+  const padGas=pad&&!paused?THREE.MathUtils.clamp(pad.buttons[7]?.value||0,0,1):0;
   analog.x=stickAxis(touchStick.x,.08);analog.y=stickAxis(touchStick.y,.08);
   let lookX=stickAxis(touchLookStick.x,.08),lookY=stickAxis(touchLookStick.y,.08);
   if(pad){
@@ -1133,6 +1134,22 @@ function frameStep(now) {
       lookX=THREE.MathUtils.clamp(lookX+stickAxis(pad.axes[2]||0),-1,1);
       lookY=THREE.MathUtils.clamp(lookY+stickAxis(pad.axes[3]||0),-1,1);
       for(const [button,key] of standardPadHolds){if(pad.buttons[button]?.pressed)padKeys.add(key);else padKeys.delete(key);}
+    }
+    // Navigate and equip abilities while the wheel is open (DualSense D-pad / sticks / Circle).
+    if(wheel.classList.contains('open')&&!controllerPaused){
+      const wheelButtons=[...hud.querySelectorAll('.jc-wheel-slot')];
+      const wheelIndex=wheelButtons.findIndex(el=>el.dataset.abilityId===wheelFocusId);
+      const wheelStep=(pad.buttons[15]?.pressed&&!gamepadButtons[15])||(pad.buttons[13]?.pressed&&!gamepadButtons[13])?1:(pad.buttons[14]?.pressed&&!gamepadButtons[14])||(pad.buttons[12]?.pressed&&!gamepadButtons[12])?-1:0;
+      if(wheelStep&&wheelButtons.length){
+        const next=wheelButtons[(Math.max(0,wheelIndex)+wheelStep+wheelButtons.length)%wheelButtons.length];
+        next?.focus();
+      }
+      if(pad.buttons[5]?.pressed&&!gamepadButtons[5])hud.querySelector('#jcWheelNext')?.click();
+      if(pad.buttons[4]?.pressed&&!gamepadButtons[4])hud.querySelector('#jcWheelPrev')?.click();
+      if(pad.buttons[1]?.pressed&&!gamepadButtons[1]){
+        const selected=wheelButtons.find(el=>el.dataset.abilityId===wheelFocusId)||wheelButtons[0];
+        selected?.click();
+      }
     }
     for(const [button,id] of standardPadActions){
       if(pad.buttons[button]?.pressed&&!gamepadButtons[button]){
@@ -1177,6 +1194,8 @@ function frameStep(now) {
   if (keys.has('d') || padKeys.has('d') || keys.has('ArrowRight')) desired.add(right);
   if (keys.has('a') || padKeys.has('a') || keys.has('ArrowLeft')) desired.sub(right);
   if(coarseDevice&&Math.abs(throttle)>.006)desired.addScaledVector(travelForward,throttle);
+  // PS5 DualSense R2 supplies proportional forward gas, independently of touch controls.
+  if(padGas>.06)desired.addScaledVector(travelForward,padGas);
   desired.addScaledVector(travelForward,-analog.y).addScaledVector(right,analog.x);
   const riseHeld=keys.has('e')||keys.has('Space')||padKeys.has('Space');
   const dropHeld=keys.has('c')||keys.has('Control')||padKeys.has('Control');
@@ -1184,11 +1203,13 @@ function frameStep(now) {
   if (desired.lengthSq()>1) desired.normalize();
   if(!runActive&&!runFinished&&(desired.lengthSq()>.02||flightHeight>0)){runActive=true;}
   const sprint = !flying && (keys.has('Shift')||padKeys.has('Shift')) && grace > 0 && desired.lengthSq() > 0;
-  const boost = hypersonic && flying && grace > 0 && !braking && (!coarseDevice||gasHeld||Math.abs(throttle)>.05);
+  const boost = hypersonic && flying && grace > 0 && !braking;
   window.JC_HYPERFLIGHT=boost;
   grace = THREE.MathUtils.clamp(grace + (boost ? -3 : sprint ? -20 : now < graceSurgeUntil ? 24 : now < sanctuaryUntil ? 19 : now < shieldUntil ? 17 : 12) * dt, 0, 100);
   if (boost && grace <= 0) hypersonic=false;
-  if(boost&&desired.lengthSq()<.01&&!coarseDevice)desired.copy(flightForward);
+  // Hypersonic is an active flight mode: the mobile BOOST button must propel JC
+  // without also requiring the separate GAS pedal or a joystick gesture.
+  if(boost&&desired.lengthSq()<.01)desired.copy(flightForward);
   const speed=(diving?52:boost?1800:flying?95:sprint?11:5.4)*(now<timeScaleUntil?1.5:1),activeSpeed=drivingCar?(desired.lengthSq()>.02?30:0):speed;
   // Fast action-game steering: immediate on foot, responsive in cruise, and capable of hard turns at hyperflight speed.
   const steering = braking?52:desired.lengthSq()<.01?(flying?18:34):flying?(boost?60:46):48;

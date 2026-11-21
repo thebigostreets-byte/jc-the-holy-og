@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const controls=read('jc-control-math.js'),game=read('jc-map-game.js');
+assert.equal(controls,read('dist/client/jc-control-math.js'));
+assert.equal(game,read('dist/client/jc-map-game.js'));
+assert.match(controls,/\[6,'b'\]/,'L2 is brake');
+assert.doesNotMatch(controls,/\[7,'Space'\]/,'R2 no longer ascends');
+assert.match(controls,/\[12,'Space'\]/,'D-pad up rises');
+assert.match(controls,/\[13,'Control'\]/,'D-pad down descends');
+assert.match(game,/pad\.buttons\[7\]\?\.value\|\|0/,'R2 analog input');
+assert.match(game,/if\(padGas>\.06\)desired\.addScaledVector\(travelForward,padGas\)/);
+console.log('PS5 analog gas/brake control checks passed');
