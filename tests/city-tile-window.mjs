@@ -17,4 +17,11 @@ const near=selectCityTileWindow(sections,{column:0,row:0},10);
 assert.equal(selectDetailedTiles(near,{column:0,row:0}).length,9,'near city edge fewer 3D groups are needed');
 assert.equal(selectCityTileWindow(sections,{column:17,row:17},5).length,25,'legacy 5x5 window remains available');
 assert.equal(selectCityTileWindow(sections.filter(s=>s.id!=='C17_R17'),{column:17,row:17},10).length,99,'missing source tiles cannot become invented data');
+
+for(const [col,row] of [[17.4,17.4],[17.6,17.6],[-5.2,38.8]]) {
+  const fractional=selectCityTileWindow(sections,{column:col,row},10);
+  assert.equal(fractional.length,100,'fractional or out-of-range position keeps an exact 10x10 window');
+  assert.equal(new Set(fractional.map(s=>s.id)).size,100,'fractional position never duplicates sections');
+}
+assert.throws(()=>selectCityTileWindow(null,{column:1,row:1}),TypeError,'invalid tile catalog fails explicitly');
 console.log('PASS: 10x10 grid coverage, edge shifting, no duplicates, near-detail budgets and sparse sections.');
