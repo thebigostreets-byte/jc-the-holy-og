@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const get=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const s=get('jc-map-game.js');
+assert.equal(s,get('dist/client/jc-map-game.js'));
+assert.match(s,/wheel\.classList\.contains\('open'\)&&!controllerPaused/);
+assert.match(s,/pad\.buttons\[15\]/);
+assert.match(s,/pad\.buttons\[14\]/);
+assert.match(s,/pad\.buttons\[1\]\?\.pressed&&!gamepadButtons\[1\]/);
+assert.match(s,/selected\?\.click\(\)/);
+assert.match(s,/coarseDevice \? \.75/);
+assert.match(s,/coarseDevice \? \.65/);
+console.log('PS5 wheel and mobile GPU budget regression passed');
