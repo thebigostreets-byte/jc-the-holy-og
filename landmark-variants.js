@@ -23,7 +23,11 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
  const material=(color,options={})=>new THREE.MeshStandardMaterial({color,roughness:.45,metalness:.08,...options});
  const groundAt=(x,z)=>{const v=game.roads?.sample?.(x,z);return Number.isFinite(v)?v:0;};
  const anchor=(spec)=>{const p=localLandmarkPoint(spec,game.origin),g=new THREE.Group();g.name=spec.name;g.position.set(p.x,groundAt(p.x,p.z),p.z);root.add(g);return g;};
+ // Reuse GPU textures for repeated facade labels without changing their geometry.
+ const signMaterialCache=new Map();
  const makeSign=(text,color='#f9d578',bg='#18202b')=>{
+  const key=JSON.stringify([text,color,bg,mobile]);
+  if(signMaterialCache.has(key))return signMaterialCache.get(key);
   const canvas=document.createElement('canvas');canvas.width=mobile?512:1024;canvas.height=mobile?96:192;
   const ctx=canvas.getContext('2d');if(!ctx)return null;
   if(mobile)ctx.scale(.5,.5); // Preserve sign geometry while quartering mobile texture pixels.
@@ -32,7 +36,9 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
   ctx.font='bold 102px Arial, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.shadowColor=color;ctx.shadowBlur=14;ctx.fillStyle=color;ctx.fillText(text,512,96,970);
   const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=2;textures.add(tex);
-  return new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide});
+  const signMaterial=new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide});
+  signMaterialCache.set(key,signMaterial);
+  return signMaterial;
  };
  const addSign=(group,text,width,height,x,y,z,angle,color,bg)=>{
   const mat=makeSign(text,color,bg);if(!mat)return null;
