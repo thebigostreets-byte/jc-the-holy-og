@@ -1124,6 +1124,7 @@ function frameStep(now) {
   if (!playing) {window.JC_WORLD_SCALE=1;return;}
   const paused=wheel.classList.contains('open')||controllerPaused;
   const pad=Array.from(navigator.getGamepads?.()||[]).find(Boolean);
+  const padGas=pad&&!paused?THREE.MathUtils.clamp(pad.buttons[7]?.value||0,0,1):0;
   analog.x=stickAxis(touchStick.x,.08);analog.y=stickAxis(touchStick.y,.08);
   let lookX=stickAxis(touchLookStick.x,.08),lookY=stickAxis(touchLookStick.y,.08);
   if(pad){
@@ -1177,6 +1178,8 @@ function frameStep(now) {
   if (keys.has('d') || padKeys.has('d') || keys.has('ArrowRight')) desired.add(right);
   if (keys.has('a') || padKeys.has('a') || keys.has('ArrowLeft')) desired.sub(right);
   if(coarseDevice&&Math.abs(throttle)>.006)desired.addScaledVector(travelForward,throttle);
+  // PS5 DualSense R2 supplies proportional forward gas, independently of touch controls.
+  if(padGas>.06)desired.addScaledVector(travelForward,padGas);
   desired.addScaledVector(travelForward,-analog.y).addScaledVector(right,analog.x);
   const riseHeld=keys.has('e')||keys.has('Space')||padKeys.has('Space');
   const dropHeld=keys.has('c')||keys.has('Control')||padKeys.has('Control');
