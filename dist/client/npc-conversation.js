@@ -63,7 +63,7 @@ export function createNpcConversation({panel, log, onOpen = () => {}, onClose = 
   function close({restoreFocus = true} = {}) {
     if (active) drafts.set(keyFor(active),input.value);
     requestId++; controller?.abort(); controller = null; pending = false; send.disabled = false; retry.disabled = false; input.readOnly = false;
-    stopMic(); active = null; panel.classList.remove('open'); document.body.classList.remove('jc-chat-open'); onClose();
+    stopMic(); window.speechSynthesis?.cancel(); active = null; panel.classList.remove('open'); document.body.classList.remove('jc-chat-open'); onClose();
     if (restoreFocus && returnFocus?.isConnected) returnFocus.focus({preventScroll:true});
   }
   async function submit(message = '',greeting = false) {
