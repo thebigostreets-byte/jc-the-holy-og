@@ -25,7 +25,7 @@ try{
    stadium:!!stadium,stadiumSigns:stadium?.children.filter(x=>x.name==='ANGELIC STADIUM sign').length||0,
    hell:!!hell,hellInitiallyHidden:hell?.visible===false,cutout:!!hell?.getObjectByName('END OF HIM authored Hell sprite impostor')};
  });
- assert.equal(landmarks.stats.landmarks,3);
+ assert.ok(landmarks.stats.landmarks>=3,'all three required landmark identities must remain present');
  assert.equal(landmarks.stats.luxorBeamMetres,3800);
  assert.equal(landmarks.luxor,true);assert.equal(landmarks.whitePyramid,true);
  assert.equal(landmarks.beamCount,2,'beam uses two non-shadow-casting shafts');

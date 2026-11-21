@@ -5,7 +5,7 @@ import {decodeCityTile} from './city-tile-decoder.js';
 import {loadPhotoFacades} from './photo-facades.js';
 import {createRoadNetwork} from './city-roads.js?v=osm-citywide-20261019a';
 import {createCityTraffic} from './city-traffic.js';
-import {createCityEnvironment} from './city-environment.js';
+import {createCityEnvironment} from './city-environment.js?v=sphere-terrain-20261120';
 import {createLandmarkVariants} from './landmark-variants.js';
 import {loadBuildingIdentities,resolveBuildingIdentity} from './building-identities.js';
 import {loadPhysicalMaterials,buildingSurface,wallUV} from './physical-building-materials.js?v=strip-casino-photo-20261008a';
