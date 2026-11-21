@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const source=read('landmark-variants.js');
+assert.equal(source,read('dist/client/landmark-variants.js'),'deployed source must match');
+assert.match(source,/const withinImpostorRange=dist>400&&dist<6500/);
+assert.match(source,/if\(withinImpostorRange&&!hellArt\)/,'Hell cutout must only decode inside visible LOD');
+assert.match(source,/hell\.visible=hellMode/,'Hell landmark remains mode-specific');
+assert.match(source,/card\.visible=withinImpostorRange/);
+assert.match(source,/name:'Angelic Stadium'/);
+assert.match(source,/beamMetres:3800/);
+assert.match(source,/name:'END OF HIM'/);
+const shouldDecode=(hellMode,distance,alreadyLoaded)=>hellMode&&distance>400&&distance<6500&&!alreadyLoaded;
+for(const distance of [0,399,6500,20000])assert.equal(shouldDecode(true,distance,false),false);
+assert.equal(shouldDecode(true,401,false),true);
+assert.equal(shouldDecode(false,401,false),false);
+assert.equal(shouldDecode(true,401,true),false);
+console.log('Hell distant impostor LOD load gate and deploy parity passed');
