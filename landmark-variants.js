@@ -37,6 +37,7 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
   ctx.shadowColor=color;ctx.shadowBlur=14;ctx.fillStyle=color;ctx.fillText(text,512,96,970);
   const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=2;textures.add(tex);
   const signMaterial=new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide});
+  materials.add(signMaterial); // Cached sign materials must be released with the scene.
   signMaterialCache.set(key,signMaterial);
   return signMaterial;
  };
@@ -85,9 +86,10 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
  const hell=anchor(LANDMARK_SPECS.endOfHim);
  addSign(hell,'END OF HIM',135,25,-118,39,0,-Math.PI/2,'#ff6637','#1b0308');
  addSign(hell,'END OF HIM',135,25,0,39,118,0,'#ff6637','#1b0308');
- const hellArt=new THREE.TextureLoader().load('./assets/building-cutouts/end-of-him-distant.webp');
- hellArt.colorSpace=THREE.SRGBColorSpace;hellArt.anisotropy=2;textures.add(hellArt);
- const card=owned(new THREE.PlaneGeometry(330,104),new THREE.MeshBasicMaterial({map:hellArt,transparent:true,alphaTest:.025,depthWrite:false,side:THREE.DoubleSide}));
+ // Do not decode/upload the Hell-only distant cutout during normal-world startup.
+ let hellArt=null;
+ const cardMaterial=new THREE.MeshBasicMaterial({transparent:true,alphaTest:.025,depthWrite:false,side:THREE.DoubleSide});
+ const card=owned(new THREE.PlaneGeometry(330,104),cardMaterial);
  card.name='END OF HIM authored Hell sprite impostor';card.position.y=83;card.frustumCulled=false;hell.add(card);
  let disposed=false;
  function update(){
@@ -96,6 +98,11 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
   beamMaterials[0].opacity=night?.82:.55;beamMaterials[1].opacity=night?.25:.14;
   const hellMode=window.JC_HELL_WORLD===true||document.getElementById('jcDevilMode')?.getAttribute('aria-pressed')==='true';
   hell.visible=hellMode;
+  if(hellMode&&!hellArt){
+   hellArt=new THREE.TextureLoader().load('./assets/building-cutouts/end-of-him-distant.webp');
+   hellArt.colorSpace=THREE.SRGBColorSpace;hellArt.anisotropy=2;textures.add(hellArt);
+   cardMaterial.map=hellArt;cardMaterial.needsUpdate=true;
+  }
   if(hellMode&&game.camera){
    const cam=game.camera.position,dx=cam.x-hell.position.x,dz=cam.z-hell.position.z,dist=Math.hypot(dx,dz);
    card.visible=dist>400&&dist<6500;
