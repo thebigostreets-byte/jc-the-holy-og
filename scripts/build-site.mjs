@@ -21,3 +21,6 @@ await cp(path.join(root, 'worker/index.js'), path.join(root, 'dist/server/index.
 await mkdir(path.join(root, 'dist/.openai'), {recursive: true});
 await writeFile(path.join(root, 'dist/.openai/hosting.json'), await readFile(path.join(root, '.openai/hosting.json')));
 console.log('JC game and integrated NPC route built.');
+
+// Validate packaged Pages bytes only after hydration and the full asset copy.
+await import('../tests/release-build-parity.mjs');
