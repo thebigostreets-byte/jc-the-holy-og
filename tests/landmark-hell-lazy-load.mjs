@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const src=read('landmark-variants.js');
+assert.equal(src,read('dist/client/landmark-variants.js'),'authored and deploy files must match');
+assert.match(src,/let hellArt=null/,'Hell art is not eagerly loaded');
+assert.match(src,/if\(hellMode&&!hellArt\)\{/,'Hell art only loads in Hell mode');
+assert.match(src,/cardMaterial\.map=hellArt;cardMaterial\.needsUpdate=true/);
+assert.match(src,/materials\.add\(signMaterial\)/,'cached sign materials are tracked for disposal');
+assert.match(src,/for\(const m of materials\)m\.dispose\(\)/);
+assert.match(src,/ANGELIC STADIUM/);
+assert.match(src,/END OF HIM/);
+assert.match(src,/0xf8f7f0/,'Luxor stays white');
+assert.match(src,/beamMetres:3800/,'Luxor sky beam retained');
+console.log('Landmark lazy load, cleanup, and identity checks passed');
