@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const get=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const src=get('jc-map-game.js');
+assert.equal(src,get('dist/client/jc-map-game.js'),'root and deployed game must match');
+assert.match(src,/const boost = hypersonic && flying && grace > 0 && !braking;/);
+assert.match(src,/if\(boost&&desired\.lengthSq\(\)<\.01\)desired\.copy\(flightForward\);/);
+assert.match(src,/\[data-action="boost"\]'\)\.onclick=\(\)=>cast\('hypersonic'\)/);
+assert.match(src,/case 'hypersonic':setFlight\('boost'\)/);
+const boost=(hypersonic,flying,grace,braking)=>hypersonic&&flying&&grace>0&&!braking;
+assert.equal(boost(true,true,88,false),true,'mobile BOOST activates without gas input');
+assert.equal(boost(true,true,0,false),false,'grace exhaustion disables boost');
+assert.equal(boost(true,true,88,true),false,'braking overrides boost');
+console.log('Mobile hypersonic BOOST regression passed');
