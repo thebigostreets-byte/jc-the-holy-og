@@ -1184,11 +1184,13 @@ function frameStep(now) {
   if (desired.lengthSq()>1) desired.normalize();
   if(!runActive&&!runFinished&&(desired.lengthSq()>.02||flightHeight>0)){runActive=true;}
   const sprint = !flying && (keys.has('Shift')||padKeys.has('Shift')) && grace > 0 && desired.lengthSq() > 0;
-  const boost = hypersonic && flying && grace > 0 && !braking && (!coarseDevice||gasHeld||Math.abs(throttle)>.05);
+  const boost = hypersonic && flying && grace > 0 && !braking;
   window.JC_HYPERFLIGHT=boost;
   grace = THREE.MathUtils.clamp(grace + (boost ? -3 : sprint ? -20 : now < graceSurgeUntil ? 24 : now < sanctuaryUntil ? 19 : now < shieldUntil ? 17 : 12) * dt, 0, 100);
   if (boost && grace <= 0) hypersonic=false;
-  if(boost&&desired.lengthSq()<.01&&!coarseDevice)desired.copy(flightForward);
+  // Hypersonic is an active flight mode: the mobile BOOST button must propel JC
+  // without also requiring the separate GAS pedal or a joystick gesture.
+  if(boost&&desired.lengthSq()<.01)desired.copy(flightForward);
   const speed=(diving?52:boost?1800:flying?95:sprint?11:5.4)*(now<timeScaleUntil?1.5:1),activeSpeed=drivingCar?(desired.lengthSq()>.02?30:0):speed;
   // Fast action-game steering: immediate on foot, responsive in cruise, and capable of hard turns at hyperflight speed.
   const steering = braking?52:desired.lengthSq()<.01?(flying?18:34):flying?(boost?60:46):48;
