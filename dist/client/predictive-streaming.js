@@ -9,7 +9,7 @@ export function predictTravel(current,previous,elapsed,lookAhead=.85){
 }
 
 export function createPrefetchCache(load,{maxBytes=8*1024*1024,maxEntries=2}={}){
-  const cache=new Map(),pending=new Map();let used=0,generation=0,prefetching=false,hits=0;
+  const cache=new Map(),pending=new Map();let used=0,generation=0,activePrefetch=null,hits=0;
   function forget(key){const value=cache.get(key);if(value){used-=value.byteLength;cache.delete(key);}}
   function retain(key,value){
     if(value.byteLength>maxBytes||maxEntries<1)return;
@@ -29,11 +29,11 @@ export function createPrefetchCache(load,{maxBytes=8*1024*1024,maxEntries=2}={})
     if(wasPending&&epoch===generation){forget(key);hits++;}return value;
   }
   async function prefetch(key){
-    if(cache.has(key)||pending.has(key)||prefetching)return false;
-    prefetching=true;
-    try{await request(key,true);return true;}catch{return false;}finally{prefetching=false;}
+    if(cache.has(key)||pending.has(key)||activePrefetch)return false;
+    const token={};activePrefetch=token;
+    try{await request(key,true);return true;}catch{return false;}finally{if(activePrefetch===token)activePrefetch=null;}
   }
-  function clear(){generation++;cache.clear();pending.clear();used=0;}
+  function clear(){generation++;cache.clear();pending.clear();activePrefetch=null;used=0;}
   return {get,prefetch,clear,stats:()=>({bytes:used,entries:cache.size,pending:pending.size,hits})};
 }
 
