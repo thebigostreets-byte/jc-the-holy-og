@@ -343,8 +343,8 @@ function createDevilWings(parent){
 let worldClock=performance.now();
 let frameWindow = 0, slowFrames = 0, steadyFrames = 0;
 const coarseDevice = matchMedia('(pointer:coarse), (max-width:800px)').matches || navigator.maxTouchPoints>1 || new URLSearchParams(location.search).get('quality')==='mobile';
-const maximumDpr = coarseDevice ? .9 : Math.min(1.25, devicePixelRatio || 1);
-let adaptiveDpr = Math.min(maximumDpr, coarseDevice ? .75 : 1);
+const maximumDpr = coarseDevice ? .75 : Math.min(1.1, devicePixelRatio || 1);
+let adaptiveDpr = Math.min(maximumDpr, coarseDevice ? .65 : .9);
 let dashCooldown = 0, pulseCooldown = 0, lastTiles = -1, dragging = false;
 let pointerX = 0, pointerY = 0, lookPointer = null, stickPointer = null, lookStickPointer = null, stickTouchIdentifier = null, lookStickTouchIdentifier = null, gasHeld = false, gasPointerId = null, brakeHeld = false, brakePointerId = null, throttle = 0, throttleTarget = 0;
 const analog = {x:0,y:0}, touchStick = {x:0,y:0}, touchLookStick = {x:0,y:0};
@@ -1134,6 +1134,22 @@ function frameStep(now) {
       lookX=THREE.MathUtils.clamp(lookX+stickAxis(pad.axes[2]||0),-1,1);
       lookY=THREE.MathUtils.clamp(lookY+stickAxis(pad.axes[3]||0),-1,1);
       for(const [button,key] of standardPadHolds){if(pad.buttons[button]?.pressed)padKeys.add(key);else padKeys.delete(key);}
+    }
+    // Navigate and equip abilities while the wheel is open (DualSense D-pad / sticks / Circle).
+    if(wheel.classList.contains('open')&&!controllerPaused){
+      const wheelButtons=[...hud.querySelectorAll('.jc-wheel-slot')];
+      const wheelIndex=wheelButtons.findIndex(el=>el.dataset.abilityId===wheelFocusId);
+      const wheelStep=(pad.buttons[15]?.pressed&&!gamepadButtons[15])||(pad.buttons[13]?.pressed&&!gamepadButtons[13])?1:(pad.buttons[14]?.pressed&&!gamepadButtons[14])||(pad.buttons[12]?.pressed&&!gamepadButtons[12])?-1:0;
+      if(wheelStep&&wheelButtons.length){
+        const next=wheelButtons[(Math.max(0,wheelIndex)+wheelStep+wheelButtons.length)%wheelButtons.length];
+        next?.focus();
+      }
+      if(pad.buttons[5]?.pressed&&!gamepadButtons[5])hud.querySelector('#jcWheelNext')?.click();
+      if(pad.buttons[4]?.pressed&&!gamepadButtons[4])hud.querySelector('#jcWheelPrev')?.click();
+      if(pad.buttons[1]?.pressed&&!gamepadButtons[1]){
+        const selected=wheelButtons.find(el=>el.dataset.abilityId===wheelFocusId)||wheelButtons[0];
+        selected?.click();
+      }
     }
     for(const [button,id] of standardPadActions){
       if(pad.buttons[button]?.pressed&&!gamepadButtons[button]){
