@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const source=readFileSync(new URL('../dist/client/city-environment.js',import.meta.url),'utf8');
+const body=source.slice(source.indexOf('function addSphere('),source.indexOf('function addWater('));
+assert.match(body,/terrainSampler\(game\.loaded\.get\(tileAt\(feature\.lon,feature\.lat\)\)\)/);
+assert.match(body,/Number\.isFinite\(terrainY\)\?terrainY:Number\.isFinite\(roadY\)\?roadY:0/);
+assert.match(body,/globe\.position\.set\(x,y\+95,z\)/);
+assert.match(body,/base\.position\.set\(x,y\+13,z\)/);
+const pick=(terrainY,roadY)=>Number.isFinite(terrainY)?terrainY:Number.isFinite(roadY)?roadY:0;
+assert.equal(pick(27,0),27,'loaded terrain wins over stale road zero');
+assert.equal(pick(NaN,11),11,'road fallback works');
+assert.equal(pick(undefined,undefined),0,'unavailable heights remain finite');
+console.log('Sphere terrain anchoring checks passed');
