@@ -41,10 +41,11 @@ export async function requestNpcTranscription(blob){
 }
 
 export async function requestNpcDialogue(npc, history, {message = '', greeting = false, signal: callerSignal, world = null} = {}) {
-  const controller = new AbortController(), abort = () => controller.abort();
-  if (callerSignal?.aborted) controller.abort();
+  // A cancelled conversation must not start a new request or report a timeout.
+  if (callerSignal?.aborted) throw callerSignal.reason || new DOMException('Conversation cancelled.','AbortError');
+  const controller = new AbortController(), abort = () => controller.abort(callerSignal?.reason);
   callerSignal?.addEventListener('abort',abort,{once:true});
-  const timer = setTimeout(abort,22000);
+  const timer = setTimeout(()=>controller.abort(new DOMException('NPC reply timed out.','TimeoutError')),22000);
   const witnessMemories=(npc.witnessMemory?.entries||[]).slice(-6).map(item=>item.text);
   const observedPlayer=npc.observedPlayer||null;
   const playerIdentity=npc.playerIdentity||{id:'jc-player',name:'Jesus (JC)',role:'the player character',isConversationPartner:true};
@@ -62,7 +63,8 @@ export async function requestNpcDialogue(npc, history, {message = '', greeting =
     if (typeof data?.reply !== 'string' || !data.reply.trim()) throw new Error('NPC dialogue returned an empty reply. Your message is saved.');
     return {reply:data.reply.trim(),action:data.action||null};
   } catch (error) {
-    if (controller.signal.aborted && !callerSignal?.aborted) throw new Error('The NPC reply timed out. Your message is saved; try again.');
+    if (callerSignal?.aborted) throw callerSignal.reason || new DOMException('Conversation cancelled.','AbortError');
+    if (controller.signal.aborted) throw new Error('The NPC reply timed out. Your message is saved; try again.');
     if (error instanceof TypeError) throw new Error('Could not connect to NPC dialogue. Check your connection and retry.');
     throw error;
   } finally {clearTimeout(timer);callerSignal?.removeEventListener('abort',abort);}
