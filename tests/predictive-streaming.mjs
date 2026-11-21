@@ -50,3 +50,8 @@ assert.equal(disabled.stats().entries,0,'zero cache budget must not loop forever
 const malformed=createPrefetchCache(async()=>({byteLength:-1}));
 assert.equal(await malformed.prefetch('negative'),true);
 assert.equal(malformed.stats().entries,0,'negative byte counts must not enter cache');
+
+assert.deepEqual(predictTravel({x:1,z:2},{x:Infinity,z:2},100),{x:1,z:2},'invalid previous motion sample cannot poison tile prediction');
+assert.deepEqual(predictTravel({x:1,z:2},{x:0,z:2},100,Infinity),{x:9.5,z:2},'invalid lookahead falls back to safe default');
+assert.deepEqual(predictTravel({x:1,z:2},{x:0,z:2},100,-100),{x:1,z:2},'negative lookahead cannot prefetch backwards');
+assert.deepEqual(predictTravel({x:1,z:2},{x:0,z:2},100,1000),{x:21,z:2},'excessive lookahead is capped at two seconds');

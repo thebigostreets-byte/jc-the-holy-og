@@ -1,11 +1,13 @@
 // Warm the next tile without increasing the number of live city meshes.
 export function predictTravel(current,previous,elapsed,lookAhead=.85){
-  if(!previous||!Number.isFinite(elapsed)||elapsed<=0)return {...current};
+  if(!previous||!Number.isFinite(previous.x)||!Number.isFinite(previous.z)||!Number.isFinite(elapsed)||elapsed<=0)return {...current};
   const dx=current.x-previous.x,dz=current.z-previous.z;
   if(!Number.isFinite(dx)||!Number.isFinite(dz))return {...current};
   const seconds=elapsed/1000,speed=Math.hypot(dx,dz)/seconds;
+  if(!Number.isFinite(speed))return {...current};
   const scale=speed>120?120/speed:1;
-  return {x:current.x+dx/seconds*scale*lookAhead,z:current.z+dz/seconds*scale*lookAhead};
+  const horizon=Number.isFinite(lookAhead)?Math.min(2,Math.max(0,lookAhead)):.85;
+  return {x:current.x+dx/seconds*scale*horizon,z:current.z+dz/seconds*scale*horizon};
 }
 
 export function createPrefetchCache(load,{maxBytes=8*1024*1024,maxEntries=2}={}){
