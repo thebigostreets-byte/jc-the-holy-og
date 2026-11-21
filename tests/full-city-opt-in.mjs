@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const source=readFileSync(new URL('../map-engine.js',import.meta.url),'utf8');
+const deployed=readFileSync(new URL('../dist/client/map-engine.js',import.meta.url),'utf8');
+assert.equal(source,deployed,'source and deployed map engines must match');
+assert.match(source,/params\.get\('fullCity'\)==='1'/,'full-city mode must be explicitly requested');
+assert.match(source,/if\(mobileMap\|\|lowSpec\)/,'low memory devices must avoid resident whole-city meshes');
+assert.match(source,/void loadArea\(centerSection\(\),10,false\)/,'mobile must retain 10x10 streaming');
+assert.match(source,/void loadAllTiles\(\)/,'desktop full-city request must load packaged tiles');
+console.log('PASS: full-city opt-in and memory-safe mobile fallback');
