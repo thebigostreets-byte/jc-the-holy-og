@@ -19,7 +19,7 @@ export function localLandmarkPoint(spec,origin) {
 export function createLandmarkVariants(game,{mobile=false}={}) {
  const root=new THREE.Group();root.name='Authored landmark variants';game.scene.add(root);
  const materials=new Set(),geometries=new Set(),textures=new Set();
- const owned=(geometry,material)=>{geometries.add(geometry);materials.add(material);return new THREE.Mesh(geometry,material);};
+ const owned=(geometry,material)=>{geometries.add(geometry);if(Array.isArray(material)){for(const m of material)materials.add(m);}else if(material)materials.add(material);return new THREE.Mesh(geometry,material);};
  const material=(color,options={})=>new THREE.MeshStandardMaterial({color,roughness:.45,metalness:.08,...options});
  const groundAt=(x,z)=>{const v=game.roads?.sample?.(x,z);return Number.isFinite(v)?v:0;};
  const anchor=(spec)=>{const p=localLandmarkPoint(spec,game.origin),g=new THREE.Group();g.name=spec.name;g.position.set(p.x,groundAt(p.x,p.z),p.z);root.add(g);return g;};
