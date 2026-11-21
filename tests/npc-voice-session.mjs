@@ -117,3 +117,9 @@ test('stop recording preserves final audio until MediaRecorder onstop cleanup',(
   assert.ok(!source.includes("recorder.stop();stream?.getTracks().forEach(t=>t.stop());stream=null;"));
   assert.ok(source.includes("current.onstop=async()=>{acquiredStream.getTracks().forEach(t=>t.stop());"));
 });
+
+
+test('closing an NPC conversation cancels its spoken reply before another NPC opens',()=>{
+  assert.ok(source.includes("stopMic(); window.speechSynthesis?.cancel(); active = null; panel.classList.remove('open');"));
+  assert.ok(source.includes('if (active) close({restoreFocus:false});'));
+});
