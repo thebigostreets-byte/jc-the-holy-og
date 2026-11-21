@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const source=read('landmark-variants.js');
+assert.equal(source,read('dist/client/landmark-variants.js'));
+assert.match(source,/hellArtReady=false,hellArtFailed=false/);
+assert.match(source,/if\(withinImpostorRange&&!hellArt&&!hellArtFailed\)/);
+assert.match(source,/if\(!disposed\)hellArtReady=true/);
+assert.match(source,/if\(!disposed\)hellArtFailed=true/);
+assert.match(source,/card\.visible=withinImpostorRange&&hellArtReady&&!hellArtFailed/);
+assert.match(source,/name:'Angelic Stadium'/);
+assert.match(source,/beamMetres:3800/);
+assert.match(source,/name:'END OF HIM'/);
+console.log('Hell impostor decode-ready gate and source/deploy parity passed');
