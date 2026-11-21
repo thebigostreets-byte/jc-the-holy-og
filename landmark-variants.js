@@ -87,7 +87,7 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
  addSign(hell,'END OF HIM',135,25,-118,39,0,-Math.PI/2,'#ff6637','#1b0308');
  addSign(hell,'END OF HIM',135,25,0,39,118,0,'#ff6637','#1b0308');
  // Do not decode/upload the Hell-only distant cutout during normal-world startup.
- let hellArt=null;
+ let hellArt=null,hellArtReady=false,hellArtFailed=false;
  const cardMaterial=new THREE.MeshBasicMaterial({transparent:true,alphaTest:.025,depthWrite:false,side:THREE.DoubleSide});
  const card=owned(new THREE.PlaneGeometry(330,104),cardMaterial);
  card.name='END OF HIM authored Hell sprite impostor';card.position.y=83;card.frustumCulled=false;hell.add(card);
@@ -102,12 +102,12 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
    const cam=game.camera.position,dx=cam.x-hell.position.x,dz=cam.z-hell.position.z,dist=Math.hypot(dx,dz);
    const withinImpostorRange=dist>400&&dist<6500;
    // Avoid decoding the distant Hell façade when the player is outside its visible LOD.
-   if(withinImpostorRange&&!hellArt){
-    hellArt=new THREE.TextureLoader().load('./assets/building-cutouts/end-of-him-distant.webp');
+   if(withinImpostorRange&&!hellArt&&!hellArtFailed){
+    hellArt=new THREE.TextureLoader().load('./assets/building-cutouts/end-of-him-distant.webp',()=>{if(!disposed)hellArtReady=true;},undefined,()=>{if(!disposed)hellArtFailed=true;});
     hellArt.colorSpace=THREE.SRGBColorSpace;hellArt.anisotropy=2;textures.add(hellArt);
     cardMaterial.map=hellArt;cardMaterial.needsUpdate=true;
    }
-   card.visible=withinImpostorRange;
+   card.visible=withinImpostorRange&&hellArtReady&&!hellArtFailed;
    if(card.visible)card.lookAt(cam.x-hell.position.x,card.position.y,cam.z-hell.position.z);
   }else card.visible=false;
   // Small far-field drawing budget; beam does not cast shadows or use point lights.
