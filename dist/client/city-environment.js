@@ -25,7 +25,12 @@ function local(game,lon,lat){const [e,n]=utm(lon,lat);return [e-game.origin[0],g
 function tileAt(lon,lat){const [e,n]=utm(lon,lat);return `C${String(Math.floor((e-648949.782)/1000)).padStart(2,'0')}_R${String(Math.floor((n-3983561.814)/1000)).padStart(2,'0')}`;}
 function seeded(s){const x=Math.sin(s*127.1+311.7)*43758.5453;return x-Math.floor(x);}
 function addSphere(game,root,feature){
- const [x,z]=local(game,feature.lon,feature.lat),y=(game.roads?.sample(x,z)||0);
+ const [x,z]=local(game,feature.lon,feature.lat);
+ // Anchor the Sphere to its actual loaded terrain tile. The roads sampler can
+ // temporarily return 0 before its own async setup, burying the Sphere/base.
+ const terrain=terrainSampler(game.loaded.get(tileAt(feature.lon,feature.lat)));
+ const terrainY=terrain?.(x,z),roadY=game.roads?.sample(x,z);
+ const y=Number.isFinite(terrainY)?terrainY:Number.isFinite(roadY)?roadY:0;
  const shell=new THREE.SphereGeometry(1,48,32),skin=new THREE.MeshStandardMaterial({emissive:0xffffff,emissiveIntensity:1.7,roughness:.34,metalness:.12});
  const globe=new THREE.Mesh(shell,skin);globe.name='Sphere · rotating eye / demon / Earth display';globe.position.set(x,y+95,z);globe.scale.setScalar(79);root.add(globe);
  const skins=['eye','demon','earth'].map(name=>new THREE.TextureLoader().load(`./generated-assets/sphere-${name}-v${name==='demon'?'2':'1'}.webp`,t=>{t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=2;}));
