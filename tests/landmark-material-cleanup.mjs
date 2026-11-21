@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const source=read('landmark-variants.js');
+assert.equal(source,read('dist/client/landmark-variants.js'),'source/deploy parity');
+assert.match(source,/const owned=\(geometry,material\)=>\{geometries\.add\(geometry\);if\(Array\.isArray\(material\)\)\{for\(const m of material\)materials\.add\(m\);\}else if\(material\)materials\.add\(material\);/);
+assert.match(source,/for\(const m of materials\)m\.dispose\(\)/);
+assert.match(source,/name:'Angelic Stadium'/);
+assert.match(source,/beamMetres:3800/);
+assert.match(source,/name:'END OF HIM'/);
+console.log('Landmark mesh material cleanup and source/deploy parity passed');
