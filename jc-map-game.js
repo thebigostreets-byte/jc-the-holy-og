@@ -319,7 +319,7 @@ function setFlight(action){
   poseOverride=-1;poseOverrideUntil=0;castingUntil=0;
   return next;
 }
-let playing = false, yaw = 0, viewPitch = 0, last = performance.now(), lastGround = 0, terrainY = 0;
+let playing = false, yaw = 0, facingYaw = 0, viewPitch = 0, last = performance.now(), lastGround = 0, terrainY = 0;
 let devilMode=false,devilTexture=null;
 let devilWings=null;
 function createDevilWings(parent){
@@ -1234,7 +1234,14 @@ function frameStep(now) {
     realisticAvatar.material.rotation=THREE.MathUtils.lerp(realisticAvatar.material.rotation,bank,response(8,dt));
     realisticAvatar.position.y=realisticAvatar.scale.y*.5+(flying?Math.sin(now*.004)*.06:0);
   }
-  portrait.rotation.y=Math.PI+yaw;
+  // Camera-relative input can point behind JC: face the actual horizontal travel direction.
+  // Keep camera yaw independent so turning around never reverses the controls or camera.
+  const faceX=desired.x,faceZ=desired.z;
+  const faceInput=Math.hypot(faceX,faceZ);
+  const targetFacing=faceInput>.12?Math.atan2(faceX,-faceZ):yaw;
+  const facingDelta=Math.atan2(Math.sin(targetFacing-facingYaw),Math.cos(targetFacing-facingYaw));
+  facingYaw+=THREE.MathUtils.clamp(facingDelta,-dt*12,dt*12);
+  portrait.rotation.y=Math.PI+facingYaw;
   portrait.position.y = velocity.lengthSq() > 1 && !flying ? Math.sin(now * .014) * .035 : 0;
   devilWings?.userData.update(now,flying,hypersonic);
   for (const s of souls) {
