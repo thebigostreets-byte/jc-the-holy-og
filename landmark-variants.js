@@ -98,14 +98,16 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
   beamMaterials[0].opacity=night?.82:.55;beamMaterials[1].opacity=night?.25:.14;
   const hellMode=window.JC_HELL_WORLD===true||document.getElementById('jcDevilMode')?.getAttribute('aria-pressed')==='true';
   hell.visible=hellMode;
-  if(hellMode&&!hellArt){
-   hellArt=new THREE.TextureLoader().load('./assets/building-cutouts/end-of-him-distant.webp');
-   hellArt.colorSpace=THREE.SRGBColorSpace;hellArt.anisotropy=2;textures.add(hellArt);
-   cardMaterial.map=hellArt;cardMaterial.needsUpdate=true;
-  }
   if(hellMode&&game.camera){
    const cam=game.camera.position,dx=cam.x-hell.position.x,dz=cam.z-hell.position.z,dist=Math.hypot(dx,dz);
-   card.visible=dist>400&&dist<6500;
+   const withinImpostorRange=dist>400&&dist<6500;
+   // Avoid decoding the distant Hell façade when the player is outside its visible LOD.
+   if(withinImpostorRange&&!hellArt){
+    hellArt=new THREE.TextureLoader().load('./assets/building-cutouts/end-of-him-distant.webp');
+    hellArt.colorSpace=THREE.SRGBColorSpace;hellArt.anisotropy=2;textures.add(hellArt);
+    cardMaterial.map=hellArt;cardMaterial.needsUpdate=true;
+   }
+   card.visible=withinImpostorRange;
    if(card.visible)card.lookAt(cam.x-hell.position.x,card.position.y,cam.z-hell.position.z);
   }else card.visible=false;
   // Small far-field drawing budget; beam does not cast shadows or use point lights.
