@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const source=readFileSync(new URL('../dist/client/city-environment.js',import.meta.url),'utf8');
+const fountain=source.slice(source.indexOf("if(kind.includes('Bellagio'))"),source.indexOf("function addGolfTurf"));
+assert.match(fountain,/const distant=dx\*dx\+dz\*dz>350\*350/,'Bellagio fountain uses squared planar distance');
+assert.match(fountain,/if\(distant&&time-lastFarJetUpdate<250\)return/,'Distant jet animation should be limited to 4 Hz');
+assert.match(fountain,/if\(distant\)lastFarJetUpdate=time/,'Far update timestamp must advance');
+assert.match(fountain,/for\(const \{jet,phase,height\}of jets\)/,'Nearby fountain must retain all jet animation');
+assert.match(fountain,/Math\.sin\(time\*\.00165\+phase\)/,'Jet phases must remain time-based');
+console.log('Bellagio distance-aware jet animation source checks passed');
