@@ -24,8 +24,9 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
  const groundAt=(x,z)=>{const v=game.roads?.sample?.(x,z);return Number.isFinite(v)?v:0;};
  const anchor=(spec)=>{const p=localLandmarkPoint(spec,game.origin),g=new THREE.Group();g.name=spec.name;g.position.set(p.x,groundAt(p.x,p.z),p.z);root.add(g);return g;};
  const makeSign=(text,color='#f9d578',bg='#18202b')=>{
-  const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=192;
+  const canvas=document.createElement('canvas');canvas.width=mobile?512:1024;canvas.height=mobile?96:192;
   const ctx=canvas.getContext('2d');if(!ctx)return null;
+  if(mobile)ctx.scale(.5,.5); // Preserve sign geometry while quartering mobile texture pixels.
   ctx.fillStyle=bg;ctx.fillRect(0,0,1024,192);
   ctx.strokeStyle=color;ctx.lineWidth=12;ctx.strokeRect(10,10,1004,172);
   ctx.font='bold 102px Arial, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
