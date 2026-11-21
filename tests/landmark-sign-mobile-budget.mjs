@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const get=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const source=get('landmark-variants.js');
+assert.equal(source,get('dist/client/landmark-variants.js'),'landmark source and deploy copy match');
+assert.match(source,/canvas\.width=mobile\?512:1024;canvas\.height=mobile\?96:192;/);
+assert.match(source,/if\(mobile\)ctx\.scale\(\.5,\.5\)/);
+for(const label of ['ANGELIC STADIUM','END OF HIM','LUXOR','SIN CITY MOTOR SPEEDWAY'])assert.ok(source.includes(label),label+' retained');
+assert.match(source,/beamMetres:3800/);
+console.log('Landmark mobile sign budget and source parity passed');
