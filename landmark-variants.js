@@ -98,11 +98,18 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
   if(!game.loaded?.values)return NaN;
   for(const tile of game.loaded.values()){
    if(!tile||tile.userData?.generatedFallback)continue;
-   let sampler=luxorSamplers.get(tile);
-   if(!sampler){sampler=terrainSampler(tile)||null;
-    // A tile may gain its terrain mesh after first entering the loaded map.
-    // Retry absent samplers instead of permanently caching an empty result.
-    if(sampler)luxorSamplers.set(tile,sampler);}
+   // A streamed tile can replace its ground geometry without changing the tile object.
+   // Match the same position attribute used by terrainSampler before reusing its closure.
+   const ground=tile.children?.find(child=>child.name==='ground_inferred');
+   const mesh=ground?.children?.find(child=>child.isMesh);
+   const position=(mesh?.userData?.jcCraterBase||mesh?.geometry)?.getAttribute('position');
+   const cached=luxorSamplers.get(tile);
+   let sampler=cached?.position===position?cached.sampler:null;
+   if(!sampler&&position){sampler=terrainSampler(tile);
+    if(sampler)luxorSamplers.set(tile,{position,sampler});
+    else luxorSamplers.delete(tile);
+   }
+   if(!position)luxorSamplers.delete(tile);
    const height=sampler?.(pyramid.position.x,pyramid.position.z);
    if(Number.isFinite(height))return height;
   }
