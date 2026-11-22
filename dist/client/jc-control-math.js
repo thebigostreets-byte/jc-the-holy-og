@@ -1,5 +1,11 @@
 // Frame-rate independent input response shared by desktop, touch and gamepad.
-export function stickAxis(value,deadzone=.16){return Math.abs(value)<=deadzone?0:Math.sign(value)*Math.min(1,(Math.abs(value)-deadzone)/(1-deadzone));}
+// Gamepad axes can be non-finite on buggy devices; malformed deadzones must never produce NaN/Infinity.
+export function stickAxis(value,deadzone=.16){
+  if(!Number.isFinite(value))return 0;
+  const axis=Math.max(-1,Math.min(1,value));
+  const dz=Number.isFinite(deadzone)?Math.max(0,Math.min(.99,deadzone)):.16;
+  return Math.abs(axis)<=dz?0:Math.sign(axis)*Math.min(1,(Math.abs(axis)-dz)/(1-dz));
+}
 // Standard Gamepad API mapping; preserve the controller layout documented in game-full.html.
 export const standardPadActions=[[0,'jump'],[1,'cast'],[2,'hypersonic'],[3,'car'],[4,'flight'],[5,'shield'],[8,'wheel'],[9,'pause']];
 export const standardPadHolds=[[0,'Space'],[6,'Control'],[7,'Space']];
