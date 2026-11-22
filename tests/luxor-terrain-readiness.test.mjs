@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const source=read('landmark-variants.js');
+assert.equal(source,read('dist/client/landmark-variants.js'));
+assert.match(source,/const luxorGround=game\.roads\?\.sample\?\.\(pyramid\.position\.x,pyramid\.position\.z\)/);
+assert.match(source,/const luxorGroundReady=Number\.isFinite\(luxorGround\)/);
+assert.match(source,/if\(luxorGroundReady\)pyramid\.position\.y=luxorGround/);
+assert.match(source,/pyramid\.visible=luxorGroundReady&&dist<20000/);
+assert.match(source,/beamMetres:3800/);
+assert.match(source,/name:'Angelic Stadium'/);
+assert.match(source,/name:'END OF HIM'/);
+console.log('Luxor terrain readiness and source/deploy parity passed');
