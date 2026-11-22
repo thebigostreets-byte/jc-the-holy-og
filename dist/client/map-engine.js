@@ -519,3 +519,12 @@ window.JC_CITY_BOOT_MODE=stable3D?'stability-first':'maximum';
 window.JC_CITY_BOOT_BUILDINGS=loaded.get('C15_R14')?.children.length||0;
 window.JC_CITY_SOURCE_BUILDINGS=loaded.get('C15_R14')?.userData?.totalBuildings||window.JC_CITY_BOOT_BUILDINGS;
 status(`Playable Strip ready · ${window.JC_CITY_BOOT_BUILDINGS.toLocaleString()} buildings active · mapped roads restoring`);
+// Full-city geometry is opt-in; preserve bounded streaming on memory-limited phones.
+if(params.get('fullCity')==='1'){
+ if(mobileMap||lowSpec){
+  updateAllTileStatus('Full-city terrain overview available. Mobile streams 10×10 detail to avoid memory crashes; Download Entire City caches files.');
+  void loadArea(centerSection(),10,false);
+ }else{
+  void loadAllTiles();
+ }
+}
