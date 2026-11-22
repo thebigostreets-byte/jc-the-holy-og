@@ -111,7 +111,12 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
    if(card.visible)card.lookAt(cam.x-hell.position.x,card.position.y,cam.z-hell.position.z);
   }else card.visible=false;
   // Small far-field drawing budget; beam does not cast shadows or use point lights.
-  if(game.camera){const cam=game.camera.position,dist=Math.hypot(cam.x-pyramid.position.x,cam.z-pyramid.position.z);pyramid.visible=dist<20000;}
+  const luxorGround=game.roads?.sample?.(pyramid.position.x,pyramid.position.z);
+  // Wait for a real streamed terrain sample; never expose a pyramid at fake sea level.
+  const luxorGroundReady=Number.isFinite(luxorGround);
+  if(luxorGroundReady)pyramid.position.y=luxorGround;
+  if(game.camera){const cam=game.camera.position,dist=Math.hypot(cam.x-pyramid.position.x,cam.z-pyramid.position.z);pyramid.visible=luxorGroundReady&&dist<20000;}
+  else pyramid.visible=false;
  }
  update();
  return {root,update,stats:()=>({landmarks:4,luxorBeamMetres:3800,endOfHimActive:hell.visible}),dispose(){
