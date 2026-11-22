@@ -4,10 +4,15 @@ const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const source=read('landmark-variants.js');
 assert.equal(source,read('dist/client/landmark-variants.js'));
 assert.match(source,/const luxorGround=game\.roads\?\.sample\?\.\(pyramid\.position\.x,pyramid\.position\.z\)/);
-assert.match(source,/const luxorGroundReady=Number\.isFinite\(luxorGround\)/);
-assert.match(source,/if\(luxorGroundReady\)pyramid\.position\.y=luxorGround/);
+assert.match(source,/let luxorGroundReady=Number\.isFinite\(lastLuxorGround\)/);
+assert.match(source,/if\(Number\.isFinite\(luxorGround\)\)\{lastLuxorGround=luxorGround;luxorGroundReady=true;\}/);
+assert.match(source,/if\(luxorGroundReady\)pyramid\.position\.y=lastLuxorGround/);
 assert.match(source,/pyramid\.visible=luxorGroundReady&&dist<20000/);
 assert.match(source,/beamMetres:3800/);
 assert.match(source,/name:'Angelic Stadium'/);
 assert.match(source,/name:'END OF HIM'/);
+// The last valid height remains authoritative when a subsequent sample is NaN.
+let height=NaN,ready=false;
+for(const sample of [NaN,42,NaN,43]){if(Number.isFinite(sample)){height=sample;ready=true;}assert.equal(ready,Number.isFinite(height));if(Number.isNaN(sample)&&ready)assert.ok(Number.isFinite(height));}
+assert.equal(height,43);
 console.log('Luxor terrain readiness and source/deploy parity passed');
