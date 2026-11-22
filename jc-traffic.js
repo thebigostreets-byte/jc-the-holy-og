@@ -57,7 +57,7 @@ export function createTrafficSystem({scene,network,groundAt,mobile=false,count}=
       if(pd<3.6&&Math.abs((player.position.y||0)-car.y)<3.2&&now>=car.playerCooldown){car.playerCooldown=now+1700;onPlayerImpact(car);}
       for(const npc of npcs){
         if(!npc?.position||now<(npc.trafficCooldownUntil||0))continue;
-        if(Math.hypot(car.x-npc.position.x,car.z-npc.position.z)<2.4){npc.trafficCooldownUntil=now+4000;onNpcImpact(npc,car);break;}
+        if(Math.hypot(car.x-npc.position.x,car.z-npc.position.z)<2.4&&Math.abs(npc.position.y-car.y)<3.2){npc.trafficCooldownUntil=now+4000;onNpcImpact(npc,car);break;}
       }
     }
     bodies.instanceMatrix.needsUpdate=true;roofs.instanceMatrix.needsUpdate=true;
