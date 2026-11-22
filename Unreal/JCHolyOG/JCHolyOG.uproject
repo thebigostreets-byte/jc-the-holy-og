@@ -1,0 +1,9 @@
+{
+  "FileVersion": 3,
+  "EngineAssociation": "5.8",
+  "Category": "Games",
+  "Description": "JC The Holy OG native Unreal Engine PC / Android / iOS port foundation.",
+  "Modules": [
+    {"Name": "JCHolyOG", "Type": "Runtime", "LoadingPhase": "Default"}
+  ]
+}
