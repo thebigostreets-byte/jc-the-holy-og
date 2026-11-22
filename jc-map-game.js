@@ -896,10 +896,10 @@ function updateCarApproach(dt){
  if(jcCar.position.distanceTo(target)<.2){jcCar.position.copy(target);jcCar.userData.hoverHeight=Math.max(0,target.y-groundAt(target.x,target.z));carApproach=null;feedback('JC CAR ARRIVED · E / JC CAR TO ENTER');}
 }
 function toggleCar(){if(!jcCar||!player)return;if(drivingCar){drivingCar=false;player.visible=true;realisticAvatar.visible=true;jcCar.visible=true;player.position.x+=Math.sin(yaw)*2.5;player.position.z-=Math.cos(yaw)*2.5;player.position.y=groundAt(player.position.x,player.position.z)+flightHeight;feedback('EXITED JC CAR');return;}const distance=Math.hypot(player.position.x-jcCar.position.x,player.position.z-jcCar.position.z);if(distance>6){callCar();return;}if(carApproach){feedback('WAIT FOR YOUR CAR TO PARK');return;}drivingCar=true;player.visible=false;realisticAvatar.visible=false;jcCar.visible=true;flightHeight=jcCar.userData.hoverHeight||0;flying=flightHeight>0;player.position.set(jcCar.position.x,jcCar.position.y,jcCar.position.z);velocity.set(0,0,0);feedback('JC CAR · WASD / LEFT STICK TO DRIVE · E TO EXIT');}
-function cameraBoom(distance=9){
+function cameraBoom(distance=5.5){
   const focus=cameraFocus();
   const horizontal=Math.cos(viewPitch);
-  const behind=focus.clone().add(new THREE.Vector3(-Math.sin(yaw)*horizontal*distance,3-Math.sin(viewPitch)*distance,Math.cos(yaw)*horizontal*distance));
+  const behind=focus.clone().add(new THREE.Vector3(-Math.sin(yaw)*horizontal*distance,2.2-Math.sin(viewPitch)*distance,Math.cos(yaw)*horizontal*distance));
   const line=new THREE.Line3(focus,behind);
   for(let t=.08;t<=1;t+=.08){
     const point=line.at(t,new THREE.Vector3());
@@ -909,7 +909,7 @@ function cameraBoom(distance=9){
 }
 function snapCameraBehindPlayer(){
   if(!game||!player)return;
-  const focus=cameraFocus(), behind=cameraBoom(9);
+  const focus=cameraFocus(), behind=cameraBoom(5.5);
   game.camera.position.copy(behind);game.camera.lookAt(focus);game.controls?.target?.copy(focus);
 }
 function teleport(distance = 75) {
@@ -1254,7 +1254,7 @@ function frameStep(now) {
   cinematicLook?.update(dt,now,player.position,velocity,flying,boost,playing);
   const focus = cameraFocus();
   // Same rear offset in every movement mode; only walls shorten the boom.
-  game.camera.position.copy(cameraBoom(9));
+  game.camera.position.copy(cameraBoom(5.5));
   game.camera.lookAt(focus);
   if(game.camera.fov!==62){game.camera.fov=62;game.camera.updateProjectionMatrix();}
   game.controls?.target?.copy(focus);
