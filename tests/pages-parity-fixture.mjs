@@ -18,6 +18,7 @@ test('Pages manifest and published assets match byte-for-byte', async () => {
     await assert.rejects(verifyPagesAssets(root), /published bytes differ/);
     await writeFile(path.join(root, 'scripts/public-assets.json'), JSON.stringify(['../escape.js']));
     await assert.rejects(verifyPagesAssets(root), /unsafe asset path/);
+    await writeFile(path.join(root, 'dist/client/game.js'), 'valid');
     await writeFile(path.join(root, 'scripts/public-assets.json'), JSON.stringify(['game.js','game.js']));
     await assert.rejects(verifyPagesAssets(root), /duplicate asset/);
   } finally {
