@@ -20,7 +20,8 @@ export function terrainSampler(group){
   return oy+(fx+fz<=1?p.getY(a)*(1-fx-fz)+p.getY(a+1)*fx+p.getY(a+n)*fz:p.getY(a+n+1)*(fx+fz-1)+p.getY(a+1)*(1-fz)+p.getY(a+n)*(1-fx))-craterDepth(x,z,mesh.userData.craters||[]);
  };
 }
-export function roadWidth(kind){return ({FREEWAY:13,INTERSTATE:13,'MAJOR STREET':18,COLLECTOR:12,'COUNTY HIGHWAY':12,RAMP:7,LOCAL:8,ALLEY:4,'PRIVATE STREET':7})[kind]||7;}
+const ROAD_WIDTHS=Object.freeze({FREEWAY:13,INTERSTATE:13,'MAJOR STREET':18,COLLECTOR:12,'COUNTY HIGHWAY':12,RAMP:7,LOCAL:8,ALLEY:4,'PRIVATE STREET':7});
+export function roadWidth(kind){return typeof kind==='string'&&Object.hasOwn(ROAD_WIDTHS,kind)?ROAD_WIDTHS[kind]:7;}
 export function isPointWithinRoadway(segment,x,z,margin=1.4){const dx=segment.x2-segment.x1,dz=segment.z2-segment.z1,length=dx*dx+dz*dz,t=length?THREE.MathUtils.clamp(((x-segment.x1)*dx+(z-segment.z1)*dz)/length,0,1):0;return Math.hypot(x-(segment.x1+t*dx),z-(segment.z1+t*dz))<segment.width/2+margin;}
 export async function buildRoadGeometry(records,sample,{origin=[0,0],yieldEvery=32,segmentLength=10}={}){
  const layers=[[],[],[],[]],uvs=[[],[],[],[]];let quads=0;
