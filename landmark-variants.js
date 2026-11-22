@@ -99,7 +99,10 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
   for(const tile of game.loaded.values()){
    if(!tile||tile.userData?.generatedFallback)continue;
    let sampler=luxorSamplers.get(tile);
-   if(sampler===undefined){sampler=terrainSampler(tile)||null;luxorSamplers.set(tile,sampler);}
+   if(!sampler){sampler=terrainSampler(tile)||null;
+    // A tile may gain its terrain mesh after first entering the loaded map.
+    // Retry absent samplers instead of permanently caching an empty result.
+    if(sampler)luxorSamplers.set(tile,sampler);}
    const height=sampler?.(pyramid.position.x,pyramid.position.z);
    if(Number.isFinite(height))return height;
   }
