@@ -91,6 +91,9 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
  const cardMaterial=new THREE.MeshBasicMaterial({transparent:true,alphaTest:.025,depthWrite:false,side:THREE.DoubleSide});
  const card=owned(new THREE.PlaneGeometry(330,104),cardMaterial);
  card.name='END OF HIM authored Hell sprite impostor';card.position.y=83;card.frustumCulled=false;hell.add(card);
+ // Retain the last valid anchor through transient tile eviction; no sea-level flash.
+ let lastLuxorGround=game.roads?.sample?.(pyramid.position.x,pyramid.position.z);
+ let luxorGroundReady=Number.isFinite(lastLuxorGround);
  let disposed=false;
  function update(){
   if(disposed)return;
@@ -113,8 +116,8 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
   // Small far-field drawing budget; beam does not cast shadows or use point lights.
   const luxorGround=game.roads?.sample?.(pyramid.position.x,pyramid.position.z);
   // Wait for a real streamed terrain sample; never expose a pyramid at fake sea level.
-  const luxorGroundReady=Number.isFinite(luxorGround);
-  if(luxorGroundReady)pyramid.position.y=luxorGround;
+  if(Number.isFinite(luxorGround)){lastLuxorGround=luxorGround;luxorGroundReady=true;}
+  if(luxorGroundReady)pyramid.position.y=lastLuxorGround;
   if(game.camera){const cam=game.camera.position,dist=Math.hypot(cam.x-pyramid.position.x,cam.z-pyramid.position.z);pyramid.visible=luxorGroundReady&&dist<20000;}
   else pyramid.visible=false;
  }
