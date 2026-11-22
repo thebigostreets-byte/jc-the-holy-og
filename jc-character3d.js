@@ -95,12 +95,14 @@ export function createCharacter3D({faction='civilian',player=false,ordinal=0}={}
   const flight=[[1.05,-1.05],[-.1,-1.3],[1.3,.1],[.65,-.65],[-2.1,-2.1],[1.6,1.6],[.15,-.15],[.95,.95]];
   flight.forEach((a,i)=>{poses[14+i].arm=a;poses[14+i].elbow=i===7?[-1.05,-1.05]:[.05,.05];poses[14+i].body=i===4?.48:i===5?-.12:0;poses[14+i].lean=i===1?-.24:i===2?.24:0;});
   const api={setPose(index=0,gait=0,speed=0,now=0,flying=false){
-    const pose=poses[index]||poses[0],step=(index>=31&&index<=38)?1:index>=23&&index<=30?.66:0;
-    torso.rotation.z=pose.body+pose.lean+(step?Math.sin(gait)*.04:0);torso.rotation.x=flying?-.08:Math.sin(gait)*step*.025;
-    for(const {arm,elbow,side} of arms){const swing=step?Math.sin(gait+(side>0?Math.PI:0))*.56:0;arm.rotation.x=(pose.arm[side>0?1:0]||0)+swing;arm.rotation.z=side*(pose.lean*.4);elbow.rotation.x=(pose.elbow[side>0?1:0]||0)+(step?-.14:0);}
-    for(const {leg,knee,side} of legs){const swing=step?Math.sin(gait+(side>0?Math.PI:0))*(index>=31&&index<=38?.78:.48):0;leg.rotation.x=swing+(index===19?-.36:0);knee.rotation.x=step?Math.max(0,Math.sin(gait+(side>0?Math.PI:0)))*.62:index===19?.8:0;}
+    const poseIndex=Number.isInteger(index)&&index>=0&&index<poses.length?index:0;
+    const phase=Number.isFinite(gait)?gait:0;
+    const pose=poses[poseIndex],step=(poseIndex>=31&&poseIndex<=38)?1:poseIndex>=23&&poseIndex<=30?.66:0;
+    torso.rotation.z=pose.body+pose.lean+(step?Math.sin(phase)*.04:0);torso.rotation.x=flying?-.08:Math.sin(phase)*step*.025;
+    for(const {arm,elbow,side} of arms){const swing=step?Math.sin(phase+(side>0?Math.PI:0))*.56:0;arm.rotation.x=(pose.arm[side>0?1:0]||0)+swing;arm.rotation.z=side*(pose.lean*.4);elbow.rotation.x=(pose.elbow[side>0?1:0]||0)+(step?-.14:0);}
+    for(const {leg,knee,side} of legs){const swing=step?Math.sin(phase+(side>0?Math.PI:0))*(poseIndex>=31&&poseIndex<=38?.78:.48):0;leg.rotation.x=swing+(poseIndex===19?-.36:0);knee.rotation.x=step?Math.max(0,Math.sin(phase+(side>0?Math.PI:0)))*.62:poseIndex===19?.8:0;}
     group.rotation.z=THREE.MathUtils.lerp(group.rotation.z,pose.lean*.22,.3);
-    group.userData.lastPose=index;group.userData.lastSpeed=speed;group.userData.lastUpdated=now;
+    group.userData.lastPose=poseIndex;group.userData.lastSpeed=Number.isFinite(speed)?speed:0;group.userData.lastUpdated=Number.isFinite(now)?now:0;
   }};
   group.userData.character=api;group.userData.dispose=()=>group.traverse(o=>{if(o.isMesh){o.geometry===sph||o.geometry===cyl||o.geometry===smallCyl?null:o.geometry.dispose();if(o.material&&!Object.values({skin,shirt,trim,pants,boot,iris,glow}).includes(o.material))o.material.dispose();}});
   return group;
