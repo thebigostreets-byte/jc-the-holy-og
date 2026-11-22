@@ -94,6 +94,8 @@ export function createCharacter3D({faction='civilian',player=false,ordinal=0}={}
   // 14–21 hover, strafe, glide, rise, dive, cruise, and braking.
   const flight=[[1.05,-1.05],[-.1,-1.3],[1.3,.1],[.65,-.65],[-2.1,-2.1],[1.6,1.6],[.15,-.15],[.95,.95]];
   flight.forEach((a,i)=>{poses[14+i].arm=a;poses[14+i].elbow=i===7?[-1.05,-1.05]:[.05,.05];poses[14+i].body=i===4?.48:i===5?-.12:0;poses[14+i].lean=i===1?-.24:i===2?.24:0;});
+  // Pose 22 is selected during descent; without authored rotations JC snaps to the idle rig.
+  poses[22].arm=[.85,-.85];poses[22].elbow=[.25,.25];poses[22].body=.12;
   const api={setPose(index=0,gait=0,speed=0,now=0,flying=false){
     const pose=poses[index]||poses[0],step=(index>=31&&index<=38)?1:index>=23&&index<=30?.66:0;
     torso.rotation.z=pose.body+pose.lean+(step?Math.sin(gait)*.04:0);torso.rotation.x=flying?-.08:Math.sin(gait)*step*.025;
