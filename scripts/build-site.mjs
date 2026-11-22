@@ -21,3 +21,7 @@ await cp(path.join(root, 'worker/index.js'), path.join(root, 'dist/server/index.
 await mkdir(path.join(root, 'dist/.openai'), {recursive: true});
 await writeFile(path.join(root, 'dist/.openai/hosting.json'), await readFile(path.join(root, '.openai/hosting.json')));
 console.log('JC game and integrated NPC route built.');
+
+// Fail the build if the Pages output contains stale or corrupted assets.
+const {verifyPagesAssets} = await import('./verify-pages-parity.mjs');
+console.log(`Verified ${await verifyPagesAssets(root)} published assets against source bytes.`);
