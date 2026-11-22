@@ -45,7 +45,8 @@ export async function requestNpcDialogue(npc, history, {message = '', greeting =
   if (callerSignal?.aborted) controller.abort();
   callerSignal?.addEventListener('abort',abort,{once:true});
   const timer = setTimeout(abort,22000);
-  const witnessMemories=(npc.witnessMemory?.entries||[]).slice(-6).map(item=>item.text);
+  const witnessEntries=Array.isArray(npc?.witnessMemory?.entries)?npc.witnessMemory.entries:[];
+  const witnessMemories=witnessEntries.slice(-6).map(item=>item?.text).filter(text=>typeof text==='string'&&text.trim());
   const observedPlayer=npc.observedPlayer||null;
   const playerIdentity=npc.playerIdentity||{id:'jc-player',name:'Jesus (JC)',role:'the player character',isConversationPartner:true};
   const spatialContext=npc.conversationSpatial||{mode:'face-to-face',speakerVisible:true,speakerIsPlayer:true,source:'the visible player character standing/flying near this NPC'};
@@ -54,7 +55,7 @@ export async function requestNpcDialogue(npc, history, {message = '', greeting =
   try {
     const response = await fetch(ENDPOINT,{
       method:'POST',mode:'same-origin',credentials:'same-origin',headers:{'content-type':'application/json'},signal:controller.signal,
-      body:JSON.stringify({playerIdentity,spatialContext,npc:{gender:npc.gender,allegiance:npc.allegiance,alignmentScore:npc.alignmentScore,id:npc.id,personality:[npc.personality,identityContext,memoryContext?'Personally witnessed (do not invent unseen events): '+memoryContext:''].filter(Boolean).join('. '),witnessMemories,observedPlayer,occupation:npc.occupation,life:npc.life?{activity:npc.life.activity,homeId:npc.life.homeId,workplaceId:npc.life.workplaceId,familyId:npc.life.familyId,stress:npc.life.stress}:null,identity:npc.identity?{openness:npc.identity.openness,skepticism:npc.identity.skepticism,curiosity:npc.identity.curiosity,trust:npc.identity.trust,gameBelief:npc.identity.gameBelief}:null,decision:npc.decision,memories:npc.lifeMemory?.memories,trust:npc.lifeMemory?.trust,name:npc.name,faction:npc.faction,state:npc.state || 'calm',recentEvent:[npc.event?.type || npc.memory?.type || '',memoryContext].filter(Boolean).join(' · ')},world,history:history.slice(-8),message,greeting,...(sessionApiKey?{apiKey:sessionApiKey}:{})}),
+      body:JSON.stringify({playerIdentity,spatialContext,npc:{gender:npc.gender,allegiance:npc.allegiance,alignmentScore:npc.alignmentScore,id:npc.id,personality:[npc.personality,identityContext,memoryContext?'Personally witnessed (do not invent unseen events): '+memoryContext:''].filter(Boolean).join('. '),witnessMemories,observedPlayer,occupation:npc.occupation,life:npc.life?{activity:npc.life.activity,homeId:npc.life.homeId,workplaceId:npc.life.workplaceId,familyId:npc.life.familyId,stress:npc.life.stress}:null,identity:npc.identity?{openness:npc.identity.openness,skepticism:npc.identity.skepticism,curiosity:npc.identity.curiosity,trust:npc.identity.trust,gameBelief:npc.identity.gameBelief}:null,decision:npc.decision,memories:npc.lifeMemory?.memories,trust:npc.lifeMemory?.trust,name:npc.name,faction:npc.faction,state:npc.state || 'calm',recentEvent:[npc.event?.type || npc.memory?.type || '',memoryContext].filter(Boolean).join(' · ')},world,history:(Array.isArray(history)?history:[]).slice(-8),message,greeting,...(sessionApiKey?{apiKey:sessionApiKey}:{})}),
     });
     let data;
     try {data = await response.json();} catch {throw new Error('NPC dialogue returned an unreadable response. Your message is saved.');}
