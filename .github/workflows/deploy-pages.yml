@@ -60,6 +60,8 @@ jobs:
           node tests/gameplay-regressions.mjs
           node tests/performance-guardrails.mjs
           node tests/city-tile-window.mjs
+          node tests/luxor-terrain-readiness.test.mjs
+          node tests/luxor-terrain-cache-runtime.mjs
           node tests/npc-motion.mjs
           node tests/npc-autonomy.mjs
           node tests/npc-contacts.mjs
