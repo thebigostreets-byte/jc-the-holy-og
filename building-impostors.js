@@ -22,6 +22,8 @@ export function createBuildingImpostors(game,{mobile=false,enabled=true}={}){
   const direction=new THREE.Vector3(),viewport=new THREE.Vector4(),scissor=new THREE.Vector4();
   let nextScan=0,nextCaptureAt=0,failed=false,bakedFrames=0,lastLighting='',captureLights=null;
   const captureScene=new THREE.Scene();
+  // Reuse light clones across nine-angle captures instead of allocating each frame.
+  const captureLightCopies=new Map();
   const captureCamera=new THREE.OrthographicCamera(-1,1,1,-1,.1,1000);
   function signature(ob){
     return ob.children.filter(m=>m.isMesh).map(m=>{
@@ -58,7 +60,13 @@ export function createBuildingImpostors(game,{mobile=false,enabled=true}={}){
   }
   function bake(r){
     captureScene.clear();captureScene.add(r.capture);
-    for(const light of lightsForCapture())captureScene.add(light.clone());
+    for(const light of lightsForCapture()){
+      let copy=captureLightCopies.get(light);
+      if(!copy){copy=light.clone();captureLightCopies.set(light,copy);}
+      copy.color.copy(light.color);copy.intensity=light.intensity;
+      copy.position.copy(light.position);copy.quaternion.copy(light.quaternion);
+      captureScene.add(copy);
+    }
     captureScene.environment=scene.environment;captureScene.environmentIntensity=scene.environmentIntensity;
     const i=r.frame,angle=i*Math.PI/4,R=r.radius;
     captureCamera.left=captureCamera.bottom=-R;captureCamera.right=captureCamera.top=R;
@@ -113,5 +121,5 @@ export function createBuildingImpostors(game,{mobile=false,enabled=true}={}){
   }
   return {update,setEnabled(value){enabled=!!value;if(!enabled)for(const r of records.values())restore(r);},
     stats:()=>({enabled,failed,buildings:records.size,ready:[...records.values()].filter(r=>r.frame===9).length,visible:[...records.values()].filter(r=>r.hidden).length,bakedFrames,viewsPerBuilding:9,textureBytes:records.size*tileSize*tileSize*9*4}),
-    dispose(){for(const r of [...records.values()])release(r);planeGeometry.dispose();}};
+    dispose(){for(const r of [...records.values()])release(r);captureScene.clear();captureLightCopies.clear();planeGeometry.dispose();}};
 }
