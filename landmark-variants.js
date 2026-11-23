@@ -52,11 +52,11 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
  const cap=owned(new THREE.ConeGeometry(129.4,107,4),white);cap.name='White Luxor pyramid · 183 m base';cap.rotation.y=Math.PI/4;cap.position.y=53.5;pyramid.add(cap);
  const podium=owned(new THREE.BoxGeometry(185,2.4,185),material(0xe7d6ad,{roughness:.4,metalness:.3}));podium.position.y=1.2;pyramid.add(podium);
  const apex=owned(new THREE.SphereGeometry(3.4,mobile?8:12,8),new THREE.MeshBasicMaterial({color:0xffffff}));apex.position.y=107;pyramid.add(apex);
- const beamMaterials=[];
+ const beamMaterials=[],beamShafts=[];
  for(const [diameter,opacity,length,color] of [[2,.68,3800,0xffffff],[14,.16,3800,0xfff3c3]]){
   const beamMat=new THREE.MeshBasicMaterial({color,transparent:true,opacity,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true});
   const shaft=owned(new THREE.CylinderGeometry(diameter*.65,diameter,length,mobile?6:10,1,true),beamMat);
-  shaft.name='Luxor heavenly sky beam';shaft.position.y=107+length*.5;shaft.frustumCulled=false;pyramid.add(shaft);beamMaterials.push(beamMat);
+  shaft.name='Luxor heavenly sky beam';shaft.position.y=107+length*.5;shaft.frustumCulled=false;pyramid.add(shaft);beamMaterials.push(beamMat);beamShafts.push(shaft);
  }
  addSign(pyramid,'LUXOR',98,18,0,17,94,0,'#ffefbd','#f3f3f0');
 
@@ -91,7 +91,7 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
  let hellArt=null,hellArtReady=false,hellArtFailed=false;
  const cardMaterial=new THREE.MeshBasicMaterial({transparent:true,alphaTest:.025,depthWrite:false,side:THREE.DoubleSide});
  const card=owned(new THREE.PlaneGeometry(330,104),cardMaterial);
- card.name='END OF HIM authored Hell sprite impostor';card.position.y=83;card.frustumCulled=false;hell.add(card);
+ card.name='END OF HIM authored Hell sprite impostor';card.position.y=83;card.frustumCulled=true;hell.add(card);
  // Only accept actual streamed terrain meshes; generated fallback tiles report a fake 0m.
  const luxorSamplers=new WeakMap();
  const sampleLuxorTerrain=()=>{
@@ -142,7 +142,15 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
   // Wait for a real streamed terrain sample; never expose a pyramid at fake sea level.
   if(Number.isFinite(luxorGround)){lastLuxorGround=luxorGround;luxorGroundReady=true;}
   if(luxorGroundReady)pyramid.position.y=lastLuxorGround;
-  if(game.camera){const cam=game.camera.position,dist=Math.hypot(cam.x-pyramid.position.x,cam.z-pyramid.position.z);pyramid.visible=luxorGroundReady&&dist<20000;}
+  if(game.camera){
+   const cam=game.camera.position;
+   const luxorDistance=Math.hypot(cam.x-pyramid.position.x,cam.z-pyramid.position.z);
+   pyramid.visible=luxorGroundReady&&luxorDistance<20000;
+   // Keep the tall core shaft; omit secondary mobile glow beyond its useful range.
+   beamShafts[1].visible=!mobile||luxorDistance<2500;
+   const stadiumDistance=Math.hypot(cam.x-stadium.position.x,cam.z-stadium.position.z);
+   goldRim.visible=!mobile||stadiumDistance<1800;
+  }
   else pyramid.visible=false;
  }
  update();
