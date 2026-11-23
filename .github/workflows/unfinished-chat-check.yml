@@ -73,7 +73,9 @@ jobs:
             tests/sin-city-motor-speedway.mjs \
             tests/sphere-scale.mjs \
             tests/npc-dialogue-history-guard.mjs \
-            tests/npc-dialogue-cancellation.mjs; do
+            tests/npc-dialogue-cancellation.mjs \
+            tests/luxor-terrain-readiness.test.mjs \
+            tests/luxor-terrain-cache-runtime.mjs; do
             if [ -f "$file" ]; then
               echo "::group::$file"
               node "$file"
