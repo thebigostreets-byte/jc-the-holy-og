@@ -119,6 +119,7 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
  let lastLuxorGround=sampleLuxorTerrain();
  let luxorGroundReady=Number.isFinite(lastLuxorGround);
  let disposed=false;
+ let luxorTerrainUpdateCounter=0;
  function update(){
   if(disposed)return;
   const night=window.JC_WORLD_TIME_MODE==='night';
@@ -138,7 +139,9 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
    if(card.visible)card.lookAt(cam.x-hell.position.x,card.position.y,cam.z-hell.position.z);
   }else card.visible=false;
   // Small far-field drawing budget; beam does not cast shadows or use point lights.
-  const luxorGround=sampleLuxorTerrain();
+  // Sample at most once per 12 visual updates; terrain mesh scans are costly in flight.
+  // The initial terrain sample above still runs immediately at scene creation.
+  const luxorGround=(++luxorTerrainUpdateCounter%12===1)?sampleLuxorTerrain():NaN;
   // Wait for a real streamed terrain sample; never expose a pyramid at fake sea level.
   if(Number.isFinite(luxorGround)){lastLuxorGround=luxorGround;luxorGroundReady=true;}
   if(luxorGroundReady)pyramid.position.y=lastLuxorGround;
