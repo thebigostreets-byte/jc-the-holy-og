@@ -102,7 +102,7 @@ export function createCharacter3D({faction='civilian',player=false,ordinal=0}={}
     torso.rotation.x=THREE.MathUtils.lerp(torso.rotation.x,flying?-.08:Math.sin(gait)*step*.025,blend);
     for(const {arm,elbow,side} of arms){const swing=step?Math.sin(gait+(side>0?Math.PI:0))*.56:0;const targetArmX=(pose.arm[side>0?1:0]||0)+swing;
       // Flight arms extend out from both shoulders; blend to avoid snapping on boost/brake.
-      const targetArmZ=flying?(side>0?-1.12:1.12):side*(pose.lean*.4);
+      const targetArmZ=flying?(side>0?1.12:-1.12):side*(pose.lean*.4);
       arm.rotation.x=THREE.MathUtils.lerp(arm.rotation.x,targetArmX,blend);
       arm.rotation.z=THREE.MathUtils.lerp(arm.rotation.z,targetArmZ,blend);
       elbow.rotation.x=THREE.MathUtils.lerp(elbow.rotation.x,(pose.elbow[side>0?1:0]||0)+(step?-.14:0),blend);}
