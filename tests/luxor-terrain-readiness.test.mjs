@@ -10,7 +10,7 @@ assert.match(source,/terrainSampler\(tile\)/);
 assert.match(source,/const luxorSamplers=new WeakMap\(\)/);
 assert.match(source,/if\(!sampler&&position\)\{sampler=terrainSampler\(tile\);/);
 assert.match(source,/if\(sampler\)luxorSamplers\.set\(tile,\{position,sampler\}\)/);
-assert.match(source,/cached\?\.position===position\?cached\.sampler:null/);
+assert.match(source,/cached\?\.position===position\?cached\?\.sampler:null/);
 assert.match(source,/if\(!position\)luxorSamplers\.delete\(tile\)/);
 assert.doesNotMatch(source,/luxorSamplers\.set\(tile,null\)/);
 assert.match(source,/if\(Number\.isFinite\(luxorGround\)\)\{lastLuxorGround=luxorGround;luxorGroundReady=true;\}/);
