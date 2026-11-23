@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const source=readFileSync(new URL('../landmark-variants.js',import.meta.url),'utf8');
+const deployed=readFileSync(new URL('../dist/client/landmark-variants.js',import.meta.url),'utf8');
+assert.equal(source,deployed,'landmark source/deployed client must match');
+assert.match(source,/beamMetres:3800/,'Luxor beam length remains 3,800m');
+assert.match(source,/beamShafts\[1\]\.visible=!mobile\|\|dist<2500/,'mobile distant outer glow must be culled');
+assert.match(source,/shaft\.frustumCulled=false/,'beam core remains visible in sky/flight views');
+assert.match(source,/name:'Angelic Stadium'/,'Angelic Stadium identity preserved');
+assert.match(source,/name:'END OF HIM'.*hellOnly:true/,'END OF HIM remains Hell-only');
+console.log('Luxor mobile beam LOD regression: passed');
