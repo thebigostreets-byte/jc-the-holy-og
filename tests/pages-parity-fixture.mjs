@@ -34,6 +34,8 @@ test('Pages parity rejects stale, unsafe, duplicate, symlink and missing entrypo
     await writeFile(path.join(root, 'dist/client/index.html'), '<main>valid</main>');
     await mkdir(path.join(root, 'nested'));
     await mkdir(path.join(root, 'dist/client/nested'));
+    await mkdir(path.join(root, 'linked'));
+    await writeFile(path.join(root, 'linked/asset.js'), 'nested');
     await writeFile(path.join(root, 'nested/asset.js'), 'nested');
     await symlink(path.join(root, 'nested'), path.join(root, 'dist/client/linked'));
     await manifest(['index.html', 'linked/asset.js']);
