@@ -111,7 +111,15 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
    if(card.visible)card.lookAt(cam.x-hell.position.x,card.position.y,cam.z-hell.position.z);
   }else card.visible=false;
   // Small far-field drawing budget; beam does not cast shadows or use point lights.
-  if(game.camera){const cam=game.camera.position,dist=Math.hypot(cam.x-pyramid.position.x,cam.z-pyramid.position.z);pyramid.visible=dist<20000;}
+  if(game.camera){
+   const cam=game.camera.position;
+   const luxorDistance=Math.hypot(cam.x-pyramid.position.x,cam.z-pyramid.position.z);
+   pyramid.visible=luxorDistance<20000;
+   // Keep Angelic Stadium's full white oval silhouette at distance while skipping
+   // its decorative gold rim on low-spec mobile flight views.
+   const stadiumDistance=Math.hypot(cam.x-stadium.position.x,cam.z-stadium.position.z);
+   goldRim.visible=!mobile||stadiumDistance<1800;
+  }
  }
  update();
  return {root,update,stats:()=>({landmarks:4,luxorBeamMetres:3800,endOfHimActive:hell.visible}),dispose(){
