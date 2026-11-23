@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const source=readFileSync('jc-character3d.js','utf8');
+const deployed=readFileSync('dist/client/jc-character3d.js','utf8');
+assert.equal(source,deployed,'deployed pose rig matches source');
+assert.match(source,/side>0\?1\.12:-1\.12/,'flight shoulders extend outward on both sides');
+assert.match(source,/arm\.rotation\.z=THREE\.MathUtils\.lerp/,'shoulder transitions blend instead of snapping');
+assert.match(source,/elbow\.rotation\.x=THREE\.MathUtils\.lerp/,'elbows transition smoothly');
+assert.match(source,/knee\.rotation\.x=THREE\.MathUtils\.lerp/,'knees transition smoothly');
+console.log('PASS: JC flight pose smoothing and deployed parity');
