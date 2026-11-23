@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const source=readFileSync(new URL('../landmark-variants.js',import.meta.url),'utf8');
+const deploy=readFileSync(new URL('../dist/client/landmark-variants.js',import.meta.url),'utf8');
+assert.equal(source,deploy,'source and deploy landmark variants must match');
+assert.match(source,/card\.name='END OF HIM authored Hell sprite impostor';card\.position\.y=83;card\.frustumCulled=true;/,'Hell impostor must be frustum culled');
+assert.match(source,/card\.visible=withinImpostorRange&&hellArtReady&&!hellArtFailed/,'keep LOD range and asset readiness');
+assert.match(source,/card\.lookAt\(cam\.x-hell\.position\.x,card\.position\.y,cam\.z-hell\.position\.z\)/,'keep camera facing billboard');
+assert.match(source,/hell\.visible=hellMode/,'Hell-only gating must remain');
+assert.match(source,/name:'Angelic Stadium'/,'preserve Angelic Stadium');
+assert.match(source,/beamMetres:3800/,'preserve Luxor sky beam');
+console.log('END OF HIM impostor frustum regression: 7 checks passed');
