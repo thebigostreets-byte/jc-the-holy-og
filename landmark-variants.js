@@ -90,7 +90,7 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
  let hellArt=null,hellArtReady=false,hellArtFailed=false;
  const cardMaterial=new THREE.MeshBasicMaterial({transparent:true,alphaTest:.025,depthWrite:false,side:THREE.DoubleSide});
  const card=owned(new THREE.PlaneGeometry(330,104),cardMaterial);
- card.name='END OF HIM authored Hell sprite impostor';card.position.y=83;card.frustumCulled=false;hell.add(card);
+ card.name='END OF HIM authored Hell sprite impostor';card.position.y=83;card.frustumCulled=true;hell.add(card);
  let disposed=false;
  function update(){
   if(disposed)return;
