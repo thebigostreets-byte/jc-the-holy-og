@@ -35,3 +35,12 @@ assert.equal(shouldTouchDown(true,120,119,-20),false,'descending at altitude sta
 assert.equal(shouldTouchDown(true,1,0,-20),true,'ground contact lands');
 assert.equal(transitionFlight({...flight,flying:true,height:120},'hover').height,120,'hover preserves airborne altitude');
 assert.equal(transitionFlight({...flight,flying:true,hypersonic:true,height:120},'surge').hypersonic,true,'Sonic Boom never toggles boost off');
+
+for (const invalidHeight of [NaN, Infinity, -Infinity, -25]) {
+  const takeoff = transitionFlight({height:invalidHeight}, 'takeoff');
+  assert.equal(takeoff.height, 6, 'takeoff recovers from invalid altitude');
+  const hover = transitionFlight({flying:true,height:invalidHeight}, 'hover');
+  assert.equal(hover.height, 5, 'hover recovers from invalid altitude');
+  const lift = transitionFlight({height:invalidHeight}, 'sky-lift');
+  assert.equal(lift.height, 28, 'sky-lift recovers from invalid altitude');
+}
