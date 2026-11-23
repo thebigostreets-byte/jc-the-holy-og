@@ -51,11 +51,11 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
  const cap=owned(new THREE.ConeGeometry(129.4,107,4),white);cap.name='White Luxor pyramid · 183 m base';cap.rotation.y=Math.PI/4;cap.position.y=53.5;pyramid.add(cap);
  const podium=owned(new THREE.BoxGeometry(185,2.4,185),material(0xe7d6ad,{roughness:.4,metalness:.3}));podium.position.y=1.2;pyramid.add(podium);
  const apex=owned(new THREE.SphereGeometry(3.4,mobile?8:12,8),new THREE.MeshBasicMaterial({color:0xffffff}));apex.position.y=107;pyramid.add(apex);
- const beamMaterials=[];
+ const beamMaterials=[],beamShafts=[];
  for(const [diameter,opacity,length,color] of [[2,.68,3800,0xffffff],[14,.16,3800,0xfff3c3]]){
   const beamMat=new THREE.MeshBasicMaterial({color,transparent:true,opacity,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true});
   const shaft=owned(new THREE.CylinderGeometry(diameter*.65,diameter,length,mobile?6:10,1,true),beamMat);
-  shaft.name='Luxor heavenly sky beam';shaft.position.y=107+length*.5;shaft.frustumCulled=false;pyramid.add(shaft);beamMaterials.push(beamMat);
+  shaft.name='Luxor heavenly sky beam';shaft.position.y=107+length*.5;shaft.frustumCulled=false;pyramid.add(shaft);beamMaterials.push(beamMat);beamShafts.push(shaft);
  }
  addSign(pyramid,'LUXOR',98,18,0,17,94,0,'#ffefbd','#f3f3f0');
 
@@ -111,7 +111,11 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
    if(card.visible)card.lookAt(cam.x-hell.position.x,card.position.y,cam.z-hell.position.z);
   }else card.visible=false;
   // Small far-field drawing budget; beam does not cast shadows or use point lights.
-  if(game.camera){const cam=game.camera.position,dist=Math.hypot(cam.x-pyramid.position.x,cam.z-pyramid.position.z);pyramid.visible=dist<20000;}
+  if(game.camera){const cam=game.camera.position,dist=Math.hypot(cam.x-pyramid.position.x,cam.z-pyramid.position.z);pyramid.visible=dist<20000;
+   // On mobile, keep the 3,800 m bright core visible at long range, but skip
+   // the additive outer glow pass until close enough to contribute pixels.
+   beamShafts[1].visible=!mobile||dist<2500;
+  }
  }
  update();
  return {root,update,stats:()=>({landmarks:4,luxorBeamMetres:3800,endOfHimActive:hell.visible}),dispose(){
