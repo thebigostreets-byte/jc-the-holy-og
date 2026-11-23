@@ -106,6 +106,22 @@ body:not(.jc-playing) #jcPlayReturn{display:block}
 #jcHud .jc-mini-label{position:absolute;left:20px;top:129px;color:#e5d5aa;font-size:8px;letter-spacing:.14em;text-shadow:0 1px 4px #000}
 @media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{display:block;bottom:calc(env(safe-area-inset-bottom) + 10px);height:clamp(88px,25vw,112px);left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));touch-action:none;overscroll-behavior:none}#jcStick{display:none!important}#jcHud #jcGas{display:flex;position:absolute!important;left:0;bottom:0;align-items:center;justify-content:center;flex-direction:column}#jcLookStick{position:absolute!important;right:0;bottom:0}#jcHud .jc-hint{display:none}#jcHud .jc-score{font-size:12px}#jcHud .jc-score strong{font-size:15px}#jcHud .jc-ability{top:76px;right:8px;font-size:12px}#jcHud .jc-ability button{min-height:44px}#jcHud .jc-actions{position:absolute!important;right:0;bottom:calc(clamp(76px,24vw,104px) + 10px);width:min(37vw,146px);max-height:42vh;gap:5px}#jcHud .jc-actions button{padding:7px 5px;font-size:12px;min-height:46px}}
 `;
+// Video QA: keep mobile flight view readable while preserving essential touch actions.
+style.textContent += `@media(max-width:800px),(pointer:coarse){
+  #jcHud .jc-top{top:max(4px,env(safe-area-inset-top));left:6px;right:6px;gap:4px}
+  #jcHud .jc-score{font-size:10px;line-height:1.25;padding:5px 7px;max-width:48vw;background:#091018ad}
+  #jcHud .jc-score strong{font-size:13px}
+  #jcHud #jcRun,#jcHud #jcRestart,#jcHud #jcSettings,#jcHud #jcCallCar{display:none}
+  #jcHud #jcEditor{padding:5px 7px;font-size:10px;min-height:30px;background:#091018b8}
+  #jcHud .jc-ability{top:max(43px,calc(env(safe-area-inset-top) + 43px));right:6px;max-width:31vw;padding:5px 7px;font-size:10px;background:#091018b8}
+  #jcHud .jc-ability strong{font-size:11px}
+  #jcHud .jc-ability button{min-height:32px;padding:5px 6px;font-size:10px}
+  #jcHud .jc-mini-label{display:none}
+  #jcFlight{top:116px;right:6px;padding:4px 6px;font-size:10px;background:#091018a8}
+  #jcHud .jc-actions{max-height:36vh;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+  #jcHud .jc-actions button{min-height:38px;padding:5px 4px;font-size:11px}
+  #jcHud #jcLookStick{display:none!important}
+}`;
 style.textContent += '@media(max-width:800px){#jcMissionPanel{left:12px!important;top:306px!important;max-width:calc(100vw - 24px)}}#jcHud,#jcHud *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#jcTalk input,#jcTalk textarea{-webkit-user-select:text;user-select:text}#jcHud button,#jcStick,#jcLookStick,#jcGas{touch-action:none}@media(max-width:800px),(pointer:coarse){#jcHud .jc-touch{z-index:12;pointer-events:none}#jcStick,#jcLookStick,#jcGas,#jcHud .jc-actions{position:relative;z-index:13;pointer-events:auto}#jcNpcReadout{pointer-events:none!important;bottom:calc(env(safe-area-inset-bottom) + 230px)!important;max-width:46vw!important}#jcPeople{z-index:8}#jcWorldPrompt{z-index:9}}';
 style.textContent+=`
 #jcHud .jc-wheel-slot .jc-sprite-sigil{position:absolute;right:3px;top:3px;width:23px;height:23px;display:block;pointer-events:none;background-repeat:no-repeat;image-rendering:auto;border:1px solid #dbc28b8c;border-radius:50%;background-color:#080e17c8;box-shadow:0 2px 6px #0008}
