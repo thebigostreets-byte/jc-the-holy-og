@@ -104,7 +104,7 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
    const mesh=ground?.children?.find(child=>child.isMesh);
    const position=(mesh?.userData?.jcCraterBase||mesh?.geometry)?.getAttribute('position');
    const cached=luxorSamplers.get(tile);
-   let sampler=cached?.position===position?cached.sampler:null;
+   let sampler=cached?.position===position?cached?.sampler:null;
    if(!sampler&&position){sampler=terrainSampler(tile);
     if(sampler)luxorSamplers.set(tile,{position,sampler});
     else luxorSamplers.delete(tile);
