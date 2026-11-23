@@ -60,6 +60,7 @@ jobs:
           node tests/gameplay-regressions.mjs
           node tests/performance-guardrails.mjs
           node tests/city-tile-window.mjs
+          node tests/packaged-city-coverage.mjs
           node tests/npc-motion.mjs
           node tests/npc-autonomy.mjs
           node tests/npc-contacts.mjs
