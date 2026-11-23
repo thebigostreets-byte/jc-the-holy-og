@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const source=readFileSync('building-impostors.js','utf8');
+const deployed=readFileSync('dist/client/building-impostors.js','utf8');
+assert.equal(source,deployed,'source and Pages building-impostor modules must match');
+assert.match(source,/const captureLightCopies=new Map\(\)/,'capture lights are cached');
+assert.match(source,/if\(!copy\)\{copy=light\.clone\(\);captureLightCopies\.set\(light,copy\);\}/,'clone only on cache miss');
+assert.match(source,/copy\.color\.copy\(light\.color\);copy\.intensity=light\.intensity/,'cached light color and intensity stay current');
+assert.match(source,/captureLightCopies\.clear\(\)/,'cache is released on dispose');
+console.log('PASS: impostor capture light reuse and Pages parity');
