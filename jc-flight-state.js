@@ -4,6 +4,8 @@ export function transitionFlight(state, action) {
     flying: false, hypersonic: false, glide: false, diving: false,
     height: 0, descending: 0, ...state
   };
+  // Never feed corrupt altitude into movement or camera calculations.
+  current.height = Number.isFinite(current.height) ? Math.max(0, current.height) : 0;
   switch (action) {
     case 'takeoff':
       return {...current, flying:true, hypersonic:false, glide:false, diving:false, height:Math.max(6,current.height), descending:0};
