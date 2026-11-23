@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const src=read('landmark-variants.js');
+assert.equal(src,read('dist/client/landmark-variants.js'),'source/deploy bytes must match');
+assert.match(src,/name:'Angelic Stadium'/);
+assert.match(src,/addSign\(stadium,'ANGELIC STADIUM'/);
+assert.match(src,/goldRim\.visible=!mobile\|\|stadiumDistance<1800/);
+assert.match(src,/name:'END OF HIM'.*hellOnly:true/);
+assert.match(src,/card\.frustumCulled=true;hell\.add\(card\)/);
+assert.match(src,/hell\.visible=hellMode/);
+assert.match(src,/beamMetres:3800/);
+assert.match(src,/beamShafts\[1\]\.visible=!mobile\|\|luxorDistance<2500/);
+assert.match(src,/pyramid\.visible=luxorGroundReady&&luxorDistance<20000/);
+assert.match(src,/if\(luxorGroundReady\)pyramid\.position\.y=lastLuxorGround/);
+assert.match(src,/tile\.userData\?\.generatedFallback/);
+console.log('Integrated Luxor terrain, beam LOD, Angelic Stadium and END OF HIM contracts passed');
