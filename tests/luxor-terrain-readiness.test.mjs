@@ -15,7 +15,7 @@ assert.match(source,/if\(!position\)luxorSamplers\.delete\(tile\)/);
 assert.doesNotMatch(source,/luxorSamplers\.set\(tile,null\)/);
 assert.match(source,/if\(Number\.isFinite\(luxorGround\)\)\{lastLuxorGround=luxorGround;luxorGroundReady=true;\}/);
 assert.match(source,/if\(luxorGroundReady\)pyramid\.position\.y=lastLuxorGround/);
-assert.match(source,/pyramid\.visible=luxorGroundReady&&dist<20000/);
+assert.match(source,/pyramid\.visible=luxorGroundReady&&luxorDistance<20000/);
 assert.match(source,/beamMetres:3800/);
 assert.match(source,/name:'Angelic Stadium'/);
 assert.match(source,/name:'END OF HIM'/);
