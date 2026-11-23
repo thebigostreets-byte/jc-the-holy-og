@@ -1,5 +1,6 @@
 import * as THREE from './three.module.js';
 import {projectToUTM11} from './city-environment.js';
+import {terrainSampler} from './city-roads.js';
 
 // Fictional art overlays anchored to real Las Vegas locations, not arbitrary map tiles.
 // Each object is separate from source meshes so building collisions remain intact.
@@ -91,6 +92,32 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
  const cardMaterial=new THREE.MeshBasicMaterial({transparent:true,alphaTest:.025,depthWrite:false,side:THREE.DoubleSide});
  const card=owned(new THREE.PlaneGeometry(330,104),cardMaterial);
  card.name='END OF HIM authored Hell sprite impostor';card.position.y=83;card.frustumCulled=false;hell.add(card);
+ // Only accept actual streamed terrain meshes; generated fallback tiles report a fake 0m.
+ const luxorSamplers=new WeakMap();
+ const sampleLuxorTerrain=()=>{
+  if(!game.loaded?.values)return NaN;
+  for(const tile of game.loaded.values()){
+   if(!tile||tile.userData?.generatedFallback)continue;
+   // A streamed tile can replace its ground geometry without changing the tile object.
+   // Match the same position attribute used by terrainSampler before reusing its closure.
+   const ground=tile.children?.find(child=>child.name==='ground_inferred');
+   const mesh=ground?.children?.find(child=>child.isMesh);
+   const position=(mesh?.userData?.jcCraterBase||mesh?.geometry)?.getAttribute('position');
+   const cached=luxorSamplers.get(tile);
+   let sampler=cached?.position===position?cached?.sampler:null;
+   if(!sampler&&position){sampler=terrainSampler(tile);
+    if(sampler)luxorSamplers.set(tile,{position,sampler});
+    else luxorSamplers.delete(tile);
+   }
+   if(!position)luxorSamplers.delete(tile);
+   const height=sampler?.(pyramid.position.x,pyramid.position.z);
+   if(Number.isFinite(height))return height;
+  }
+  return NaN;
+ };
+ // Retain the last genuine height through transient tile eviction; no sea-level flash.
+ let lastLuxorGround=sampleLuxorTerrain();
+ let luxorGroundReady=Number.isFinite(lastLuxorGround);
  let disposed=false;
  function update(){
   if(disposed)return;
@@ -111,7 +138,12 @@ export function createLandmarkVariants(game,{mobile=false}={}) {
    if(card.visible)card.lookAt(cam.x-hell.position.x,card.position.y,cam.z-hell.position.z);
   }else card.visible=false;
   // Small far-field drawing budget; beam does not cast shadows or use point lights.
-  if(game.camera){const cam=game.camera.position,dist=Math.hypot(cam.x-pyramid.position.x,cam.z-pyramid.position.z);pyramid.visible=dist<20000;}
+  const luxorGround=sampleLuxorTerrain();
+  // Wait for a real streamed terrain sample; never expose a pyramid at fake sea level.
+  if(Number.isFinite(luxorGround)){lastLuxorGround=luxorGround;luxorGroundReady=true;}
+  if(luxorGroundReady)pyramid.position.y=lastLuxorGround;
+  if(game.camera){const cam=game.camera.position,dist=Math.hypot(cam.x-pyramid.position.x,cam.z-pyramid.position.z);pyramid.visible=luxorGroundReady&&dist<20000;}
+  else pyramid.visible=false;
  }
  update();
  return {root,update,stats:()=>({landmarks:4,luxorBeamMetres:3800,endOfHimActive:hell.visible}),dispose(){
