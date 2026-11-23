@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const source=readFileSync(new URL('../landmark-variants.js',import.meta.url),'utf8');
+const deploy=readFileSync(new URL('../dist/client/landmark-variants.js',import.meta.url),'utf8');
+assert.equal(source,deploy,'source and deployed landmark renderer must be identical');
+assert.match(source,/name:'Angelic Stadium'/);
+assert.match(source,/addSign\(stadium,'ANGELIC STADIUM'/);
+assert.match(source,/goldRim\.visible=!mobile\|\|stadiumDistance<1800/);
+assert.match(source,/stadiumDistance=Math\.hypot\(cam\.x-stadium\.position\.x,cam\.z-stadium\.position\.z\)/);
+assert.match(source,/beamMetres:3800/);
+assert.match(source,/name:'END OF HIM'/);
+assert.match(source,/hell\.visible=hellMode/);
+console.log('Angelic mobile rim LOD and landmark identities: 7 assertions passed');
